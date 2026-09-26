@@ -75,7 +75,7 @@ public class JavaFxGameView implements GameView {
 
     private GameCommand mapKey(KeyCode keyCode) {
         if (keyCode == KeyCode.ESCAPE) {
-            return GameCommand.EXIT;
+            return GameCommand.QUIT_GAME;
         }
 
         return GameCommand.NONE;

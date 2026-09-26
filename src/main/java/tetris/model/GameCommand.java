@@ -3,5 +3,10 @@ package tetris.model;
 public enum GameCommand {
 
     NONE,
-    EXIT
+    MOVE_LEFT,
+    MOVE_RIGHT,
+    ROTATE_CLOCKWISE,
+    HARD_DROP,
+    PAUSE,
+    QUIT_GAME
 }

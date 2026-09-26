@@ -1,9 +1,11 @@
 package tetris.model;
-
+import java.util.List;
 public class Game {
 
+    private static final long INITIAL_SCORE = 0L;
+    private static final long INITIAL_DROP_INTERVAL = 1_000L;
+    
     private final Board board;
-
     private GameStatus status;
 
     public Game(Board board) {
@@ -30,19 +32,23 @@ public class Game {
             return;
         }
 
-        if (command == GameCommand.EXIT) {
-            status = GameStatus.EXIT;
+        if (command == GameCommand.QUIT_GAME
+        ) {
+            status = GameStatus.QUIT;
         }
     }
 
     public boolean isFinished() {
-        return status == GameStatus.EXIT;
+        return status == GameStatus.QUIT;
     }
 
     public GameSnapshot createSnapshot() {
         return new GameSnapshot(
                 board.copyCells(),
-                status
+                List.of(),
+                INITIAL_SCORE,
+                status,
+                INITIAL_DROP_INTERVAL
         );
     }
 }
