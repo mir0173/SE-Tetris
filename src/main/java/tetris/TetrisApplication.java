@@ -22,11 +22,13 @@ public class TetrisApplication extends Application {
 
     @Override
     public void start(Stage stage) {
-        stage.setTitle("Tetris");
         showStartMenu(stage);
     }
 
     private void showStartMenu(Stage stage) {
+
+        stage.setTitle("Tetris");
+
         JavaFxStartMenuView menu = new JavaFxStartMenuView(
                 () -> startNewGame(stage),
                 () -> showFeatureNotice(stage, "설정"),
@@ -50,7 +52,7 @@ public class TetrisApplication extends Application {
         Game game = new Game(board);
         GameView view = new JavaFxGameView(stage);
 
-        GameController controller = new GameController(game, view);
+        GameController controller = new GameController(game, view, () -> showStartMenu(stage));
         controller.start();
     }
 

@@ -9,10 +9,12 @@ public class GameController {
 
     private final Game game;
     private final GameView view;
+    private final Runnable onReturnToMenu;
 
-    public GameController(Game game, GameView view) {
+    public GameController(Game game, GameView view, Runnable onReturnToMenu) {
         this.game = game;
         this.view = view;
+        this.onReturnToMenu = onReturnToMenu;
     }
 
     public void start() {
@@ -25,11 +27,15 @@ public class GameController {
     }
 
     private void handleCommand(GameCommand command) {
+        if (game.isFinished()) {
+            return;
+        }
+
         game.handleCommand(command);
         refreshView();
 
-        if (game.isFinished()) {
-            view.close();
+        if (command == GameCommand.QUIT_GAME && game.isFinished()) {
+            onReturnToMenu.run();
         }
     }
 
