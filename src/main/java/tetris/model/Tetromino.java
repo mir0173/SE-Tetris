@@ -44,6 +44,11 @@ public record Tetromino(TetrominoType type, int rotation, int row, int column) {
         return new Tetromino(type, (rotation + 1) % ROTATION_COUNT, row, column);
     }
 
+    // 반시계방향으로 회전된 새 블록 객체를 반환하는 함수
+    public Tetromino rotateCounterClockwise() {
+        return new Tetromino(type, (rotation + ROTATION_COUNT - 1) % ROTATION_COUNT, row, column);
+    }
+
     // 상대 좌표들을 보드 기준 절대 좌표 List로 반환하는 함수
     public List<Position> getAbsolutePositions() {
         List<Position> relativePositions = type.getCellsAt(rotation);
