@@ -1,15 +1,25 @@
 package tetris.model;
+
 import java.util.List;
+
 public class Game {
 
     private static final long INITIAL_SCORE = 0L;
     private static final long INITIAL_DROP_INTERVAL = 1_000L;
-    
+
     private final Board board;
     private GameStatus status;
+    private Tetromino currentPiece;
+    private TetrominoType nextPiece;
+    private final TetrominoGenerator generator;
 
-    public Game(Board board) {
+    public Game(Board board, TetrominoGenerator generator) {
+        if(board == null || generator == null){
+            String nullobject = board == null ? "board" : "generator";
+            throw new NullPointerException("param : " + nullobject + " is null");
+        }
         this.board = board;
+        this.generator = generator;
         this.status = GameStatus.READY;
     }
 
@@ -20,7 +30,6 @@ public class Game {
         if (status != GameStatus.READY) {
             return;
         }
-
         status = GameStatus.PLAYING;
     }
 
@@ -32,8 +41,7 @@ public class Game {
             return;
         }
 
-        if (command == GameCommand.QUIT_GAME
-        ) {
+        if (command == GameCommand.QUIT_GAME) {
             status = GameStatus.QUIT;
         }
     }
@@ -48,7 +56,6 @@ public class Game {
                 List.of(),
                 INITIAL_SCORE,
                 status,
-                INITIAL_DROP_INTERVAL
-        );
+                INITIAL_DROP_INTERVAL);
     }
 }
