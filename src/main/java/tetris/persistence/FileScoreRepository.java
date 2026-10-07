@@ -10,6 +10,7 @@ import java.util.List;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonIOException;
 import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 
@@ -21,6 +22,8 @@ public class FileScoreRepository implements ScoreRepository {
     private static final Gson GSON = new GsonBuilder()
             .setPrettyPrinting()
             .create();
+
+    private static final String WRITE_ERROR_MESSAGE = "점수 기록을 저장할 수 없습니다.";
 
     private final Path path;
 
@@ -69,6 +72,8 @@ public class FileScoreRepository implements ScoreRepository {
 
         try (Writer writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
             GSON.toJson(entries, writer);
+        } catch (JsonIOException exception) {
+            throw new IOException(WRITE_ERROR_MESSAGE, exception);
         }
     }
 }
