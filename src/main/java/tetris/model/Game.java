@@ -41,6 +41,9 @@ public class Game {
 
     /**
      * 사용자 명령을 현재 게임 상태에 적용한다.
+     * 실행 중(PLAYING)이 아니면 무시하며, 이동과 회전은 놓을 수 없는 위치면 무시된다.
+     *
+     * @param command 적용할 명령
      */
     public void handleCommand(GameCommand command) {
         if (status != GameStatus.PLAYING) {
@@ -61,10 +64,14 @@ public class Game {
             case HOLD -> hold();
             case QUIT_GAME -> status = GameStatus.QUIT;
             case PAUSE, NONE -> {
-            } // Todo in T6
+            } // PAUSE는 T6이후 처리
         }
     }
 
+    /**
+     * 중력에 의해 블록을 한 칸 내린다. 더 내려갈 수 없으면 고정하고 다음 블록을 내보낸다.
+     * 타이머가 일정 간격으로 호출되며, 실행 중이 아니면 무시한다.
+     */
     public void tick() {
         if (status != GameStatus.PLAYING) {
             return;
@@ -72,19 +79,31 @@ public class Game {
         softDrop();
     }
 
+    // 사용자가 게임을 종료했으면 true (GAMEOVER는 포함되지 않음)
     public boolean isFinished() {
         return status == GameStatus.QUIT;
     }
 
+    // 새 블록이 스폰 위치에 놓이지 못해 게임이 끝났으면 true
     public boolean isGameOver() {
         return status == GameStatus.GAMEOVER;
     }
 
-    // 마지막으로 고정된 블록이 지운 줄 수 (T6 점수 계산용)
+    /**
+     * 가장 최근에 블록이 고정될 때 지운 줄 수를 반환한다. 점수 계산에 사용된다.
+     *
+     * @return 지운 줄 수 (0~4)
+     */
     public int getLastClearedLines() {
         return lastClearedLines;
     }
 
+    /**
+     * 화면 표시용으로 현재 게임 상태의 사본을 만든다.
+     * 셀에는 고정된 블록과 떨어지는 블록이 함께 담기며, 게임오버이거나 시작 전이면 고정된 블록만 담긴다.
+     *
+     * @return 현재 상태의 스냅샷
+     */
     public GameSnapshot createSnapshot() {
         int[][] cells;
         if (isGameOver() || currentPiece == null) {
@@ -129,6 +148,7 @@ public class Game {
     // 바닥까지 한번에 내린 뒤 바로 고정
     private void hardDrop() {
         while (tryReplace(currentPiece.move(1, 0))) {
+            // 더 내려갈 수 없을 때까지 반복
         }
         lockAndSpawnNext();
     }
@@ -159,6 +179,7 @@ public class Game {
         currentPiece = candidate;
     }
 
+    // 현재 블록을 홀드하거나 홀드된 블록과 바꾼다. 블록 하나당 한번만 가능하다.
     private void hold() {
         if (holdUsed) {
             return;
