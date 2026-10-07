@@ -12,6 +12,7 @@ import java.io.IOException;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonIOException;
 import com.google.gson.JsonParseException;
 
 import javafx.scene.input.KeyCode;
@@ -25,6 +26,10 @@ public class FileSettingsRepository implements SettingsRepository {
     private static final Gson GSON = new GsonBuilder()
             .setPrettyPrinting()
             .create();
+
+    // AI-assisted code start
+    private static final String WRITE_ERROR_MESSAGE = "설정을 저장할 수 없습니다.";
+    // AI-assisted code end
 
     // AI-assisted code start
     private static final String READ_ERROR_MESSAGE = "설정 JSON을 읽을 수 없습니다.";
@@ -69,6 +74,8 @@ public class FileSettingsRepository implements SettingsRepository {
 
         try (Writer writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
             GSON.toJson(createData(settings), writer);
+        } catch (JsonIOException exception) {
+            throw new IOException(WRITE_ERROR_MESSAGE, exception);
         }
     }
     // AI-assisted code end
