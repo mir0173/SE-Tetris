@@ -39,9 +39,9 @@ public class KeyBindingValidator {
     public boolean hasDuplicate(Map<GameCommand, String> keyBindings) {
         Set<String> usedKeys = new HashSet<>();
 
-        for(String keyName : keyBindings.values()) {
+        for (String keyName : keyBindings.values()) {
             if (!usedKeys.add(keyName)) {
-                return true; 
+                return true;
             }
         }
 
