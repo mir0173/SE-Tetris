@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import javafx.application.Platform;
 import javafx.event.Event;
+import javafx.event.EventType;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -264,6 +265,72 @@ class JavaFxSettingsViewTest {
             // then: 선택 행이 바뀌지 않는다
             assertTrue(isSelected(view, MOVE_LEFT_ROW));
             assertEquals("Q", getLastChange().getKeyBindings().get(GameCommand.MOVE_LEFT));
+        });
+    }
+
+    @Test
+    void ignoreRepeatedEnterWhileStartKeyIsHeldAndKeepWaiting() throws Exception {
+        runOnFxThread(() -> {
+            // given: Enter 로 입력 대기를 시작하고 Enter 를 떼지 않은 상태
+            JavaFxSettingsView view = createView();
+            moveToRow(view, MOVE_LEFT_ROW);
+            pressKey(view, KeyCode.ENTER);
+
+            // when: 키 반복으로 Enter 가 다시 들어온다
+            pressKey(view, KeyCode.ENTER);
+            pressKey(view, KeyCode.ENTER);
+
+            // then: ENTER 는 배정되지 않고 입력 대기가 유지된다
+            assertTrue(changes.isEmpty());
+            assertEquals("왼쪽 이동: " + WAITING_KEY_TEXT, getRowText(view, MOVE_LEFT_ROW));
+            assertEquals("", getMessageLabel(view).getText());
+
+            // when: 다른 키는 Enter 를 떼지 않아도 바로 배정된다
+            pressKey(view, KeyCode.A);
+
+            // then
+            assertEquals("A", getLastChange().getKeyBindings().get(GameCommand.MOVE_LEFT));
+        });
+    }
+
+    @Test
+    void assignEnterAfterStartKeyIsReleased() throws Exception {
+        runOnFxThread(() -> {
+            // given: Enter 로 입력 대기를 시작한 뒤 Enter 를 뗀 상태
+            JavaFxSettingsView view = createView();
+            moveToRow(view, MOVE_LEFT_ROW);
+            pressKey(view, KeyCode.ENTER);
+            releaseKey(view, KeyCode.ENTER);
+
+            // when: 다시 Enter 를 누른다
+            pressKey(view, KeyCode.ENTER);
+
+            // then: 의도한 입력이므로 ENTER 가 배정된다
+            assertEquals(1, changes.size());
+            assertEquals("ENTER", getLastChange().getKeyBindings().get(GameCommand.MOVE_LEFT));
+            assertEquals("왼쪽 이동: ENTER", getRowText(view, MOVE_LEFT_ROW));
+        });
+    }
+
+    @Test
+    void ignoreEnterRepeatEachTimeKeyCaptureStarts() throws Exception {
+        runOnFxThread(() -> {
+            // given: 한 번 배정을 마치고 Enter 를 뗀 뒤 다른 행에서 다시 입력 대기를 시작
+            JavaFxSettingsView view = createView();
+            moveToRow(view, MOVE_LEFT_ROW);
+            pressKey(view, KeyCode.ENTER);
+            pressKey(view, KeyCode.A);
+            releaseKey(view, KeyCode.ENTER);
+            pressKey(view, KeyCode.DOWN);
+            pressKey(view, KeyCode.ENTER);
+            changes.clear();
+
+            // when: 두 번째 입력 대기에서도 Enter 반복이 들어온다
+            pressKey(view, KeyCode.ENTER);
+
+            // then
+            assertTrue(changes.isEmpty());
+            assertEquals("오른쪽 이동: " + WAITING_KEY_TEXT, getRowText(view, MOVE_RIGHT_ROW));
         });
     }
 
@@ -661,8 +728,16 @@ class JavaFxSettingsViewTest {
     }
 
     private void pressKey(JavaFxSettingsView view, KeyCode key) {
+        fireKeyEvent(view, KeyEvent.KEY_PRESSED, key);
+    }
+
+    private void releaseKey(JavaFxSettingsView view, KeyCode key) {
+        fireKeyEvent(view, KeyEvent.KEY_RELEASED, key);
+    }
+
+    private void fireKeyEvent(JavaFxSettingsView view, EventType<KeyEvent> type, KeyCode key) {
         KeyEvent event = new KeyEvent(
-                KeyEvent.KEY_PRESSED,
+                type,
                 "",
                 "",
                 key,
