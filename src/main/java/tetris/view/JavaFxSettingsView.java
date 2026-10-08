@@ -41,6 +41,7 @@ public class JavaFxSettingsView {
     private static final int SHAKE_CYCLE_COUNT = 6;
     private static final int NO_CONFIRMING_ROW = -1;
     private static final KeyCode CONFIRM_KEY = KeyCode.Y;
+    private static final KeyCode CAPTURE_START_KEY = KeyCode.ENTER;
 
     private static final List<GameCommand> KEY_COMMANDS = List.of(
         GameCommand.MOVE_LEFT,
@@ -112,6 +113,7 @@ public class JavaFxSettingsView {
     private int selectedIndex = 0;
     private int confirmingRow = NO_CONFIRMING_ROW;
     private boolean waitingForKey = false;
+    private boolean captureStartKeyHeld = false;
     private TranslateTransition shakeAnimation;
 
     /**
@@ -153,6 +155,7 @@ public class JavaFxSettingsView {
 
         scene = new Scene(root, SETTINGS_WIDTH, SETTINGS_HEIGHT);
         scene.addEventHandler(KeyEvent.KEY_PRESSED, this::handleKey);
+        scene.addEventHandler(KeyEvent.KEY_RELEASED, this::handleKeyReleased);
     }
 
     public Scene getScene() {
@@ -188,6 +191,12 @@ public class JavaFxSettingsView {
         }
 
         event.consume();
+    }
+
+    private void handleKeyReleased(KeyEvent event) {
+        if (event.getCode() == CAPTURE_START_KEY) {
+            captureStartKeyHeld = false;
+        }
     }
 
     private void moveSelection(int direction) {
@@ -247,6 +256,7 @@ public class JavaFxSettingsView {
 
     private void startKeyCapture() {
         waitingForKey = true;
+        captureStartKeyHeld = true;
         refreshRows();
     }
 
@@ -255,6 +265,10 @@ public class JavaFxSettingsView {
      * ESC 는 취소이고, 다른 명령이 쓰는 키는 거부하며 입력 대기를 유지한다.
      */
     private void captureKey(KeyEvent event) {
+        if (captureStartKeyHeld && event.getCode() == CAPTURE_START_KEY) {
+            return;
+        }
+
         if (event.getCode() == KeyCode.ESCAPE) {
             waitingForKey = false;
             clearConflict();
