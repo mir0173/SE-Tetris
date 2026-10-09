@@ -29,6 +29,14 @@ public class Game {
         this.generator = generator;
         this.status = GameStatus.READY;
     }
+    
+    /**
+     * 초기 낙하 간격을 반환한다.
+     * TetrisApplication에서 timer 생성시 사용한다.
+     */
+    public static long getInitialDropInterval() {
+        return INITIAL_DROP_INTERVAL;
+    }
 
     /**
      * 게임 시작 후 고정된 블록의 누적 개수를 반환한다.
