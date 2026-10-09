@@ -1,5 +1,6 @@
 package tetris.view;
 
+import java.util.Map;
 import java.util.function.Consumer;
 
 import javafx.scene.Scene;
@@ -12,7 +13,7 @@ import javafx.stage.Stage;
 import tetris.model.Board;
 import tetris.model.GameCommand;
 import tetris.model.GameSnapshot;
-
+import tetris.settings.GameSettings;
 public class JavaFxGameView implements GameView {
 
     private static final String EMPTY_CELL_SYMBOL = ".";
@@ -20,12 +21,14 @@ public class JavaFxGameView implements GameView {
 
     private final Stage stage;
     private final Text boardText;
+    private final Map<GameCommand, String> keyBindings;
 
     private Consumer<GameCommand> commandHandler;
 
-    public JavaFxGameView(Stage stage) {
+    public JavaFxGameView(Stage stage, GameSettings settings) {
         this.stage = stage;
         this.boardText = new Text();
+        this.keyBindings = Map.copyOf(settings.getKeyBindings());
 
         initializeView();
     }
@@ -73,20 +76,12 @@ public class JavaFxGameView implements GameView {
     }
 
     private GameCommand mapKey(KeyCode keyCode) {
-        // AI-assisted code start
-        return switch (keyCode) {
-            case LEFT       -> GameCommand.MOVE_LEFT;
-            case RIGHT      -> GameCommand.MOVE_RIGHT;
-            case UP         -> GameCommand.ROTATE_CLOCKWISE;
-            case Z          -> GameCommand.ROTATE_COUNTERCLOCKWISE;
-            case DOWN       -> GameCommand.SOFT_DROP;
-            case SPACE      -> GameCommand.HARD_DROP;
-            case C          -> GameCommand.HOLD;
-            case P          -> GameCommand.PAUSE;
-            case ESCAPE     -> GameCommand.QUIT_GAME;
-            default         -> GameCommand.NONE;
-        };
-        // AI-assisted code end
+        for (Map.Entry<GameCommand, String> binding: keyBindings.entrySet()) {
+            if (binding.getValue().equals(keyCode.name())) {
+                return binding.getKey();
+            }
+        }
+        return GameCommand.NONE;
     }
     
 

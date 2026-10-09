@@ -22,8 +22,8 @@ public class Game {
 
     public Game(Board board, TetrominoGenerator generator) {
         if (board == null || generator == null) {
-            String nullobject = board == null ? "board" : "generator";
-            throw new NullPointerException("param : " + nullobject + " is null");
+            String nullObject = board == null ? "board" : "generator";
+            throw new NullPointerException("param : " + nullObject + " is null");
         }
         this.board = board;
         this.generator = generator;
