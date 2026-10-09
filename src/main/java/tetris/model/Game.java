@@ -135,6 +135,7 @@ public class Game {
     /**
      * 화면 표시용으로 현재 게임 상태의 사본을 만든다.
      * 셀에는 고정된 블록과 떨어지는 블록이 함께 담기며, 게임오버이거나 시작 전이면 고정된 블록만 담긴다.
+     * 홀드된 블록 종류도 함께 담긴다.
      *
      * @return 현재 상태의 스냅샷
      */
@@ -154,6 +155,7 @@ public class Game {
         return new GameSnapshot(
                 cells,
                 list,
+                heldPiece,
                 INITIAL_SCORE,
                 status,
                 INITIAL_DROP_INTERVAL);
