@@ -17,6 +17,7 @@ class GameSnapshotTest {
         GameSnapshot snapshot = new GameSnapshot(
                 cells,
                 List.of(TetrominoType.I),
+                null,
                 0L,
                 GameStatus.READY,
                 1_000L
@@ -41,6 +42,7 @@ class GameSnapshotTest {
         GameSnapshot snapshot = new GameSnapshot(
                 new int[20][10],
                 nextPieces,
+                null,
                 0L,
                 GameStatus.READY,
                 1_000L

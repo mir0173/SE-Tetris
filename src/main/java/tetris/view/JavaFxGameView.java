@@ -9,12 +9,11 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
+import tetris.model.Board;
 import tetris.model.GameCommand;
 import tetris.model.GameSnapshot;
 
 public class JavaFxGameView implements GameView {
-
-    private static final int EMPTY_CELL = 0;
 
     private static final String EMPTY_CELL_SYMBOL = ".";
     private static final String FILLED_CELL_SYMBOL = "#";
@@ -74,12 +73,22 @@ public class JavaFxGameView implements GameView {
     }
 
     private GameCommand mapKey(KeyCode keyCode) {
-        if (keyCode == KeyCode.ESCAPE) {
-            return GameCommand.QUIT_GAME;
-        }
-
-        return GameCommand.NONE;
+        // AI-assisted code start
+        return switch (keyCode) {
+            case LEFT       -> GameCommand.MOVE_LEFT;
+            case RIGHT      -> GameCommand.MOVE_RIGHT;
+            case UP         -> GameCommand.ROTATE_CLOCKWISE;
+            case Z          -> GameCommand.ROTATE_COUNTERCLOCKWISE;
+            case DOWN       -> GameCommand.SOFT_DROP;
+            case SPACE      -> GameCommand.HARD_DROP;
+            case C          -> GameCommand.HOLD;
+            case P          -> GameCommand.PAUSE;
+            case ESCAPE     -> GameCommand.QUIT_GAME;
+            default         -> GameCommand.NONE;
+        };
+        // AI-assisted code end
     }
+    
 
     private String createBoardText(int[][] cells) {
         StringBuilder builder = new StringBuilder();
@@ -96,7 +105,7 @@ public class JavaFxGameView implements GameView {
     }
 
     private String getCellSymbol(int cell) {
-        if (cell == EMPTY_CELL) {
+        if (cell == Board.EMPTY_CELL) {
             return EMPTY_CELL_SYMBOL;
         }
 
