@@ -15,6 +15,10 @@ public class Game {
     private TetrominoType heldPiece; // 홀드된 블록 종류
     private boolean holdUsed; // 이번 블록에서 홀드를 이미 썼는지
     private int lastClearedLines; // 마지막 고정 때 지운 줄 수 (T6 점수 계산용)
+    private long lockedPieceCount; // 고정된 블록 수
+    private long gravityDropCells; // 자동 낙하 칸 수
+    private long softDropCells; // 소프트 드롭 칸 수
+    private long hardDropCells; // 하드 드롭 칸 수
 
     public Game(Board board, TetrominoGenerator generator) {
         if (board == null || generator == null) {
@@ -24,6 +28,44 @@ public class Game {
         this.board = board;
         this.generator = generator;
         this.status = GameStatus.READY;
+    }
+
+    /**
+     * 게임 시작 후 고정된 블록의 누적 개수를 반환한다.
+     */
+    public long getLockedPieceCount() {
+        return lockedPieceCount;
+    }
+
+    /**
+     * 중력(tick)으로 실제로 내려간 칸 수의 누적값을 반환한다.
+     */
+    public long getGravityDropCells() {
+        return gravityDropCells;
+    }
+
+    /**
+     * 소프트 드롭으로 실제로 내려간 칸 수의 누적값을 반환한다.
+     */
+    public long getSoftDropCells() {
+        return softDropCells;
+    }
+
+    /**
+     * 하드 드롭으로 실제로 내려간 칸 수의 누적값을 반환한다.
+     * 이미 바닥에 붙은 상태에서 누르면 0칸으로 센다.
+     */
+    public long getHardDropCells() {
+        return hardDropCells;
+    }
+
+    /**
+     * 가장 최근에 블록이 고정될 때 지운 줄 수를 반환한다. 점수 계산에 사용된다.
+     *
+     * @return 지운 줄 수 (0~4)
+     */
+    public int getLastClearedLines() {
+        return lastClearedLines;
     }
 
     /**
@@ -49,21 +91,21 @@ public class Game {
             return;
         }
 
-        if(command == GameCommand.QUIT_GAME){
-            status = GameStatus.QUIT;
-        }
-
         switch (command) {
             case MOVE_LEFT -> tryReplace(currentPiece.move(0, -1));
             case MOVE_RIGHT -> tryReplace(currentPiece.move(0, 1));
             case ROTATE_CLOCKWISE -> tryReplace(currentPiece.rotateClockwise());
             case ROTATE_COUNTERCLOCKWISE -> tryReplace(currentPiece.rotateCounterClockwise());
-            case SOFT_DROP -> softDrop();
+            case SOFT_DROP -> {
+                if (softDrop()) {
+                    softDropCells++;
+                }
+            }
             case HARD_DROP -> hardDrop();
             case HOLD -> hold();
             case QUIT_GAME -> status = GameStatus.QUIT;
             case PAUSE, NONE -> {
-            } // PAUSE는 T6이후 처리
+            } // PAUSE는 T6에서 처리
         }
     }
 
@@ -75,7 +117,9 @@ public class Game {
         if (status != GameStatus.PLAYING) {
             return;
         }
-        softDrop();
+        if (softDrop()) {
+            gravityDropCells++;
+        }
     }
 
     // 사용자가 게임을 종료했으면 true (GAMEOVER는 포함되지 않음)
@@ -86,15 +130,6 @@ public class Game {
     // 새 블록이 스폰 위치에 놓이지 못해 게임이 끝났으면 true
     public boolean isGameOver() {
         return status == GameStatus.GAMEOVER;
-    }
-
-    /**
-     * 가장 최근에 블록이 고정될 때 지운 줄 수를 반환한다. 점수 계산에 사용된다.
-     *
-     * @return 지운 줄 수 (0~4)
-     */
-    public int getLastClearedLines() {
-        return lastClearedLines;
     }
 
     /**
@@ -110,14 +145,12 @@ public class Game {
         } else {
             cells = board.copyCellsWith(currentPiece);
         }
-
         List<TetrominoType> list;
         if (nextPiece != null) {
             list = List.of(nextPiece);
         } else {
             list = List.of();
         }
-
         return new GameSnapshot(
                 cells,
                 list,
@@ -126,7 +159,7 @@ public class Game {
                 INITIAL_DROP_INTERVAL);
     }
 
-    // 후보가 놓일 수 있으면현재 블록을 교체하고 true, 아니면 그대로 두고 false
+    // 후보가 놓일 수 있으면 현재 블록을 교체하고 true, 아니면 그대로 두고 false
     private boolean tryReplace(Tetromino candidate) {
         if (!board.canPlace(candidate)) {
             return false;
@@ -136,24 +169,27 @@ public class Game {
         }
     }
 
-    // 한 칸 내리기. 더 내려갈 수 없으면 고정
-    private void softDrop() {
-        if (!tryReplace(currentPiece.move(1, 0))) {
+    // 한 칸 내렸으면 true, 못 내려가서 고정했으면 false
+    private boolean softDrop() {
+        if (tryReplace(currentPiece.move(1, 0))) {
+            return true;
+        } else {
             lockAndSpawnNext();
+            return false;
         }
-
     }
 
     // 바닥까지 한번에 내린 뒤 바로 고정
     private void hardDrop() {
         while (tryReplace(currentPiece.move(1, 0))) {
-            // 더 내려갈 수 없을 때까지 반복
+            hardDropCells++;
         }
         lockAndSpawnNext();
     }
 
     // 현재 블록을 고정하고, 줄을 지우고, 다음 블록을 내보냄
     private void lockAndSpawnNext() {
+        lockedPieceCount++;
         board.lock(currentPiece);
         lastClearedLines = board.clearFullLines();
         holdUsed = false;
