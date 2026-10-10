@@ -3,11 +3,14 @@ package tetris;
 import javafx.application.Application;
 import javafx.scene.control.Alert;
 import javafx.stage.Stage;
+import javafx.scene.control.TextInputDialog;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Random;
+import java.util.Optional;
+import java.util.UUID;
 
 import tetris.controller.GameController;
 import tetris.model.Board;
@@ -20,6 +23,7 @@ import tetris.persistence.FileSettingsRepository;
 import tetris.persistence.ScoreRepository;
 import tetris.persistence.SettingsRepository;
 import tetris.scoreboard.Scoreboard;
+import tetris.scoreboard.ScoreEntry;
 import tetris.settings.GameSettings;
 import tetris.settings.KeyBindingValidator;
 import tetris.view.GameView;
@@ -107,7 +111,7 @@ public class TetrisApplication extends Application {
         Game game = new Game(board, generator);
         GameView view = new JavaFxGameView(stage, currentSettings);
         GameTimer timer = new JavaFxGameTimer(Game.getInitialDropInterval());
-        GameController controller = new GameController(game, view, timer, () -> showStartMenu(stage));
+        GameController controller = new GameController(game, view, timer, () -> showStartMenu(stage), score -> handleGameOver(stage, score));
         controller.start();
     }
 
@@ -144,18 +148,24 @@ public class TetrisApplication extends Application {
 
         try {
             Scoreboard scoreboard = new Scoreboard(scoreRepository.load());
-            JavaFxScoreboardView scoreboardView = new JavaFxScoreboardView(
-                scoreboard,
-                null,
-                () -> showStartMenu(stage));
-
-            stage.setTitle("스코어보드");
-            stage.setScene(scoreboardView.getScene());
-            stage.show();
-            scoreboardView.getScene().getRoot().requestFocus();
+            showScoreboard(stage, scoreboard, null);
         } catch (IOException exception) {
             showError(stage, "스코어보드를 불러오지 못했습니다.");
         }
+    }
+
+    private void showScoreboard(Stage stage, Scoreboard scoreboard, UUID highlightEntryId) {
+
+        JavaFxScoreboardView scoreboardView = new JavaFxScoreboardView(
+            scoreboard,
+            highlightEntryId,
+            () -> showStartMenu(stage),
+            stage::close);
+            
+        stage.setTitle("스코어보드");
+        stage.setScene(scoreboardView.getScene());
+        stage.show();
+        scoreboardView.getScene().getRoot().requestFocus();
     }
 
     private void resetScoreboard(Stage stage) {
@@ -165,6 +175,72 @@ public class TetrisApplication extends Application {
         } catch (IOException exception) {
             showError(stage, "스코어보드를 초기화하지 못했습니다.");
             showSettings(stage);
+        }
+    }
+
+    /**
+    * 게임오버 점수를 확인하고 순위에 들면 이름과 기록을 저장한다
+    * 스코어보드 화면을 표시한다
+    *
+    */
+    private void handleGameOver(Stage stage, long score) {
+        Scoreboard scoreboard;
+
+        try {
+            scoreboard = new Scoreboard(scoreRepository.load());
+        } catch (IOException exception) {
+            showError(stage, "점수 기록을 불러오지 못했습니다.");
+            showStartMenu(stage);
+            return;
+        }
+
+        UUID highlightEntryId = null;
+
+        if (scoreboard.isRankIn(score)) {
+            Optional<String> name = requestPlayerName(stage, score);
+
+            if (name.isPresent()) {
+                ScoreEntry entry = new ScoreEntry(UUID.randomUUID(), name.get(), score);
+                Scoreboard updatedScoreboard = scoreboard.addEntry(entry);
+
+                try {
+                    scoreRepository.save(updatedScoreboard.getEntries());
+                    scoreboard = updatedScoreboard;
+                    highlightEntryId = entry.getId();
+                } catch (IOException exception) {
+                    showError(stage, "새 점수 기록을 저장하지 못했습니다.");
+                }
+            }
+        }
+        showScoreboard(stage, scoreboard, highlightEntryId);
+    }
+
+    /**
+     * 순위에 오른 점수의 플레이어 이름을 입력받는다
+     *
+     */
+    private Optional<String> requestPlayerName(Stage stage, long score) {
+        TextInputDialog dialog = new TextInputDialog();
+
+        dialog.initOwner(stage);
+        dialog.setTitle("새 점수 기록");
+        dialog.setHeaderText("최종 점수: " + score);
+        dialog.setContentText("이름:");
+
+        while (true) {
+            Optional<String> result = dialog.showAndWait();
+
+            if (result.isEmpty()) {
+                return Optional.empty();
+            }
+
+            String name = result.get().strip();
+
+            if (!name.isBlank()) {
+                return Optional.of(name);
+            }
+
+            showError(stage, "이름을 입력해주세요.");
         }
     }
 
