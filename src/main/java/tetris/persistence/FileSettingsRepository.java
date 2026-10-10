@@ -139,8 +139,7 @@ public class FileSettingsRepository implements SettingsRepository {
             }
 
             String keyName = entry.getValue();
-            if (command != null
-                    && command != GameCommand.NONE
+            if (command != GameCommand.NONE
                     && isValidKeyName(keyName)) {
                 normalizedKeyBindings.put(command, keyName);
             }
