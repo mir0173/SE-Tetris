@@ -145,7 +145,9 @@ class GameControllerTest {
 
     private GameController newController(
             Game game, FakeGameView view, FakeGameTimer timer, Callback callback) {
-        return new GameController(game, view, timer, callback);
+        return new GameController(game, view, timer, callback, score -> 
+            {}
+        );
     }
 
     private TetrominoGenerator sequenceGenerator(TetrominoType... types) {

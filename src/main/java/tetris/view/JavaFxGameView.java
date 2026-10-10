@@ -13,6 +13,7 @@ import javafx.stage.Stage;
 import tetris.model.Board;
 import tetris.model.GameCommand;
 import tetris.model.GameSnapshot;
+import tetris.model.GameStatus;
 import tetris.settings.GameSettings;
 public class JavaFxGameView implements GameView {
 
@@ -40,7 +41,15 @@ public class JavaFxGameView implements GameView {
 
     @Override
     public void render(GameSnapshot snapshot) {
-        boardText.setText(createBoardText(snapshot.getCells()));
+        String board = createBoardText(snapshot.getCells());
+
+        if (snapshot.getStatus() == GameStatus.PAUSED) {
+            String pauseKey = keyBindings.get(GameCommand.PAUSE);
+            String quitKey = keyBindings.get(GameCommand.QUIT_GAME);
+            boardText.setText("일시정지\n" + pauseKey + ": 재개 / " + quitKey + ": 메뉴\n\n" + board);
+        } else {
+            boardText.setText(board);
+        }
     }
 
     @Override

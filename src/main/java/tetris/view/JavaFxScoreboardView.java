@@ -43,7 +43,7 @@ public class JavaFxScoreboardView {
 
     private final Scene scene;
 
-    public JavaFxScoreboardView(Scoreboard scoreboard, UUID highlightEntryId, Runnable onBack) {
+    public JavaFxScoreboardView(Scoreboard scoreboard, UUID highlightEntryId, Runnable onBack, Runnable onExit) {
         Label title = new Label(TITLE_TEXT);
         Node rows = createRows(scoreboard, highlightEntryId);
 
@@ -56,8 +56,17 @@ public class JavaFxScoreboardView {
         root.setPadding(new Insets(ROOT_PADDING));
         root.getChildren().addAll(title, rows, backButton);
 
+        if (onExit != null) {
+            Button exitButton = new Button("종료");
+            exitButton.setPrefSize(BUTTON_WIDTH, BUTTON_HEIGHT);
+            exitButton.setOnAction(event -> onExit.run());
+            
+            Label help = new Label("Enter / ESC: 메뉴 · Q: 종료");
+            root.getChildren().addAll(exitButton, help);
+        }
+
         scene = new Scene(root, SCOREBOARD_WIDTH, SCOREBOARD_HEIGHT);
-        scene.addEventHandler(KeyEvent.KEY_PRESSED, event -> handleKey(event, onBack));
+        scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> handleKey(event, onBack, onExit));
     }
 
     public Scene getScene() {
@@ -100,10 +109,13 @@ public class JavaFxScoreboardView {
         return label;
     }
 
-    private void handleKey(KeyEvent event, Runnable onBack) {
+    private void handleKey(KeyEvent event, Runnable onBack, Runnable onExit) {
         if (event.getCode() == KeyCode.ESCAPE || event.getCode() == KeyCode.ENTER) {
             event.consume();
             onBack.run();
+        } else if (event.getCode() == KeyCode.Q && onExit != null) {
+            event.consume();
+            onExit.run();
         }
     }
 }

@@ -6,6 +6,10 @@ public class Game {
 
     private static final long INITIAL_SCORE = 0L;
     private static final long INITIAL_DROP_INTERVAL = 1_000L;
+    private static final int LINES_PER_LEVEL = 10;
+    private static final long DROP_INTERVAL_STEP = 100L;
+    private static final long MIN_DROP_INTERVAL = 100L;
+    private static final long LINE_CLEAR_BONUS = 100L;
 
     private final Board board;
     private final TetrominoGenerator generator;
@@ -19,6 +23,9 @@ public class Game {
     private long gravityDropCells; // 자동 낙하 칸 수
     private long softDropCells; // 소프트 드롭 칸 수
     private long hardDropCells; // 하드 드롭 칸 수
+    private long score = INITIAL_SCORE;
+    private long dropInterval = INITIAL_DROP_INTERVAL;
+    private long totalClearedLines;
 
     public Game(Board board, TetrominoGenerator generator) {
         if (board == null || generator == null) {
@@ -89,15 +96,32 @@ public class Game {
     }
 
     /**
-     * 사용자 명령을 현재 게임 상태에 적용한다.
-     * 실행 중(PLAYING)이 아니면 무시하며, 이동과 회전은 놓을 수 없는 위치면 무시된다.
+     * 사용자 명령을 현재 게임 상태에 적용한다
+     * 일시정지 중에는 재개와 종료만 허용한다
+     * 이동과 회전은 블록을 놓을 수 없는 위치이면 무시한다
      *
-     * @param command 적용할 명령
      */
     public void handleCommand(GameCommand command) {
+        if (command == GameCommand.QUIT_GAME && (status == GameStatus.PLAYING || status == GameStatus.PAUSED)) {
+            status = GameStatus.QUIT;
+            return;
+        }
+
+        if (command == GameCommand.PAUSE) {
+            if (status == GameStatus.PLAYING) {
+                status = GameStatus.PAUSED;
+            } else if (status == GameStatus.PAUSED) {
+                status = GameStatus.PLAYING;
+            }
+            return;
+        }
+
         if (status != GameStatus.PLAYING) {
             return;
         }
+
+        long previousDropCells = getTotalDropCells();
+        long previousLockedPieceCount = lockedPieceCount;
 
         switch (command) {
             case MOVE_LEFT -> tryReplace(currentPiece.move(0, -1));
@@ -111,23 +135,34 @@ public class Game {
             }
             case HARD_DROP -> hardDrop();
             case HOLD -> hold();
-            case QUIT_GAME -> status = GameStatus.QUIT;
-            case PAUSE, NONE -> {
-            } // PAUSE는 T6에서 처리
+            case PAUSE, QUIT_GAME, NONE -> {
+            } 
         }
+
+        updateProgress(previousDropCells, previousLockedPieceCount);
     }
 
     /**
-     * 중력에 의해 블록을 한 칸 내린다. 더 내려갈 수 없으면 고정하고 다음 블록을 내보낸다.
-     * 타이머가 일정 간격으로 호출되며, 실행 중이 아니면 무시한다.
+     * 자동 낙하를 한 번 진행하고 점수와 속도를 갱신한다
+     * 
      */
     public void tick() {
         if (status != GameStatus.PLAYING) {
             return;
         }
+
+        long previousDropCells = getTotalDropCells();
+        long previousLockedPieceCount = lockedPieceCount;
+
         if (softDrop()) {
             gravityDropCells++;
         }
+
+        updateProgress(previousDropCells, previousLockedPieceCount);
+    }
+
+    public boolean isPaused() {
+        return status == GameStatus.PAUSED;
     }
 
     // 사용자가 게임을 종료했으면 true (GAMEOVER는 포함되지 않음)
@@ -164,9 +199,9 @@ public class Game {
                 cells,
                 list,
                 heldPiece,
-                INITIAL_SCORE,
+                score,
                 status,
-                INITIAL_DROP_INTERVAL);
+                dropInterval);
     }
 
     // 후보가 놓일 수 있으면 현재 블록을 교체하고 true, 아니면 그대로 두고 false
@@ -240,5 +275,33 @@ public class Game {
             spawn(spawnType);
         }
         holdUsed = true;
+    }
+
+    private long getTotalDropCells() {
+        return gravityDropCells + softDropCells + hardDropCells;
+    }
+
+    /**
+     * 이번 명령 또는 자동 낙하의 결과만 점수에 반영한다
+     * 줄 삭제 보너스는 블록이 새로 고정된 경우에만 반영한다
+     *
+     * @param previousDropCells 실행 전 누적 낙하 칸 수
+     * @param previousLockedPieceCount 실행 전 누적 블록 고정 횟수
+     */
+    private void updateProgress(long previousDropCells, long previousLockedPieceCount) {
+        long level = totalClearedLines / LINES_PER_LEVEL + 1;
+        long droppedCells = getTotalDropCells() - previousDropCells;
+
+        score += droppedCells * level;
+
+        if (lockedPieceCount > previousLockedPieceCount) {
+            long clearedLines = lastClearedLines;
+
+            score += LINE_CLEAR_BONUS * clearedLines * clearedLines * level;
+            totalClearedLines += clearedLines;
+
+            long completedLevels = totalClearedLines / LINES_PER_LEVEL;
+            dropInterval = Math.max(MIN_DROP_INTERVAL, INITIAL_DROP_INTERVAL - completedLevels * DROP_INTERVAL_STEP);
+        }
     }
 }

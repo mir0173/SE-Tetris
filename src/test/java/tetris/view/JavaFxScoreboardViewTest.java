@@ -262,7 +262,7 @@ class JavaFxScoreboardViewTest {
     }
 
     private JavaFxScoreboardView createView(List<ScoreEntry> entries, UUID highlightedEntryId) {
-        return new JavaFxScoreboardView(new Scoreboard(entries), highlightedEntryId, () -> backCalls++);
+        return new JavaFxScoreboardView(new Scoreboard(entries), highlightedEntryId, () -> backCalls++, () -> {});
     }
 
     private ScoreEntry createEntry(String name, long score) {

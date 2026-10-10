@@ -427,12 +427,13 @@ class GameTest {
     }
 
     @Test
-    void ignorePauseAndNone() {
+    void pauseWithoutMovingPiece() {
         Game game = startedGame(TetrominoType.O);
         game.handleCommand(GameCommand.PAUSE);
         game.handleCommand(GameCommand.NONE);
 
         assertCells(game.createSnapshot(), Set.of("0,4", "0,5", "1,4", "1,5"), CELL_ID_O);
+        assertEquals(GameStatus.PAUSED, game.createSnapshot().getStatus());
     }
 
     private Game newGame(TetrominoType... types) {
