@@ -50,7 +50,12 @@ public class FileScoreRepository implements ScoreRepository {
                     new TypeToken<List<ScoreEntry>>() {
                     }.getType()
             );
-            return entries == null ? List.of() : List.copyOf(entries);
+            if (entries == null) {
+                return List.of();
+            }
+
+            validateEntries(entries);
+            return List.copyOf(entries);
         } catch (JsonParseException exception) {
             throw new IOException("점수 기록 JSON을 읽을 수 없습니다.", exception);
         }
@@ -74,6 +79,22 @@ public class FileScoreRepository implements ScoreRepository {
             GSON.toJson(entries, writer);
         } catch (JsonIOException exception) {
             throw new IOException(WRITE_ERROR_MESSAGE, exception);
+        }
+    }
+
+    /**
+     * 불러온 점수 기록에 유효하지 않은 항목이 있는지 검사한다
+     *
+     */
+    private void validateEntries(List<ScoreEntry> entries) throws IOException {
+        for (ScoreEntry entry : entries) {
+            if (entry == null
+                    || entry.getId() == null
+                    || entry.getName() == null
+                    || entry.getName().isBlank()
+                    || entry.getScore() < 0) {
+                throw new IOException("점수 기록에 유효하지 않은 항목이 있습니다.");
+            }
         }
     }
 }

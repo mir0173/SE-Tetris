@@ -78,7 +78,7 @@ public class JavaFxStartMenuView {
      * 위아래 방향키로 이동하고 Enter 키로 실행한다
      * 처리한 키 이벤트는 소비한다.
      *
-     * @param event 메뉴 화면에서 발생한 클릭 이벤트
+     * @param event 메뉴 화면에서 발생한 키 입력 이벤트
      */
     private void handleMenuKey(KeyEvent event) {
         switch (event.getCode()) {

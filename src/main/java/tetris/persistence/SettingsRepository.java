@@ -20,5 +20,3 @@ public interface SettingsRepository {
      */
     void save(GameSettings settings) throws IOException;
 }
-
-// 테스크 맡은 사람이 구현

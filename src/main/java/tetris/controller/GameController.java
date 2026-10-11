@@ -50,8 +50,7 @@ public class GameController {
         }
         started = true;
         view.setCommandHandler(this::handleCommand);
-        game.start();
-        view.render(game.createSnapshot());    
+        game.start();    
         view.show();
         
         synchronizeState();
@@ -85,7 +84,7 @@ public class GameController {
         if (game.isFinished() || game.isGameOver()) {
             stopTimer();
             terminalHandled = true;
-            if(game.isGameOver()) {
+            if (game.isGameOver()) {
                 onGameOver.accept(snapshot.getScore());
             } else {
                 onReturnToMenu.run();

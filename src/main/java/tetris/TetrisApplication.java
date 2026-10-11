@@ -1,6 +1,7 @@
 package tetris;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.stage.Stage;
 import javafx.scene.control.TextInputDialog;
@@ -39,8 +40,8 @@ import tetris.view.JavaFxSettingsView;
  */
 public class TetrisApplication extends Application {
 
-    private static final int TEMP_BOARD_WIDTH = 10;
-    private static final int TEMP_BOARD_HEIGHT = 20;
+    private static final int BOARD_WIDTH = 10;
+    private static final int BOARD_HEIGHT = 20;
     private SettingsRepository settingsRepository;
     private ScoreRepository scoreRepository;
     private GameSettings currentSettings = GameSettings.defaults();
@@ -105,13 +106,13 @@ public class TetrisApplication extends Application {
      */
     private void startNewGame(Stage stage) {
         
-        GameConfig config = new GameConfig(TEMP_BOARD_WIDTH, TEMP_BOARD_HEIGHT);
+        GameConfig config = new GameConfig(BOARD_WIDTH, BOARD_HEIGHT);
         Board board = new Board(config.getBoardWidth(), config.getBoardHeight());
         TetrominoGenerator generator = new TetrominoGenerator(new Random());
         Game game = new Game(board, generator);
         GameView view = new JavaFxGameView(stage, currentSettings);
         GameTimer timer = new JavaFxGameTimer(Game.getInitialDropInterval());
-        GameController controller = new GameController(game, view, timer, () -> showStartMenu(stage), score -> handleGameOver(stage, score));
+        GameController controller = new GameController(game, view, timer, () -> showStartMenu(stage), score -> Platform.runLater(() -> handleGameOver(stage, score)));
         controller.start();
     }
 

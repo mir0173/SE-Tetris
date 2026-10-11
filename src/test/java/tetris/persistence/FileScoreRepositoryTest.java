@@ -13,6 +13,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import tetris.scoreboard.ScoreEntry;
 
@@ -158,6 +160,20 @@ class FileScoreRepositoryTest {
 
         // when & then
         assertThrows(IOException.class, () -> repository.load());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "[null]",
+            "[{\"name\":\"player\",\"score\":100}]",
+            "[{\"id\":\"00000000-0000-0000-0000-000000000001\",\"score\":100}]",
+            "[{\"id\":\"00000000-0000-0000-0000-000000000001\",\"name\":\" \",\"score\":100}]",
+            "[{\"id\":\"00000000-0000-0000-0000-000000000001\",\"name\":\"player\",\"score\":-1}]"
+    })
+    void rejectInvalidScoreEntries(String json) throws IOException {
+        Files.writeString(scoreFile, json);
+
+        assertThrows(IOException.class, repository::load);
     }
 
     private ScoreEntry createEntry(String name, long score) {
