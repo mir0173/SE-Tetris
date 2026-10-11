@@ -39,12 +39,15 @@ public class JavaFxGameView implements GameView {
     private static final double CONTENT_SPACING = 20;
     private static final double SIDEBAR_SPACING = 12;
     private static final double ROOT_PADDING = 20;
+    private static final double BLOCK_FONT_SIZE = 20;
+    private static final double SCORE_FONT_SIZE = 20;
+    private static final double PAUSE_FONT_SIZE = 16;
+    private static final double PAUSE_PADDING = 20;
     private static final int SPAWN_ROTATION = 0;
 
     private static final Color EMPTY_COLOR = Color.BLACK;
     private static final String BORDER_SYMBOL = "X";
     private static final String BLOCK_SYMBOL = "O";
-    private static final Font BLOCK_FONT = Font.font("Monospaced", FontWeight.BOLD, 20);
 
     private static final Map<TetrominoType, Color> NORMAL_COLORS = Map.of(
         TetrominoType.I, Color.web("#22D3EE"),
@@ -66,6 +69,8 @@ public class JavaFxGameView implements GameView {
         TetrominoType.L, Color.web("#E69F00")
     );
 
+    private final double scale;
+    private final Font blockFont;
     private final double cellWidth;
     private final double cellHeight;
     private final double textBaselineOffset;
@@ -75,8 +80,8 @@ public class JavaFxGameView implements GameView {
     private final boolean colorBlindMode;
 
     private final Canvas boardCanvas = new Canvas();
-    private final Canvas nextCanvas = new Canvas(PREVIEW_SIZE, PREVIEW_SIZE);
-    private final Canvas holdCanvas = new Canvas(PREVIEW_SIZE, PREVIEW_SIZE);
+    private final Canvas nextCanvas;
+    private final Canvas holdCanvas;
 
     private final Label scoreLabel = new Label("점수 : 0");
     private final Label intervalLabel = new Label("낙하 간격 : 1000ms");
@@ -89,11 +94,17 @@ public class JavaFxGameView implements GameView {
         this.stage = stage;
         this.keyBindings = Map.copyOf(settings.getKeyBindings());
         this.colorBlindMode = settings.isColorBlindMode();
+        this.scale = settings.getWindowSize().getScale();
+        this.blockFont = Font.font("Monospaced", FontWeight.BOLD, BLOCK_FONT_SIZE * scale);
+        this.nextCanvas = new Canvas(PREVIEW_SIZE * scale, PREVIEW_SIZE * scale);
+        this.holdCanvas = new Canvas(PREVIEW_SIZE * scale, PREVIEW_SIZE * scale);
+        
         Text measure = new Text(BLOCK_SYMBOL);
-        measure.setFont(BLOCK_FONT);
+        measure.setFont(blockFont);
         Text visibleMeasure = new Text(BORDER_SYMBOL + BLOCK_SYMBOL);
-        visibleMeasure.setFont(BLOCK_FONT);
+        visibleMeasure.setFont(blockFont);
         visibleMeasure.setBoundsType(TextBoundsType.VISUAL);
+
         Bounds logicalBounds = measure.getLayoutBounds();
         Bounds visualBounds = visibleMeasure.getLayoutBounds();
         double transferredPadding = Math.max(0, logicalBounds.getHeight() - visualBounds.getHeight()) / 2;
@@ -140,58 +151,66 @@ public class JavaFxGameView implements GameView {
         scoreLabel.setId("score-label");
         intervalLabel.setId("interval-label");
         pauseLabel.setId("pause-label");
-        scoreLabel.setFont(Font.font(20));
+        scoreLabel.setFont(Font.font(SCORE_FONT_SIZE * scale));
+        intervalLabel.setFont(Font.font(Font.getDefault().getSize() * scale));
 
         pauseLabel.setText("일시정지\n" + keyBindings.get(GameCommand.PAUSE) + ": 재개\n" + keyBindings.get(GameCommand.QUIT_GAME) + ": 메뉴");
         pauseLabel.setAlignment(Pos.CENTER);
         pauseLabel.setTextFill(Color.WHITE);
-        pauseLabel.setStyle("-fx-background-color: rgba(0, 0, 0, 0.85);" + "-fx-padding: 20;" + "-fx-font-size: 16;");
+        pauseLabel.setFont(Font.font(PAUSE_FONT_SIZE * scale));
+        pauseLabel.setStyle("-fx-background-color: rgba(0, 0, 0, 0.85);" + "-fx-padding: " + (PAUSE_PADDING * scale) + ";");
         pauseLabel.setVisible(false);
         pauseLabel.setMouseTransparent(true);
 
         StackPane boardArea = new StackPane(boardCanvas, pauseLabel);
         VBox sidebar = new VBox(
-            SIDEBAR_SPACING,
+            SIDEBAR_SPACING * scale,
             scoreLabel,
             intervalLabel,
-            new Label("다음 블록"),
+            createInformationLabel("다음 블록"),
             nextCanvas,
-            new Label("홀드"),
+            createInformationLabel("홀드"),
             holdCanvas,
             createKeyHelp());
 
-        sidebar.setPrefWidth(SIDEBAR_WIDTH);
-        sidebar.setMinWidth(SIDEBAR_WIDTH);
+        sidebar.setPrefWidth(SIDEBAR_WIDTH * scale);
+        sidebar.setMinWidth(SIDEBAR_WIDTH * scale);
 
-        HBox root = new HBox(CONTENT_SPACING, boardArea, sidebar);
-
+        HBox root = new HBox(CONTENT_SPACING * scale, boardArea, sidebar);
         root.setAlignment(Pos.CENTER);
-        root.setPadding(new Insets(ROOT_PADDING));
+        root.setPadding(new Insets(ROOT_PADDING * scale));
         root.setFocusTraversable(true);
 
-        Scene scene = new Scene(root, VIEW_WIDTH, VIEW_HEIGHT);
+        Scene scene = new Scene(root, VIEW_WIDTH * scale, VIEW_HEIGHT * scale);
         scene.setOnKeyPressed(event -> handleKey(event.getCode()));
-
         scene.setOnKeyReleased(event -> {
             if (mapKey(event.getCode()) == GameCommand.PAUSE) {
                 pauseKeyHeld = false;
             }
         });
 
-        root.focusedProperty().addListener((observable, wasFocused, focused) -> {
-            if (!focused) {
-                pauseKeyHeld = false;
-            }
-        });
+        root.focusedProperty().addListener(
+                (observable, wasFocused, focused) -> {
+                    if (!focused) {
+                        pauseKeyHeld = false;
+                    }
+                });
 
         stage.setTitle("SE Tetris");
         stage.setScene(scene);
+        stage.sizeToScene();
     }
 
     private Label createKeyHelp() {
-        Label help = new Label(keyBindings.get(GameCommand.HOLD) + ": 홀드\n" + keyBindings.get(GameCommand.PAUSE) + ": 일시정지 / 재개\n" + keyBindings.get(GameCommand.QUIT_GAME) + ": 메뉴");
+        Label help = createInformationLabel(keyBindings.get(GameCommand.HOLD) + ": 홀드\n" + keyBindings.get(GameCommand.PAUSE) + ": 일시정지 / 재개\n" + keyBindings.get(GameCommand.QUIT_GAME) + ": 메뉴");
         help.setWrapText(true);
         return help;
+    }
+
+    private Label createInformationLabel(String text) {
+        Label label = new Label(text);
+        label.setFont(Font.font(Font.getDefault().getSize() * scale));
+        return label;
     }
 
     private void drawBoard(int[][] cells) {
@@ -261,7 +280,7 @@ public class JavaFxGameView implements GameView {
 
     private void drawSymbol(GraphicsContext graphics, String symbol, Color color, double x, double y) {
         graphics.setFill(color);
-        graphics.setFont(BLOCK_FONT);
+        graphics.setFont(blockFont);
         graphics.setTextAlign(TextAlignment.CENTER);
         graphics.setTextBaseline(VPos.BASELINE);
         graphics.fillText(symbol, x + cellWidth / 2, y + textBaselineOffset);

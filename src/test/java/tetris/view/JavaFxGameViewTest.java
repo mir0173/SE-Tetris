@@ -14,7 +14,11 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 
+import javafx.geometry.Bounds;
 import javafx.application.Platform;
 import javafx.event.Event;
 import javafx.scene.input.KeyCode;
@@ -23,6 +27,11 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.control.Label;
 import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
+import javafx.scene.Node;
+import javafx.scene.Scene;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import tetris.model.GameSnapshot;
 import tetris.model.GameStatus;
@@ -30,6 +39,7 @@ import tetris.model.TetrominoType;
 import tetris.model.GameCommand;
 
 import tetris.settings.GameSettings;
+import tetris.settings.WindowSize;
 
 class JavaFxGameViewTest {
 
@@ -415,6 +425,124 @@ class JavaFxGameViewTest {
                 stage.close();
             }
         });
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "SMALL, 400, 480, 0.8",
+        "MEDIUM, 500, 600, 1.0",
+        "LARGE, 600, 720, 1.2"
+    })
+    void applyWindowSizeToOpenStage(
+            WindowSize windowSize,
+            double width,
+            double height,
+            double scale) throws Exception {
+
+        runOnFxThread(() -> {
+            Stage stage = new Stage();
+
+            try {
+                // 메뉴처럼 이미 열린 창에서 게임 화면으로 전환한다.
+                stage.setScene(new Scene(new StackPane(), 500, 600));
+                stage.show();
+
+                GameSettings settings = new GameSettings(
+                        windowSize,
+                        GameSettings.getDefaultKeyBindings(),
+                        false);
+
+                JavaFxGameView view = new JavaFxGameView(stage, settings);
+                view.render(new GameSnapshot(
+                        new int[20][10],
+                        List.of(TetrominoType.I),
+                        TetrominoType.T,
+                        100L,
+                        GameStatus.PLAYING,
+                        1_000L));
+                view.show();
+
+                Scene scene = stage.getScene();
+                scene.getRoot().applyCss();
+                scene.getRoot().layout();
+
+                assertEquals(width, scene.getWidth(), 1.0);
+                assertEquals(height, scene.getHeight(), 1.0);
+
+                Canvas board = (Canvas) scene.lookup("#game-board");
+                Canvas next = (Canvas) scene.lookup("#next-preview");
+                Canvas hold = (Canvas) scene.lookup("#hold-preview");
+                Label score = (Label) scene.lookup("#score-label");
+                HBox root = (HBox) scene.getRoot();
+
+                assertEquals(
+                        20 * scale,
+                        board.getGraphicsContext2D().getFont().getSize(),
+                        0.01);
+                assertEquals(100 * scale, next.getWidth(), 0.01);
+                assertEquals(100 * scale, next.getHeight(), 0.01);
+                assertEquals(100 * scale, hold.getWidth(), 0.01);
+                assertEquals(100 * scale, hold.getHeight(), 0.01);
+                assertEquals(20 * scale, score.getFont().getSize(), 0.01);
+                assertEquals(20 * scale, root.getPadding().getTop(), 0.01);
+            } finally {
+                stage.close();
+            }
+        });
+    }
+
+    @ParameterizedTest
+    @EnumSource(WindowSize.class)
+    void keepGameContentWithinScene(WindowSize windowSize) throws Exception {
+        runOnFxThread(() -> {
+            Stage stage = new Stage();
+
+            try {
+                GameSettings settings = new GameSettings(
+                        windowSize,
+                        GameSettings.getDefaultKeyBindings(),
+                        false);
+
+                JavaFxGameView view = new JavaFxGameView(stage, settings);
+                view.render(new GameSnapshot(
+                        new int[20][10],
+                        List.of(TetrominoType.I),
+                        TetrominoType.T,
+                        100L,
+                        GameStatus.PAUSED,
+                        1_000L));
+                view.show();
+
+                Scene scene = stage.getScene();
+                scene.getRoot().applyCss();
+                scene.getRoot().layout();
+
+                assertInsideScene(scene.lookup("#game-board"), scene);
+                assertInsideScene(scene.lookup("#pause-label"), scene);
+
+                HBox root = (HBox) scene.getRoot();
+                VBox sidebar = (VBox) root.getChildren().get(1);
+
+                for (Node node : sidebar.getChildren()) {
+                    assertInsideScene(node, scene);
+                }
+            } finally {
+                stage.close();
+            }
+        });
+    }
+
+    private static void assertInsideScene(Node node, Scene scene) {
+        Bounds bounds = node.localToScene(node.getBoundsInLocal());
+
+        assertTrue(bounds.getMinX() >= -1.0, node + " left");
+        assertTrue(bounds.getMinY() >= -1.0, node + " top");
+        assertTrue(
+                bounds.getMaxX() <= scene.getWidth() + 1.0,
+                node + " right");
+        assertTrue(
+                bounds.getMaxY() <= scene.getHeight() + 1.0,
+                node + " bottom");
     }
 
     private static void releaseKey(Stage stage, KeyCode keyCode) {
