@@ -94,6 +94,7 @@ public class TetrisApplication extends Application {
             () -> showScoreboard(stage),
             stage::close);
         stage.setScene(menu.getScene());
+        stage.sizeToScene();
         stage.show();
 
         menu.focusFirstButton();
@@ -125,6 +126,7 @@ public class TetrisApplication extends Application {
             () -> showStartMenu(stage));
         stage.setTitle("설정");
         stage.setScene(settingsView.getScene());
+        stage.sizeToScene();
         stage.show();
         settingsView.getScene().getRoot().requestFocus();
     }
@@ -165,6 +167,7 @@ public class TetrisApplication extends Application {
             
         stage.setTitle("스코어보드");
         stage.setScene(scoreboardView.getScene());
+        stage.sizeToScene();
         stage.show();
         scoreboardView.getScene().getRoot().requestFocus();
     }
