@@ -7,18 +7,23 @@ public class Game {
     private static final long INITIAL_SCORE = 0L;
     private static final long INITIAL_DROP_INTERVAL = 1_000L;
     private static final int LINES_PER_LEVEL = 10;
+    private static final int LINES_PER_ITEM_SPAWN = 10;
     private static final long DROP_INTERVAL_STEP = 100L;
     private static final long MIN_DROP_INTERVAL = 100L;
     private static final long LINE_CLEAR_BONUS = 100L;
 
     private final Board board;
     private final TetrominoGenerator generator;
+    private final GameMode mode;
     private GameStatus status;
+
     private Tetromino currentPiece;
     private TetrominoType nextPiece;
     private TetrominoType heldPiece; // 홀드된 블록 종류
     private boolean holdUsed; // 이번 블록에서 홀드를 이미 썼는지
+    private boolean itemReserved; // spawnNextPiece 에서 아이템을 스폰하도록 예약하는 필드
     private int lastClearedLines; // 마지막 고정 때 지운 줄 수 (T6 점수 계산용)
+    private int itemCounter; // 아이템 생성용 카운터
     private long lockedPieceCount; // 고정된 블록 수
     private long gravityDropCells; // 자동 낙하 칸 수
     private long softDropCells; // 소프트 드롭 칸 수
@@ -28,6 +33,10 @@ public class Game {
     private long totalClearedLines;
 
     public Game(Board board, TetrominoGenerator generator) {
+        this(board, generator, GameMode.NORMAL);
+    }
+
+    public Game(Board board, TetrominoGenerator generator, GameMode mode) {
         if (board == null || generator == null) {
             String nullObject = board == null ? "board" : "generator";
             throw new NullPointerException("param : " + nullObject + " is null");
@@ -35,8 +44,9 @@ public class Game {
         this.board = board;
         this.generator = generator;
         this.status = GameStatus.READY;
+        this.mode = mode;
     }
-    
+
     /**
      * 초기 낙하 간격을 반환한다.
      * TetrisApplication에서 timer 생성시 사용한다.
@@ -136,7 +146,7 @@ public class Game {
             case HARD_DROP -> hardDrop();
             case HOLD -> hold();
             case PAUSE, QUIT_GAME, NONE -> {
-            } 
+            }
         }
 
         updateProgress(previousDropCells, previousLockedPieceCount);
@@ -235,16 +245,29 @@ public class Game {
     // 현재 블록을 고정하고, 줄을 지우고, 다음 블록을 내보냄
     private void lockAndSpawnNext() {
         lockedPieceCount++;
+
         board.lock(currentPiece);
         lastClearedLines = board.clearFullLines();
         holdUsed = false;
+        if (mode == GameMode.ITEM) {
+            itemCounter += lastClearedLines;
+            if (itemCounter >= LINES_PER_ITEM_SPAWN) {
+                itemCounter = 0;
+                itemReserved = true;
+            }
+        }
         spawnNextPiece();
     }
 
     // nextPiece를 꺼내 스폰하고, nextPiece를 새로 채움
     private void spawnNextPiece() {
         TetrominoType localNextPiece = nextPiece;
-        nextPiece = generator.generateNext();
+        if (mode == GameMode.ITEM && itemReserved) {
+            // Todo nextPiece = 아이템 생성 메서드
+            itemReserved = false;
+        } else {
+            nextPiece = generator.generateNext();
+        }
         spawn(localNextPiece);
     }
 
@@ -285,7 +308,7 @@ public class Game {
      * 이번 명령 또는 자동 낙하의 결과만 점수에 반영한다
      * 줄 삭제 보너스는 블록이 새로 고정된 경우에만 반영한다
      *
-     * @param previousDropCells 실행 전 누적 낙하 칸 수
+     * @param previousDropCells        실행 전 누적 낙하 칸 수
      * @param previousLockedPieceCount 실행 전 누적 블록 고정 횟수
      */
     private void updateProgress(long previousDropCells, long previousLockedPieceCount) {
