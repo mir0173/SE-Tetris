@@ -18,7 +18,6 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.VBox;
-import javafx.scene.layout.HBox;
 import javafx.scene.text.Font;
 import javafx.util.Duration;
 
@@ -42,7 +41,6 @@ public class JavaFxSettingsView {
     private static final double ROW_FONT_SIZE = 18;
     private static final double SHAKE_DISTANCE = 8;
     private static final double SHAKE_STEP_MILLIS = 50;
-    private static final double CONFIRMATION_SPACING = 10;
     private static final double BUTTON_WIDTH = 200;
     private static final double BUTTON_HEIGHT = 40;
     private static final int SHAKE_CYCLE_COUNT = 6;
@@ -106,14 +104,11 @@ public class JavaFxSettingsView {
     private static final String SCOREBOARD_RESET_MESSAGE = "스코어보드를 초기화했습니다";
     private static final String CONFLICT_STYLE = "-fx-text-fill: red;";
     private static final String NORMAL_STYLE = "";
-    private static final String CONFIRM_BUTTON_TEXT = "확인 (Y)";
-    private static final String CANCEL_BUTTON_TEXT = "취소 (ESC)";
 
     private final Scene scene;
     private final List<Label> rowLabels = new ArrayList<>();
     private final Label messageLabel = new Label();
     private final Button backButton = new Button(BACK_ROW_TEXT);
-    private final HBox confirmationControls = new HBox(CONFIRMATION_SPACING);
     private final KeyBindingValidator keyBindingValidator = new KeyBindingValidator();
     private final Consumer<GameSettings> onChange;
     private final Runnable onResetScoreboard;
@@ -149,19 +144,6 @@ public class JavaFxSettingsView {
         root.setAlignment(Pos.CENTER);
         root.setPadding(new Insets(ROOT_PADDING));
         root.setFocusTraversable(true);
-        Button confirmButton = new Button(CONFIRM_BUTTON_TEXT);
-        confirmButton.setId("settings-confirm-button");
-        confirmButton.setFocusTraversable(false);
-        confirmButton.setOnAction(event -> finishConfirmation(true));
-
-        Button cancelButton = new Button(CANCEL_BUTTON_TEXT);
-        cancelButton.setId("settings-cancel-button");
-        cancelButton.setFocusTraversable(false);
-        cancelButton.setOnAction(event -> finishConfirmation(false));
-
-        confirmationControls.setAlignment(Pos.CENTER);
-        confirmationControls.getChildren().addAll(confirmButton, cancelButton);
-
         root.getChildren().add(new Label("설정"));
 
         for (int i = 0; i < BACK_ROW; i++) {
@@ -191,7 +173,7 @@ public class JavaFxSettingsView {
         backButton.setCursor(Cursor.HAND);
         backButton.setOnAction(event -> handleRowClick(BACK_ROW));
 
-        root.getChildren().addAll(backButton, confirmationControls, messageLabel);
+        root.getChildren().addAll(backButton, messageLabel);
 
         refreshRows();
 
@@ -386,9 +368,6 @@ public class JavaFxSettingsView {
 
     private void refreshRows() {
         backButton.setText((selectedIndex == BACK_ROW ? SELECTED_MARKER : EMPTY_TEXT) + BACK_ROW_TEXT);
-        boolean confirming = confirmingRow != NO_CONFIRMING_ROW;
-        confirmationControls.setVisible(confirming);
-        confirmationControls.setManaged(confirming);
         for (int i = 0; i < rowLabels.size(); i++) {
             String marker = i == selectedIndex ? SELECTED_MARKER : UNSELECTED_MARKER;
             rowLabels.get(i).setText(marker + createRowText(i));
