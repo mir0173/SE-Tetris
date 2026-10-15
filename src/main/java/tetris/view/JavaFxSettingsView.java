@@ -11,10 +11,14 @@ import javafx.animation.TranslateTransition;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.Cursor;
 import javafx.scene.control.Label;
+import javafx.scene.control.Button;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.HBox;
 import javafx.scene.text.Font;
 import javafx.util.Duration;
 
@@ -38,6 +42,7 @@ public class JavaFxSettingsView {
     private static final double ROW_FONT_SIZE = 18;
     private static final double SHAKE_DISTANCE = 8;
     private static final double SHAKE_STEP_MILLIS = 50;
+    private static final double CONFIRMATION_SPACING = 10;
     private static final int SHAKE_CYCLE_COUNT = 6;
     private static final int NO_CONFIRMING_ROW = -1;
     private static final KeyCode CONFIRM_KEY = KeyCode.Y;
@@ -74,7 +79,6 @@ public class JavaFxSettingsView {
     private static final int BACK_ROW = RESET_SCOREBOARD_ROW + 1;
     private static final int ROW_COUNT = BACK_ROW + 1;
 
-    private static final String TITLE_TEXT = "설정";
     private static final String WINDOW_SIZE_TEXT = "화면 크기: ";
     private static final String COLOR_BLIND_TEXT = "색맹 모드: ";
     private static final String RESET_DEFAULTS_ROW_TEXT = "기본값으로 되돌리기";
@@ -100,10 +104,13 @@ public class JavaFxSettingsView {
     private static final String SCOREBOARD_RESET_MESSAGE = "스코어보드를 초기화했습니다";
     private static final String CONFLICT_STYLE = "-fx-text-fill: red;";
     private static final String NORMAL_STYLE = "";
+    private static final String CONFIRM_BUTTON_TEXT = "확인 (Y)";
+    private static final String CANCEL_BUTTON_TEXT = "취소 (ESC)";
 
     private final Scene scene;
     private final List<Label> rowLabels = new ArrayList<>();
     private final Label messageLabel = new Label();
+    private final HBox confirmationControls = new HBox(CONFIRMATION_SPACING);
     private final KeyBindingValidator keyBindingValidator = new KeyBindingValidator();
     private final Consumer<GameSettings> onChange;
     private final Runnable onResetScoreboard;
@@ -135,21 +142,47 @@ public class JavaFxSettingsView {
         this.onResetScoreboard = onResetScoreboard;
         this.onBack = onBack;
 
-        Label title = new Label(TITLE_TEXT);
-
         VBox root = new VBox(ROOT_SPACING);
         root.setAlignment(Pos.CENTER);
         root.setPadding(new Insets(ROOT_PADDING));
-        root.getChildren().add(title);
+        root.setFocusTraversable(true);
+        Button confirmButton = new Button(CONFIRM_BUTTON_TEXT);
+        confirmButton.setId("settings-confirm-button");
+        confirmButton.setFocusTraversable(false);
+        confirmButton.setOnAction(event -> finishConfirmation(true));
+
+        Button cancelButton = new Button(CANCEL_BUTTON_TEXT);
+        cancelButton.setId("settings-cancel-button");
+        cancelButton.setFocusTraversable(false);
+        cancelButton.setOnAction(event -> finishConfirmation(false));
+
+        confirmationControls.setAlignment(Pos.CENTER);
+        confirmationControls.getChildren().addAll(confirmButton, cancelButton);
+
+        root.getChildren().add(new Label("설정"));
 
         for (int i = 0; i < ROW_COUNT; i++) {
+            int rowIndex = i;
+
             Label rowLabel = new Label();
             rowLabel.setFont(Font.font(ROW_FONT_SIZE));
+            rowLabel.setMaxWidth(Double.MAX_VALUE);
+            rowLabel.setAlignment(Pos.CENTER);
+            rowLabel.setCursor(Cursor.HAND);
+
+            rowLabel.setOnMouseClicked(event -> {
+                if (event.getButton() == MouseButton.PRIMARY
+                        && event.getClickCount() == 1) {
+                    handleRowClick(rowIndex);
+                    event.consume();
+                }
+            });
+
             rowLabels.add(rowLabel);
             root.getChildren().add(rowLabel);
         }
 
-        root.getChildren().add(messageLabel);
+        root.getChildren().addAll(confirmationControls, messageLabel);
 
         refreshRows();
 
@@ -183,7 +216,7 @@ public class JavaFxSettingsView {
             case DOWN -> moveSelection(1);
             case LEFT -> changeSelectedValue(-1);
             case RIGHT -> changeSelectedValue(1);
-            case ENTER -> activateSelectedRow();
+            case ENTER -> activateSelectedRow(true);
             case ESCAPE -> onBack.run();
             default -> {
                 return;
@@ -205,6 +238,28 @@ public class JavaFxSettingsView {
         refreshRows();
     }
 
+    /**
+ * 클릭한 행을 선택하고 실행한다.
+ * 초기화 재확인 중에는 다른 행을 실행하지 않는다.
+ *
+ * @param rowIndex 클릭한 행 번호
+ */
+    private void handleRowClick(int rowIndex) {
+        if (confirmingRow != NO_CONFIRMING_ROW) {
+            return;
+        }
+
+        waitingForKey = false;
+        captureStartKeyHeld = false;
+        clearConflict();
+
+        selectedIndex = rowIndex;
+        activateSelectedRow(false);
+        refreshRows();
+
+        scene.getRoot().requestFocus();
+    }
+
     private void changeSelectedValue(int direction) {
         if (selectedIndex == WINDOW_SIZE_ROW) {
             changeWindowSize(direction);
@@ -213,13 +268,13 @@ public class JavaFxSettingsView {
         }
     }
 
-    private void activateSelectedRow() {
+    private void activateSelectedRow(boolean startedByKeyboard) {
         if (selectedIndex == WINDOW_SIZE_ROW) {
             changeWindowSize(1);
         } else if (selectedIndex == COLOR_BLIND_ROW) {
             toggleColorBlindMode();
         } else if (isKeyRow(selectedIndex)) {
-            startKeyCapture();
+            startKeyCapture(startedByKeyboard);
         } else if (selectedIndex == RESET_DEFAULTS_ROW || selectedIndex == RESET_SCOREBOARD_ROW) {
             startConfirmation();
         } else if (selectedIndex == BACK_ROW) {
@@ -254,9 +309,9 @@ public class JavaFxSettingsView {
         onChange.accept(settings);
     }
 
-    private void startKeyCapture() {
+    private void startKeyCapture(boolean captureKeyHeld) {
         waitingForKey = true;
-        captureStartKeyHeld = true;
+        captureStartKeyHeld = captureKeyHeld;
         refreshRows();
     }
 
@@ -295,15 +350,19 @@ public class JavaFxSettingsView {
         refreshRows();
     }
 
-    /**
-     * 재확인 중 눌린 키를 처리한다.
-     * 확인 키면 해당 행의 동작을 실행하고, 그 외의 키는 모두 취소다.
-     */
     private void handleConfirmation(KeyEvent event) {
+        finishConfirmation(event.getCode() == CONFIRM_KEY);
+    }
+
+    private void finishConfirmation(boolean confirmed) {
+        if (confirmingRow == NO_CONFIRMING_ROW) {
+            return;
+        }
+
         int confirmedRow = confirmingRow;
         confirmingRow = NO_CONFIRMING_ROW;
 
-        if (event.getCode() == CONFIRM_KEY) {
+        if (confirmed) {
             if (confirmedRow == RESET_DEFAULTS_ROW) {
                 updateSettings(GameSettings.defaults());
                 showMessage(DEFAULTS_RESET_MESSAGE, NORMAL_STYLE);
@@ -317,6 +376,9 @@ public class JavaFxSettingsView {
     }
 
     private void refreshRows() {
+        boolean confirming = confirmingRow != NO_CONFIRMING_ROW;
+        confirmationControls.setVisible(confirming);
+        confirmationControls.setManaged(confirming);
         for (int i = 0; i < rowLabels.size(); i++) {
             String marker = i == selectedIndex ? SELECTED_MARKER : UNSELECTED_MARKER;
             rowLabels.get(i).setText(marker + createRowText(i));

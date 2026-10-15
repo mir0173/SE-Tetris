@@ -709,7 +709,7 @@ class JavaFxSettingsViewTest {
 
     private Label getMessageLabel(JavaFxSettingsView view) {
         List<?> children = getRoot(view).getChildren();
-        assertEquals(ROW_COUNT + 2, children.size());
+        assertEquals(ROW_COUNT + 3, children.size());
         return (Label) children.get(children.size() - 1);
     }
 
