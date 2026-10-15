@@ -43,6 +43,8 @@ public class JavaFxSettingsView {
     private static final double SHAKE_DISTANCE = 8;
     private static final double SHAKE_STEP_MILLIS = 50;
     private static final double CONFIRMATION_SPACING = 10;
+    private static final double BUTTON_WIDTH = 200;
+    private static final double BUTTON_HEIGHT = 40;
     private static final int SHAKE_CYCLE_COUNT = 6;
     private static final int NO_CONFIRMING_ROW = -1;
     private static final KeyCode CONFIRM_KEY = KeyCode.Y;
@@ -110,6 +112,7 @@ public class JavaFxSettingsView {
     private final Scene scene;
     private final List<Label> rowLabels = new ArrayList<>();
     private final Label messageLabel = new Label();
+    private final Button backButton = new Button(BACK_ROW_TEXT);
     private final HBox confirmationControls = new HBox(CONFIRMATION_SPACING);
     private final KeyBindingValidator keyBindingValidator = new KeyBindingValidator();
     private final Consumer<GameSettings> onChange;
@@ -161,7 +164,7 @@ public class JavaFxSettingsView {
 
         root.getChildren().add(new Label("설정"));
 
-        for (int i = 0; i < ROW_COUNT; i++) {
+        for (int i = 0; i < BACK_ROW; i++) {
             int rowIndex = i;
 
             Label rowLabel = new Label();
@@ -182,7 +185,13 @@ public class JavaFxSettingsView {
             root.getChildren().add(rowLabel);
         }
 
-        root.getChildren().addAll(confirmationControls, messageLabel);
+        backButton.setPrefSize(BUTTON_WIDTH, BUTTON_HEIGHT);
+        backButton.setMaxWidth(BUTTON_WIDTH);
+        backButton.setFocusTraversable(false);
+        backButton.setCursor(Cursor.HAND);
+        backButton.setOnAction(event -> handleRowClick(BACK_ROW));
+
+        root.getChildren().addAll(backButton, confirmationControls, messageLabel);
 
         refreshRows();
 
@@ -376,6 +385,7 @@ public class JavaFxSettingsView {
     }
 
     private void refreshRows() {
+        backButton.setText((selectedIndex == BACK_ROW ? SELECTED_MARKER : EMPTY_TEXT) + BACK_ROW_TEXT);
         boolean confirming = confirmingRow != NO_CONFIRMING_ROW;
         confirmationControls.setVisible(confirming);
         confirmationControls.setManaged(confirming);
