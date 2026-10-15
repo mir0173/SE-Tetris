@@ -6,7 +6,8 @@ public class Game {
 
     private static final long INITIAL_SCORE = 0L;
     private static final long INITIAL_DROP_INTERVAL = 1_000L;
-    private static final int LINES_PER_LEVEL = 10;
+    private static final int LINES_PER_LEVEL = 5;
+    private static final int PIECES_PER_LEVEL = 10;
     private static final long DROP_INTERVAL_STEP = 100L;
     private static final long MIN_DROP_INTERVAL = 100L;
     private static final long LINE_CLEAR_BONUS = 100L;
@@ -20,6 +21,7 @@ public class Game {
     private boolean holdUsed; // 이번 블록에서 홀드를 이미 썼는지
     private int lastClearedLines; // 마지막 고정 때 지운 줄 수 (T6 점수 계산용)
     private long lockedPieceCount; // 고정된 블록 수
+    private long spawnedPieceCount; // 실제 생성 수
     private long gravityDropCells; // 자동 낙하 칸 수
     private long softDropCells; // 소프트 드롭 칸 수
     private long hardDropCells; // 하드 드롭 칸 수
@@ -122,6 +124,7 @@ public class Game {
 
         long previousDropCells = getTotalDropCells();
         long previousLockedPieceCount = lockedPieceCount;
+        long previousSpawnedPieceCount = spawnedPieceCount;
 
         switch (command) {
             case MOVE_LEFT -> tryReplace(currentPiece.move(0, -1));
@@ -139,7 +142,7 @@ public class Game {
             } 
         }
 
-        updateProgress(previousDropCells, previousLockedPieceCount);
+        updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
     }
 
     /**
@@ -153,12 +156,13 @@ public class Game {
 
         long previousDropCells = getTotalDropCells();
         long previousLockedPieceCount = lockedPieceCount;
+        long previousSpawnedPieceCount = spawnedPieceCount;
 
         if (softDrop()) {
             gravityDropCells++;
         }
 
-        updateProgress(previousDropCells, previousLockedPieceCount);
+        updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
     }
 
     public boolean isPaused() {
@@ -246,6 +250,10 @@ public class Game {
         TetrominoType localNextPiece = nextPiece;
         nextPiece = generator.generateNext();
         spawn(localNextPiece);
+
+        if (!isGameOver()) {
+            spawnedPieceCount++;
+        }
     }
 
     // 주어진 종류를 스폰 위치에 놓음. 놓을 수 없으면 게임오버
@@ -287,9 +295,12 @@ public class Game {
      *
      * @param previousDropCells 실행 전 누적 낙하 칸 수
      * @param previousLockedPieceCount 실행 전 누적 블록 고정 횟수
+     * @param previousSpawnedPieceCount 실행 전 누적 블록 생성 수
      */
-    private void updateProgress(long previousDropCells, long previousLockedPieceCount) {
-        long level = totalClearedLines / LINES_PER_LEVEL + 1;
+    private void updateProgress(long previousDropCells, long previousLockedPieceCount, long previousSpawnedPieceCount) {
+
+        long previousClearedLines = totalClearedLines;
+        long level = (INITIAL_DROP_INTERVAL - dropInterval) / DROP_INTERVAL_STEP + 1;
         long droppedCells = getTotalDropCells() - previousDropCells;
 
         score += droppedCells * level;
@@ -299,9 +310,11 @@ public class Game {
 
             score += LINE_CLEAR_BONUS * clearedLines * clearedLines * level;
             totalClearedLines += clearedLines;
-
-            long completedLevels = totalClearedLines / LINES_PER_LEVEL;
-            dropInterval = Math.max(MIN_DROP_INTERVAL, INITIAL_DROP_INTERVAL - completedLevels * DROP_INTERVAL_STEP);
         }
+
+        long lineIncreases = totalClearedLines / LINES_PER_LEVEL - previousClearedLines / LINES_PER_LEVEL;
+        long pieceIncreases = spawnedPieceCount / PIECES_PER_LEVEL - previousSpawnedPieceCount / PIECES_PER_LEVEL;
+        long speedIncreases = lineIncreases + pieceIncreases;
+        dropInterval = Math.max(MIN_DROP_INTERVAL, dropInterval - speedIncreases * DROP_INTERVAL_STEP);
     }
 }

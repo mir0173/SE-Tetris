@@ -49,10 +49,10 @@ class GameProgressionTest {
     }
 
     @Test
-    void increaseSpeedAndDropScoreAfterTenClearedLines() {
+    void increaseSpeedAndDropScoreAfterFiveClearedLines() {
         Game game = startedGame(4, 20, TetrominoType.I);
 
-        for (int index = 0; index < 9; index++) {
+        for (int index = 0; index < 4; index++) {
             game.handleCommand(GameCommand.HARD_DROP);
         }
 
@@ -65,9 +65,24 @@ class GameProgressionTest {
         long scoreBeforeTick = game.createSnapshot().getScore();
         game.tick();
 
-        assertEquals(
-                scoreBeforeTick + 2L,
-                game.createSnapshot().getScore());
+        assertEquals(scoreBeforeTick + 2L, game.createSnapshot().getScore());
+    }
+
+    @Test
+    void increaseSpeedAfterTenSpawnedPiecesWithoutClearingLines() {
+        Game game = startedGame(10, 100, TetrominoType.O);
+
+        for (int index = 0; index < 8; index++) {
+            game.handleCommand(GameCommand.HARD_DROP);
+        }
+
+        assertEquals(1_000L, game.createSnapshot().getDropInterval());
+
+        game.handleCommand(GameCommand.HARD_DROP);
+
+        assertEquals(0, game.getLastClearedLines());
+        assertEquals(9L, game.getLockedPieceCount());
+        assertEquals(900L, game.createSnapshot().getDropInterval());
     }
 
     @Test
