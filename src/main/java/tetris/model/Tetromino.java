@@ -11,7 +11,7 @@ import java.util.List;
  * @param row      shape 배열 (0,0)의 보드 행 좌표
  * @param column   shape 배열 (0,0)의 보드 열 좌표
  */
-public record Tetromino(TetrominoType type, int rotation, int row, int column) {
+public record Tetromino(TetrominoType type, Item item, int rotation, int row, int column) {
 
     private static final int SPAWN_ROTATION = 0;
     private static final int SPAWN_ROW = 0;
@@ -28,6 +28,10 @@ public record Tetromino(TetrominoType type, int rotation, int row, int column) {
         }
     }
 
+    public Tetromino(TetrominoType type, int rotation, int row, int column) {
+        this(type, null, rotation, row, column);
+    }
+
     public boolean canRotate() {
         return type.canRotate();
     }
@@ -38,19 +42,25 @@ public record Tetromino(TetrominoType type, int rotation, int row, int column) {
         return new Tetromino(type, SPAWN_ROTATION, SPAWN_ROW, column);
     }
 
+    // 보드 맨 위 가운데에 스폰 모양으로, 아이템 블록을 생성하는 함수
+    public static Tetromino itemSpawn(TetrominoType type, Item item, int boardWidth) {
+        int column = (boardWidth - type.getBoxSize()) / 2;
+        return new Tetromino(type, item, SPAWN_ROTATION, SPAWN_ROW, column);
+    }
+
     // (dRow, dCol)만큼 이동한 새 블록을 반환하는 함수
     public Tetromino move(int dRow, int dCol) {
-        return new Tetromino(type, rotation, dRow + row, dCol + column);
+        return new Tetromino(type, item, rotation, dRow + row, dCol + column);
     }
 
     // 시계방향으로 회전된 새 블록 객체를 반환하는 함수
     public Tetromino rotateClockwise() {
-        return new Tetromino(type, (rotation + 1) % ROTATION_COUNT, row, column);
+        return new Tetromino(type, item, (rotation + 1) % ROTATION_COUNT, row, column);
     }
 
     // 반시계방향으로 회전된 새 블록 객체를 반환하는 함수
     public Tetromino rotateCounterClockwise() {
-        return new Tetromino(type, (rotation + ROTATION_COUNT - 1) % ROTATION_COUNT, row, column);
+        return new Tetromino(type, item, (rotation + ROTATION_COUNT - 1) % ROTATION_COUNT, row, column);
     }
 
     // 상대 좌표들을 보드 기준 절대 좌표 List로 반환하는 함수
