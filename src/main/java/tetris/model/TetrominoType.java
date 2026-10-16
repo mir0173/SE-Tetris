@@ -4,48 +4,68 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 테트리스에서 사용하는 7가지 테트로미노의 종류와 회전 정보를 제공한다.
+ * 테트리스에서 사용하는 7가지 테트로미노와 아이템 블록의 종류와 회전 정보를 제공한다.
  * 각 모양은 정사각형 상자 안의 상대 좌표로 표현되며, row는 위에서 아래로,
  * column은 왼쪽에서 오른쪽으로 증가한다.
  */
 public enum TetrominoType {
     // AI-assisted code start
-    I(1, new int[][] {
+    I(1, true, true, new int[][] {
             { 0, 0, 0, 0 },
             { 1, 1, 1, 1 },
             { 0, 0, 0, 0 },
             { 0, 0, 0, 0 }
     }),
-    O(2, new int[][] {
+    O(2, true, true, new int[][] {
             { 1, 1 },
             { 1, 1 }
     }),
-    T(3, new int[][] {
+    T(3, true, true, new int[][] {
             { 1, 1, 1 },
             { 0, 1, 0 },
             { 0, 0, 0 }
     }),
-    S(4, new int[][] {
+    S(4, true, true, new int[][] {
             { 0, 1, 1 },
             { 1, 1, 0 },
             { 0, 0, 0 }
     }),
-    Z(5, new int[][] {
+    Z(5, true, true, new int[][] {
             { 1, 1, 0 },
             { 0, 1, 1 },
             { 0, 0, 0 }
     }),
-    J(6, new int[][] {
+    J(6, true, true, new int[][] {
             { 1, 0, 0 },
             { 1, 1, 1 },
             { 0, 0, 0 }
     }),
-    L(7, new int[][] {
+    L(7, true, true, new int[][] {
             { 0, 0, 1 },
             { 1, 1, 1 },
             { 0, 0, 0 }
-    });
+    }),
     // AI-assisted code end
+    SLOW(8, false,true, new int[][] {
+            {1}
+    }),
+    HEAVY_WEIGHT(9, false, false, new int[][] {
+            { 0, 0, 0, 0 },
+            { 0, 1, 1, 0 },
+            { 1, 1, 1, 1 },
+            { 0, 0, 0, 0 }
+    }),
+    SPECIAL_BLOCK(12,false,true, new int[][]{
+            { 1 , 1 },
+            { 0 , 0 }
+
+    }),
+    SPECIAL_I(11, false, true, new int[][] {
+            { 0, 0, 0, 0 },
+            { 1, 1, 1, 1 },
+            { 0, 0, 0, 0 },
+            { 0, 0, 0, 0 }
+    });    
 
     /** 블록의 회전 상태 수. */
     private static final int ROTATION_COUNT = 4;
@@ -55,6 +75,10 @@ public enum TetrominoType {
     private final int cellId;
     /** 블록 모양을 포함하는 정사각형 상자의 한 변 크기. */
     private final int boxSize;
+    /** 블록이 기본 블록인지 아이템인지 확인하는 이진 변수 */
+    private final boolean basic;
+    /** 블록이 회전 가능한 블록인지 확인하는 이진 변수 */
+    private final boolean rotatable;
     /** 회전 상태별 블록의 상대 좌표 목록. */
     private final List<List<Position>> rotations;
 
@@ -64,10 +88,12 @@ public enum TetrominoType {
      * @param cellId 보드 셀에 저장할 블록 식별자
      * @param shape 스폰 상태의 블록 모양 배열
      */
-    TetrominoType(int cellId, int[][] shape) {
+    TetrominoType(int cellId, boolean basic, boolean rotatable, int[][] shape) {
         this.cellId = cellId;
-        boxSize = shape.length;
-        rotations = createRotations(boxSize, createPositions(shape));
+        this.boxSize = shape.length;
+        this.basic = basic;
+        this.rotatable = rotatable;
+        this.rotations = createRotations(boxSize, createPositions(shape));
     }
 
     /**
@@ -86,6 +112,22 @@ public enum TetrominoType {
      */
     public int getBoxSize() {
         return boxSize;
+    }
+    /**
+    * 일반 블록인지 아이템인지 여부를 반환한다.
+    * 
+    * @return 일반 블록 여부 boolean값 
+    */
+    public boolean isBasic() {
+        return basic;
+    }
+    /**
+     * 회전 가능한 블럭인지 여부를 반환한다.
+     * 
+     * @return 회전 가능 여부 boolean 값
+     */
+    public boolean canRotate() {
+        return rotatable;
     }
 
     /**

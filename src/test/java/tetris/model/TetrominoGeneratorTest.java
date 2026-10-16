@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Random;
@@ -29,9 +30,9 @@ class TetrominoGeneratorTest {
     void generateBalancedTypesWithinTolerance() {
         Map<TetrominoType, Integer> counts = countTypes(new TetrominoGenerator(new Random(RANDOM_SEED)), BASIC_DRAW_COUNT);
 
-        for (TetrominoType type : TetrominoType.values()) {
+        for (TetrominoType type : basicTypes()) {
             assertWithinTolerance(
-                    counts.get(type), BASIC_DRAW_COUNT, 1.0 / TetrominoType.values().length);
+                    counts.get(type), BASIC_DRAW_COUNT, 1.0 / basicTypes().length);
         }
     }
 
@@ -42,11 +43,11 @@ class TetrominoGeneratorTest {
                 new TetrominoGenerator(new Random(RANDOM_SEED), weights), EASY_DRAW_COUNT);
 
         double expectedIRatio = (double) EASY_I_WEIGHT
-                / (EASY_I_WEIGHT + (TetrominoType.values().length - 1) * NON_I_WEIGHT);
+                / (EASY_I_WEIGHT + (basicTypes().length - 1) * NON_I_WEIGHT);
         double expectedOtherRatio = (double) NON_I_WEIGHT
-                / (EASY_I_WEIGHT + (TetrominoType.values().length - 1) * NON_I_WEIGHT);
+                / (EASY_I_WEIGHT + (basicTypes().length - 1) * NON_I_WEIGHT);
         assertWithinTolerance(counts.get(TetrominoType.I), EASY_DRAW_COUNT, expectedIRatio);
-        for (TetrominoType type : TetrominoType.values()) {
+        for (TetrominoType type : basicTypes()) {
             if (type != TetrominoType.I) {
                 assertWithinTolerance(counts.get(type), EASY_DRAW_COUNT, expectedOtherRatio);
             }
@@ -60,11 +61,11 @@ class TetrominoGeneratorTest {
                 HARD_DRAW_COUNT);
 
     double expectedIRatio = (double) HARD_I_WEIGHT
-            / (HARD_I_WEIGHT + (TetrominoType.values().length - 1) * NON_I_WEIGHT);
+            / (HARD_I_WEIGHT + (basicTypes().length - 1) * NON_I_WEIGHT);
     double expectedOtherRatio = (double) NON_I_WEIGHT
-            / (HARD_I_WEIGHT + (TetrominoType.values().length - 1) * NON_I_WEIGHT);
+            / (HARD_I_WEIGHT + (basicTypes().length - 1) * NON_I_WEIGHT);
     assertWithinTolerance(counts.get(TetrominoType.I), HARD_DRAW_COUNT, expectedIRatio);
-    for (TetrominoType type : TetrominoType.values()) {
+    for (TetrominoType type : basicTypes()) {
         if (type != TetrominoType.I) {
             assertWithinTolerance(counts.get(type), HARD_DRAW_COUNT, expectedOtherRatio);
         }
@@ -77,7 +78,7 @@ class TetrominoGeneratorTest {
                 new TetrominoGenerator(new Random(RANDOM_SEED), weights(EASY_I_WEIGHT, NON_I_WEIGHT)),
                 EASY_DRAW_COUNT);
 
-        for (TetrominoType type : TetrominoType.values()) {
+        for (TetrominoType type : basicTypes()) {
             if (type != TetrominoType.I) {
                 assertTrue(counts.get(TetrominoType.I) > counts.get(type), type.name());
             }
@@ -90,7 +91,7 @@ class TetrominoGeneratorTest {
                 new TetrominoGenerator(new Random(RANDOM_SEED), weights(HARD_I_WEIGHT, NON_I_WEIGHT)),
                 HARD_DRAW_COUNT);
 
-        for (TetrominoType type : TetrominoType.values()) {
+        for (TetrominoType type : basicTypes()) {
             if (type != TetrominoType.I) {
                 assertTrue(counts.get(TetrominoType.I) < counts.get(type), type.name());
             }
@@ -103,7 +104,7 @@ class TetrominoGeneratorTest {
         Map<TetrominoType, Integer> counts = countTypes(
                 new TetrominoGenerator(new Random(RANDOM_SEED), weights), ZERO_WEIGHT_DRAW_COUNT);
 
-        for (TetrominoType type : TetrominoType.values()) {
+        for (TetrominoType type : basicTypes()) {
             if (type != TetrominoType.I) {
                 assertEquals(0, counts.get(type));
             }
@@ -113,7 +114,7 @@ class TetrominoGeneratorTest {
     @Test
     void alwaysGenerateOnlyWeightedType() {
         Map<TetrominoType, Integer> weights = new EnumMap<>(TetrominoType.class);
-        for (TetrominoType type : TetrominoType.values()) {
+        for (TetrominoType type : basicTypes()) {
             weights.put(type, type == TetrominoType.O ? ONE_WEIGHT : 0);
         }
 
@@ -186,7 +187,7 @@ class TetrominoGeneratorTest {
 
     private Map<TetrominoType, Integer> countTypes(TetrominoGenerator generator, int drawCount) {
         Map<TetrominoType, Integer> counts = new EnumMap<>(TetrominoType.class);
-        for (TetrominoType type : TetrominoType.values()) {
+        for (TetrominoType type : basicTypes()) {
             counts.put(type, 0);
         }
         for (int draw = 0; draw < drawCount; draw++) {
@@ -198,10 +199,16 @@ class TetrominoGeneratorTest {
 
     private Map<TetrominoType, Integer> weights(int iWeight, int otherWeight) {
         Map<TetrominoType, Integer> weights = new EnumMap<>(TetrominoType.class);
-        for (TetrominoType type : TetrominoType.values()) {
+        for (TetrominoType type : basicTypes()) {
             weights.put(type, type == TetrominoType.I ? iWeight : otherWeight);
         }
         return weights;
+    }
+
+    private TetrominoType[] basicTypes() {
+        return Arrays.stream(TetrominoType.values())
+                .filter(TetrominoType::isBasic)
+                .toArray(TetrominoType[]::new);
     }
 
     private void assertWithinTolerance(int count, int total, double expectedRatio) {

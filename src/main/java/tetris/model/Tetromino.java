@@ -28,6 +28,10 @@ public record Tetromino(TetrominoType type, int rotation, int row, int column) {
         }
     }
 
+    public boolean canRotate() {
+        return type.canRotate();
+    }
+
     // 보드 맨 위 가운데에 스폰 모양(rotation 0)으로 블록을 생성하는 함수
     public static Tetromino spawn(TetrominoType type, int boardWidth) {
         int column = (boardWidth - type.getBoxSize()) / 2;

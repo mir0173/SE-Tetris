@@ -71,7 +71,9 @@ public class TetrominoGenerator {
     private static Map<TetrominoType, Integer> equalWeights() {
         Map<TetrominoType, Integer> weightMap = new EnumMap<>(TetrominoType.class);
         for (TetrominoType type : TetrominoType.values()) {
-            weightMap.put(type, BASIC_WEIGHT);
+            if(type.isBasic()){
+                weightMap.put(type, BASIC_WEIGHT);
+            }
         }
         return weightMap;
     }
@@ -80,11 +82,13 @@ public class TetrominoGenerator {
     private static int validateAndSum(Map<TetrominoType, Integer> weights) {
         int sum = 0;
         for (TetrominoType type : TetrominoType.values()) {
-            Integer weight = weights.get(type);
-            if (weight == null || weight < 0) {
-                throw new IllegalArgumentException("유효하지 않은 weight " + type + " : " + weight);
+            if(type.isBasic()){
+                Integer weight = weights.get(type);
+                if (weight == null || weight < 0) {
+                    throw new IllegalArgumentException("유효하지 않은 weight " + type + " : " + weight);
+                }
+                sum += weight;
             }
-            sum += weight;
         }
         if (sum <= 0) {
             throw new IllegalArgumentException("가중치 합이 0 이하");

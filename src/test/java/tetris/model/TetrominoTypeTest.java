@@ -3,6 +3,7 @@ package tetris.model;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.Arrays;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -14,8 +15,8 @@ class TetrominoTypeTest {
     private static final int CELL_COUNT = 4;
 
     @Test
-    void returnFourCellsForEveryTypeAndRotation() {
-        for (TetrominoType type : TetrominoType.values()) {
+    void returnFourCellsForEveryBasicTypeAndRotation() {
+        for (TetrominoType type : basicTypes()) {
             for (int rotation = FIRST_ROTATION; rotation <= LAST_ROTATION; rotation++) {
                 assertEquals(
                     CELL_COUNT,
@@ -186,6 +187,12 @@ class TetrominoTypeTest {
                 UnsupportedOperationException.class,
                 () -> TetrominoType.T.getCellsAt(0).clear()
         );
+    }
+
+    private TetrominoType[] basicTypes() {
+        return Arrays.stream(TetrominoType.values())
+                .filter(TetrominoType::isBasic)
+                .toArray(TetrominoType[]::new);
     }
     // AI-assisted code end (테스트 코드)
 }

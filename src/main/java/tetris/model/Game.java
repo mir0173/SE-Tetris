@@ -136,8 +136,16 @@ public class Game {
         switch (command) {
             case MOVE_LEFT -> tryReplace(currentPiece.move(0, -1));
             case MOVE_RIGHT -> tryReplace(currentPiece.move(0, 1));
-            case ROTATE_CLOCKWISE -> tryReplace(currentPiece.rotateClockwise());
-            case ROTATE_COUNTERCLOCKWISE -> tryReplace(currentPiece.rotateCounterClockwise());
+            case ROTATE_CLOCKWISE -> {
+                if(currentPiece.canRotate()) {
+                    tryReplace(currentPiece.rotateClockwise());
+                }
+            }
+            case ROTATE_COUNTERCLOCKWISE -> {
+                if(currentPiece.canRotate()) {
+                    tryReplace(currentPiece.rotateCounterClockwise());
+                }
+            }
             case SOFT_DROP -> {
                 if (softDrop()) {
                     softDropCells++;
