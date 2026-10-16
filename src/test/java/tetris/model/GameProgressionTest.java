@@ -14,7 +14,7 @@ class GameProgressionTest {
 
     @Test
     void scoreActualDropsFromEveryDropType() {
-        Game game = startedGame(10, 20, TetrominoType.O);
+        Game game = startedGame(10, 20, PieceType.O);
 
         game.tick();
         game.handleCommand(GameCommand.SOFT_DROP);
@@ -32,7 +32,7 @@ class GameProgressionTest {
 
     @Test
     void applyLineBonusOnlyOncePerLock() {
-        Game game = startedGame(4, 20, TetrominoType.I);
+        Game game = startedGame(4, 20, PieceType.I);
 
         game.handleCommand(GameCommand.HARD_DROP);
 
@@ -50,7 +50,7 @@ class GameProgressionTest {
 
     @Test
     void increaseSpeedAndDropScoreAfterTenClearedLines() {
-        Game game = startedGame(4, 20, TetrominoType.I);
+        Game game = startedGame(4, 20, PieceType.I);
 
         for (int index = 0; index < 9; index++) {
             game.handleCommand(GameCommand.HARD_DROP);
@@ -72,7 +72,7 @@ class GameProgressionTest {
 
     @Test
     void keepDropIntervalAtMinimum() {
-        Game game = startedGame(4, 20, TetrominoType.I);
+        Game game = startedGame(4, 20, PieceType.I);
 
         for (int index = 0; index < 100; index++) {
             game.handleCommand(GameCommand.HARD_DROP);
@@ -83,7 +83,7 @@ class GameProgressionTest {
 
     @Test
     void ignoreMovementAndDropsWhilePaused() {
-        Game game = startedGame(10, 20, TetrominoType.O);
+        Game game = startedGame(10, 20, PieceType.O);
         game.handleCommand(GameCommand.PAUSE);
 
         GameSnapshot before = game.createSnapshot();
@@ -111,7 +111,7 @@ class GameProgressionTest {
 
     @Test
     void allowQuitWhilePaused() {
-        Game game = startedGame(10, 20, TetrominoType.O);
+        Game game = startedGame(10, 20, PieceType.O);
 
         game.handleCommand(GameCommand.PAUSE);
         game.handleCommand(GameCommand.QUIT_GAME);
@@ -122,7 +122,7 @@ class GameProgressionTest {
 
     @Test
     void keepFinalScoreAfterGameOver() {
-        Game game = startedGame(4, 4, TetrominoType.O);
+        Game game = startedGame(4, 4, PieceType.O);
 
         game.handleCommand(GameCommand.HARD_DROP);
         game.handleCommand(GameCommand.HARD_DROP);
@@ -143,12 +143,12 @@ class GameProgressionTest {
     private Game startedGame(
             int width,
             int height,
-            TetrominoType type) {
+            PieceType type) {
 
         TetrominoGenerator generator =
                 new TetrominoGenerator(new Random(0L)) {
                     @Override
-                    public TetrominoType generateNext() {
+                    public PieceType generateNext() {
                         return type;
                     }
                 };

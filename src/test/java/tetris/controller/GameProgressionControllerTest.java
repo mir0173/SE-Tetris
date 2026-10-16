@@ -16,7 +16,7 @@ import tetris.model.Game;
 import tetris.model.GameCommand;
 import tetris.model.GameSnapshot;
 import tetris.model.TetrominoGenerator;
-import tetris.model.TetrominoType;
+import tetris.model.PieceType;
 import tetris.view.GameView;
 
 // AI-assisted code start
@@ -25,7 +25,7 @@ class GameProgressionControllerTest {
 
     @Test
     void stopAndRestartTimerOnPauseAndResume() {
-        Game game = newGame(10, 20, TetrominoType.O);
+        Game game = newGame(10, 20, PieceType.O);
         FakeView view = new FakeView();
         FakeTimer timer = new FakeTimer();
 
@@ -48,7 +48,7 @@ class GameProgressionControllerTest {
 
     @Test
     void returnToMenuOnceWhenQuittingWhilePaused() {
-        Game game = newGame(10, 20, TetrominoType.O);
+        Game game = newGame(10, 20, PieceType.O);
         FakeView view = new FakeView();
         FakeTimer timer = new FakeTimer();
         List<Boolean> runningAtMenu = new ArrayList<>();
@@ -71,7 +71,7 @@ class GameProgressionControllerTest {
 
     @Test
     void notifyGameOverOnceAfterStoppingTimer() {
-        Game game = newGame(4, 4, TetrominoType.O);
+        Game game = newGame(4, 4, PieceType.O);
         FakeView view = new FakeView();
         FakeTimer timer = new FakeTimer();
         List<Long> scores = new ArrayList<>();
@@ -102,7 +102,7 @@ class GameProgressionControllerTest {
 
     @Test
     void changeTimerIntervalOnlyWhenSpeedChanges() {
-        Game game = newGame(4, 20, TetrominoType.I);
+        Game game = newGame(4, 20, PieceType.I);
         FakeView view = new FakeView();
         FakeTimer timer = new FakeTimer();
 
@@ -129,12 +129,12 @@ class GameProgressionControllerTest {
     private Game newGame(
             int width,
             int height,
-            TetrominoType type) {
+            PieceType type) {
 
         TetrominoGenerator generator =
                 new TetrominoGenerator(new Random(0L)) {
                     @Override
-                    public TetrominoType generateNext() {
+                    public PieceType generateNext() {
                         return type;
                     }
                 };

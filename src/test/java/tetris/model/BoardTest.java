@@ -101,62 +101,62 @@ class BoardTest {
     void allowSpawnBlockOnEmptyBoard() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
 
-        assertTrue(board.canPlace(Tetromino.spawn(TetrominoType.T, BOARD_WIDTH)));
+        assertTrue(board.canPlace(Piece.spawn(PieceType.T, BOARD_WIDTH)));
     }
 
     @Test
     void rejectBlockCrossingLeftWall() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
 
-        assertFalse(board.canPlace(new Tetromino(TetrominoType.T, 0, 0, -1)));
+        assertFalse(board.canPlace(new Piece(PieceType.T, 0, 0, -1)));
     }
 
     @Test
     void allowBlockAgainstLeftWall() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
 
-        assertTrue(board.canPlace(new Tetromino(TetrominoType.T, 0, 0, 0)));
+        assertTrue(board.canPlace(new Piece(PieceType.T, 0, 0, 0)));
     }
 
     @Test
     void rejectBlockCrossingRightWall() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
 
-        assertFalse(board.canPlace(new Tetromino(TetrominoType.T, 0, 0, 8)));
+        assertFalse(board.canPlace(new Piece(PieceType.T, 0, 0, 8)));
     }
 
     @Test
     void allowBlockAgainstRightWall() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
 
-        assertTrue(board.canPlace(new Tetromino(TetrominoType.T, 0, 0, 7)));
+        assertTrue(board.canPlace(new Piece(PieceType.T, 0, 0, 7)));
     }
 
     @Test
     void rejectBlockCrossingBottomWall() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
 
-        assertFalse(board.canPlace(new Tetromino(TetrominoType.T, 0, BOARD_HEIGHT - 1, 3)));
+        assertFalse(board.canPlace(new Piece(PieceType.T, 0, BOARD_HEIGHT - 1, 3)));
     }
 
     @Test
     void allowBlockAgainstBottomWall() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
 
-        assertTrue(board.canPlace(new Tetromino(TetrominoType.T, 0, 18, 3)));
+        assertTrue(board.canPlace(new Piece(PieceType.T, 0, 18, 3)));
     }
 
     @Test
     void rejectBlockCrossingTopWall() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
 
-        assertFalse(board.canPlace(new Tetromino(TetrominoType.T, 0, -1, 3)));
+        assertFalse(board.canPlace(new Piece(PieceType.T, 0, -1, 3)));
     }
 
     @Test
     void rejectBlockOverlappingLockedBlock() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
-        Tetromino block = Tetromino.spawn(TetrominoType.T, BOARD_WIDTH);
+        Piece block = Piece.spawn(PieceType.T, BOARD_WIDTH);
         board.lock(block);
 
         assertFalse(board.canPlace(block));
@@ -165,24 +165,24 @@ class BoardTest {
     @Test
     void rejectBlockWithOneOverlappingCell() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
-        board.lock(Tetromino.spawn(TetrominoType.T, BOARD_WIDTH));
+        board.lock(Piece.spawn(PieceType.T, BOARD_WIDTH));
 
-        assertFalse(board.canPlace(new Tetromino(TetrominoType.T, 0, 1, 3)));
+        assertFalse(board.canPlace(new Piece(PieceType.T, 0, 1, 3)));
     }
 
     @Test
     void allowBlockInUnoccupiedLocation() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
-        board.lock(Tetromino.spawn(TetrominoType.T, BOARD_WIDTH));
+        board.lock(Piece.spawn(PieceType.T, BOARD_WIDTH));
 
-        assertTrue(board.canPlace(new Tetromino(TetrominoType.T, 0, 5, 3)));
+        assertTrue(board.canPlace(new Piece(PieceType.T, 0, 5, 3)));
     }
 
     @Test
     void lockTBlockIntoExpectedCells() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
 
-        board.lock(Tetromino.spawn(TetrominoType.T, BOARD_WIDTH));
+        board.lock(Piece.spawn(PieceType.T, BOARD_WIDTH));
 
         assertEquals(CELL_ID_T, board.getCell(0, 3));
         assertEquals(CELL_ID_T, board.getCell(0, 4));
@@ -197,7 +197,7 @@ class BoardTest {
     @Test
     void leaveOtherCellsEmptyAfterLockingBlock() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
-        board.lock(Tetromino.spawn(TetrominoType.T, BOARD_WIDTH));
+        board.lock(Piece.spawn(PieceType.T, BOARD_WIDTH));
 
         assertEquals(Board.EMPTY_CELL, board.getCell(0, 0));
         assertEquals(Board.EMPTY_CELL, board.getCell(1, 0));
@@ -210,14 +210,14 @@ class BoardTest {
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> board.lock(new Tetromino(TetrominoType.T, 0, 0, -1))
+                () -> board.lock(new Piece(PieceType.T, 0, 0, -1))
         );
     }
 
     @Test
     void preserveExistingCellsWhenLockingOverlappingBlock() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
-        Tetromino block = Tetromino.spawn(TetrominoType.T, BOARD_WIDTH);
+        Piece block = Piece.spawn(PieceType.T, BOARD_WIDTH);
         board.lock(block);
 
         assertThrows(IllegalArgumentException.class, () -> board.lock(block));
@@ -314,7 +314,7 @@ class BoardTest {
     @Test
     void preserveBoardWhenCopyIsModified() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
-        board.lock(Tetromino.spawn(TetrominoType.T, BOARD_WIDTH));
+        board.lock(Piece.spawn(PieceType.T, BOARD_WIDTH));
         int[][] copy = board.copyCells();
         copy[0][3] = Board.EMPTY_CELL;
 
@@ -324,7 +324,7 @@ class BoardTest {
     @Test
     void drawSpawnBlockOnEmptyCopy() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
-        int[][] copy = board.copyCellsWith(Tetromino.spawn(TetrominoType.T, BOARD_WIDTH));
+        int[][] copy = board.copyCellsWith(Piece.spawn(PieceType.T, BOARD_WIDTH));
 
         assertEquals(CELL_ID_T, copy[0][3]);
         assertEquals(CELL_ID_T, copy[0][4]);
@@ -337,7 +337,7 @@ class BoardTest {
     void preserveBoardAfterCopyingWithFallingBlock() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
 
-        board.copyCellsWith(Tetromino.spawn(TetrominoType.T, BOARD_WIDTH));
+        board.copyCellsWith(Piece.spawn(PieceType.T, BOARD_WIDTH));
 
         assertBoardEmpty(board);
     }
@@ -345,9 +345,9 @@ class BoardTest {
     @Test
     void includeLockedAndFallingBlocksInCopy() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
-        board.lock(Tetromino.spawn(TetrominoType.T, BOARD_WIDTH));
+        board.lock(Piece.spawn(PieceType.T, BOARD_WIDTH));
 
-        int[][] copy = board.copyCellsWith(new Tetromino(TetrominoType.O, 0, 3, 7));
+        int[][] copy = board.copyCellsWith(new Piece(PieceType.O, 0, 3, 7));
 
         assertEquals(CELL_ID_T, copy[0][3]);
         assertEquals(CELL_ID_O, copy[3][7]);
@@ -362,14 +362,14 @@ class BoardTest {
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> board.copyCellsWith(new Tetromino(TetrominoType.T, 0, 0, -1))
+                () -> board.copyCellsWith(new Piece(PieceType.T, 0, 0, -1))
         );
     }
 
     @Test
     void throwWhenCopyingWithOverlappingBlock() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
-        Tetromino block = Tetromino.spawn(TetrominoType.T, BOARD_WIDTH);
+        Piece block = Piece.spawn(PieceType.T, BOARD_WIDTH);
         board.lock(block);
 
         assertThrows(IllegalArgumentException.class, () -> board.copyCellsWith(block));
@@ -401,14 +401,14 @@ class BoardTest {
     @Test
     void keepBoardIndependentFromCopyWithResult() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
-        int[][] copy = board.copyCellsWith(Tetromino.spawn(TetrominoType.T, BOARD_WIDTH));
+        int[][] copy = board.copyCellsWith(Piece.spawn(PieceType.T, BOARD_WIDTH));
         copy[10][0] = 9;
 
         assertEquals(Board.EMPTY_CELL, board.getCell(10, 0));
     }
 
     private void lockIPiece(Board board, int targetRow, int startColumn) {
-        board.lock(new Tetromino(TetrominoType.I, 0, targetRow - 1, startColumn));
+        board.lock(new Piece(PieceType.I, 0, targetRow - 1, startColumn));
     }
 
     private void assertPatternA(Board board, int row) {

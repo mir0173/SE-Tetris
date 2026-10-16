@@ -15,7 +15,7 @@ import tetris.model.Game;
 import tetris.model.GameCommand;
 import tetris.model.GameSnapshot;
 import tetris.model.TetrominoGenerator;
-import tetris.model.TetrominoType;
+import tetris.model.PieceType;
 import tetris.view.GameView;
 
 class GameControllerTest {
@@ -34,7 +34,7 @@ class GameControllerTest {
         FakeGameView view = new FakeGameView();
         FakeGameTimer timer = new FakeGameTimer();
         GameController controller = newController(new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT),
-                sequenceGenerator(TetrominoType.O)), view, timer, new Callback());
+                sequenceGenerator(PieceType.O)), view, timer, new Callback());
 
         controller.start();
 
@@ -49,7 +49,7 @@ class GameControllerTest {
     void runTimerTaskTicksAndRenders() {
         FakeGameView view = new FakeGameView();
         FakeGameTimer timer = new FakeGameTimer();
-        Game game = new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(TetrominoType.O));
+        Game game = new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(PieceType.O));
         GameController controller = newController(game, view, timer, new Callback());
         controller.start();
         int renderCountBeforeTick = view.renderCount;
@@ -65,7 +65,7 @@ class GameControllerTest {
         FakeGameView view = new FakeGameView();
         FakeGameTimer timer = new FakeGameTimer();
         GameController controller = newController(
-                new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(TetrominoType.O)),
+                new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(PieceType.O)),
                 view, timer, new Callback());
         controller.start();
         int renderCountBeforeCommand = view.renderCount;
@@ -81,7 +81,7 @@ class GameControllerTest {
         FakeGameTimer timer = new FakeGameTimer();
         Callback callback = new Callback(timer);
         GameController controller = newController(
-                new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(TetrominoType.O)),
+                new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(PieceType.O)),
                 view, timer, callback);
         controller.start();
 
@@ -98,7 +98,7 @@ class GameControllerTest {
         FakeGameTimer timer = new FakeGameTimer();
         Callback callback = new Callback();
         Game game = new Game(new Board(GAME_OVER_BOARD_WIDTH, GAME_OVER_BOARD_HEIGHT),
-                sequenceGenerator(TetrominoType.O));
+                sequenceGenerator(PieceType.O));
         GameController controller = newController(game, view, timer, callback);
         controller.start();
 
@@ -115,7 +115,7 @@ class GameControllerTest {
         FakeGameTimer timer = new FakeGameTimer();
         Callback callback = new Callback();
         Game game = new Game(new Board(GAME_OVER_BOARD_WIDTH, GAME_OVER_BOARD_HEIGHT),
-                sequenceGenerator(TetrominoType.O));
+                sequenceGenerator(PieceType.O));
         GameController controller = newController(game, view, timer, callback);
         controller.start();
         timer.task.run();
@@ -131,7 +131,7 @@ class GameControllerTest {
         FakeGameTimer timer = new FakeGameTimer();
         Callback callback = new Callback();
         GameController controller = newController(
-                new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(TetrominoType.O)),
+                new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(PieceType.O)),
                 view, timer, callback);
         controller.start();
         view.commandHandler.accept(GameCommand.QUIT_GAME);
@@ -150,13 +150,13 @@ class GameControllerTest {
         );
     }
 
-    private TetrominoGenerator sequenceGenerator(TetrominoType... types) {
+    private TetrominoGenerator sequenceGenerator(PieceType... types) {
         return new TetrominoGenerator(new Random(0L)) {
             private int index;
 
             @Override
-            public TetrominoType generateNext() {
-                TetrominoType type = types[Math.min(index, types.length - 1)];
+            public PieceType generateNext() {
+                PieceType type = types[Math.min(index, types.length - 1)];
                 index++;
                 return type;
             }

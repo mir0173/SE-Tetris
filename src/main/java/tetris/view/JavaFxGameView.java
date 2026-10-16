@@ -28,7 +28,7 @@ import tetris.model.GameCommand;
 import tetris.model.GameSnapshot;
 import tetris.model.GameStatus;
 import tetris.model.Position;
-import tetris.model.TetrominoType;
+import tetris.model.PieceType;
 import tetris.settings.GameSettings;
 public class JavaFxGameView implements GameView {
 
@@ -49,24 +49,24 @@ public class JavaFxGameView implements GameView {
     private static final String BORDER_SYMBOL = "X";
     private static final String BLOCK_SYMBOL = "O";
 
-    private static final Map<TetrominoType, Color> NORMAL_COLORS = Map.of(
-        TetrominoType.I, Color.web("#22D3EE"),
-        TetrominoType.O, Color.web("#FACC15"),
-        TetrominoType.T, Color.web("#A855F7"),
-        TetrominoType.S, Color.web("#22C55E"),
-        TetrominoType.Z, Color.web("#EF4444"),
-        TetrominoType.J, Color.web("#3B82F6"),
-        TetrominoType.L, Color.web("#F97316")
+    private static final Map<PieceType, Color> NORMAL_COLORS = Map.of(
+        PieceType.I, Color.web("#22D3EE"),
+        PieceType.O, Color.web("#FACC15"),
+        PieceType.T, Color.web("#A855F7"),
+        PieceType.S, Color.web("#22C55E"),
+        PieceType.Z, Color.web("#EF4444"),
+        PieceType.J, Color.web("#3B82F6"),
+        PieceType.L, Color.web("#F97316")
     );
 
-    private static final Map<TetrominoType, Color> COLOR_BLIND_COLORS = Map.of(
-        TetrominoType.I, Color.web("#56B4E9"),
-        TetrominoType.O, Color.web("#F0E442"),
-        TetrominoType.T, Color.web("#CC79A7"),
-        TetrominoType.S, Color.web("#009E73"),
-        TetrominoType.Z, Color.web("#D55E00"),
-        TetrominoType.J, Color.web("#0072B2"),
-        TetrominoType.L, Color.web("#E69F00")
+    private static final Map<PieceType, Color> COLOR_BLIND_COLORS = Map.of(
+        PieceType.I, Color.web("#56B4E9"),
+        PieceType.O, Color.web("#F0E442"),
+        PieceType.T, Color.web("#CC79A7"),
+        PieceType.S, Color.web("#009E73"),
+        PieceType.Z, Color.web("#D55E00"),
+        PieceType.J, Color.web("#0072B2"),
+        PieceType.L, Color.web("#E69F00")
     );
 
     private final double scale;
@@ -123,7 +123,7 @@ public class JavaFxGameView implements GameView {
     public void render(GameSnapshot snapshot) {
         drawBoard(snapshot.getCells());
 
-        TetrominoType nextPiece = snapshot.getNextPieces().isEmpty() ? null : snapshot.getNextPieces().get(0);
+        PieceType nextPiece = snapshot.getNextPieces().isEmpty() ? null : snapshot.getNextPieces().get(0);
         
         drawPreview(nextCanvas, nextPiece);
         drawPreview(holdCanvas, snapshot.getHeldPiece());
@@ -234,13 +234,13 @@ public class JavaFxGameView implements GameView {
             drawSymbol(graphics, BORDER_SYMBOL, Color.WHITE, (cols + 1) * cellWidth, (row + 1) * cellHeight);
 
             for (int col = 0; col < cols; col++) {
-                TetrominoType type = findType(cells[row][col]);
+                PieceType type = findType(cells[row][col]);
                 drawCell(graphics, (col + 1) * cellWidth, (row + 1) * cellHeight, type);
             }
         }
     }
 
-    private void drawPreview(Canvas canvas, TetrominoType type) {
+    private void drawPreview(Canvas canvas, PieceType type) {
         GraphicsContext graphics = canvas.getGraphicsContext2D();
 
         graphics.setFill(EMPTY_COLOR);
@@ -270,7 +270,7 @@ public class JavaFxGameView implements GameView {
         }
     }
 
-    private void drawCell(GraphicsContext graphics, double x, double y, TetrominoType type) {
+    private void drawCell(GraphicsContext graphics, double x, double y, PieceType type) {
         if (type == null) {
             return;
         }
@@ -286,16 +286,16 @@ public class JavaFxGameView implements GameView {
         graphics.fillText(symbol, x + cellWidth / 2, y + textBaselineOffset);
     }
 
-    private Color getPieceColor(TetrominoType type) {
+    private Color getPieceColor(PieceType type) {
         return colorBlindMode ? COLOR_BLIND_COLORS.get(type) : NORMAL_COLORS.get(type);
     }
 
-    private TetrominoType findType(int cellId) {
+    private PieceType findType(int cellId) {
         if (cellId == Board.EMPTY_CELL) {
             return null;
         }
 
-        for (TetrominoType type : TetrominoType.values()) {
+        for (PieceType type : PieceType.values()) {
             if (type.getCellId() == cellId) {
                 return type;
             }

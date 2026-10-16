@@ -17,19 +17,19 @@ public class Game {
     private final GameMode mode;
     private GameStatus status;
 
-    private Tetromino currentPiece;
-    private TetrominoType nextPiece;
-    private Item nextItem;
-    private TetrominoType heldPiece; // 홀드된 블록 종류
-    private Item heldItem;
-    private boolean holdUsed; // 이번 블록에서 홀드를 이미 썼는지
-    private boolean itemReserved; // spawnNextPiece 에서 아이템을 스폰하도록 예약하는 필드
-    private int lastClearedLines; // 마지막 고정 때 지운 줄 수 (T6 점수 계산용)
-    private int itemCounter; // 아이템 생성용 카운터
-    private long lockedPieceCount; // 고정된 블록 수
-    private long gravityDropCells; // 자동 낙하 칸 수
-    private long softDropCells; // 소프트 드롭 칸 수
-    private long hardDropCells; // 하드 드롭 칸 수
+    private Piece currentPiece;         // 현재 드랍중인 블록
+    private PieceType nextPieceType;    // 다음에 드랍될 블록 타입
+    private Item nextItem;              // 다음에 생성될 아이템
+    private PieceType heldPieceType;    // 홀드된 블록 종류
+    private Item heldItem;              // 홀드된 블록의 아이템 종류
+    private boolean holdUsed;           // 이번 블록에서 홀드를 이미 썼는지
+    private boolean itemReserved;       // spawnNextPiece 에서 아이템을 스폰하도록 예약하는 필드
+    private int lastClearedLines;       // 마지막 고정 때 지운 줄 수 (T6 점수 계산용)
+    private int itemLineCounter;        // 아이템 생성까지 지운 줄 수 카운터
+    private long lockedPieceCount;      // 고정된 블록 수
+    private long gravityDropCells;      // 자동 낙하 칸 수
+    private long softDropCells;         // 소프트 드롭 칸 수
+    private long hardDropCells;         // 하드 드롭 칸 수
     private long score = INITIAL_SCORE;
     private long dropInterval = INITIAL_DROP_INTERVAL;
     private long totalClearedLines;
@@ -39,10 +39,11 @@ public class Game {
     }
 
     public Game(Board board, TetrominoGenerator generator, GameMode mode) {
-        if (board == null || generator == null) {
-            String nullObject = board == null ? "board" : "generator";
+        if (board == null || generator == null || mode == null) {
+            String nullObject = board == null ? "board" : ( generator == null ? "generator" : "mode");
             throw new NullPointerException("param : " + nullObject + " is null");
         }
+        
         this.board = board;
         this.generator = generator;
         this.status = GameStatus.READY;
@@ -103,7 +104,7 @@ public class Game {
             return;
         }
         status = GameStatus.PLAYING;
-        nextPiece = generator.generateNext();
+        nextPieceType = generator.generateNext();
         spawnNextPiece();
     }
 
@@ -209,23 +210,23 @@ public class Game {
         } else {
             cells = board.copyCellsWith(currentPiece);
         }
-        List<TetrominoType> list;
-        if (nextPiece != null) {
-            list = List.of(nextPiece);
+        List<PieceType> list;
+        if (nextPieceType != null) {
+            list = List.of(nextPieceType);
         } else {
             list = List.of();
         }
         return new GameSnapshot(
                 cells,
                 list,
-                heldPiece,
+                heldPieceType,
                 score,
                 status,
                 dropInterval);
     }
 
     // 후보가 놓일 수 있으면 현재 블록을 교체하고 true, 아니면 그대로 두고 false
-    private boolean tryReplace(Tetromino candidate) {
+    private boolean tryReplace(Piece candidate) {
         if (!board.canPlace(candidate)) {
             return false;
         } else {
@@ -260,46 +261,29 @@ public class Game {
         lastClearedLines = board.clearFullLines();
         holdUsed = false;
         if (mode == GameMode.ITEM) {
-            itemCounter += lastClearedLines;
-            if (itemCounter >= LINES_PER_ITEM_SPAWN) {
-                itemCounter = 0;
+            itemLineCounter += lastClearedLines;
+            if (itemLineCounter >= LINES_PER_ITEM_SPAWN) {
+                itemLineCounter = 0;
                 itemReserved = true;
             }
         }
         spawnNextPiece();
     }
 
-    // nextPiece를 꺼내 스폰하고, nextPiece를 새로 채움
+    // nextPieceType를 꺼내 스폰하고, nextPieceType를 새로 채움
     private void spawnNextPiece() {
-        TetrominoType localNextPiece = nextPiece;
-        Item localNextItem = nextItem;
-        spawn(nextPiece, nextItem);
-
-        nextPiece = generator.generateNext();
+        spawn(nextPieceType, nextItem);
+        nextPieceType = generator.generateNext();
+        nextItem = null;
         if (itemReserved) {
-
-            // Todo : nextItem = 아이탬 생성기
+            // Todo : nextItem 채우기
+            itemReserved = false;
         }
-
-    }
-
-    private void spawn(TetrominoType type) {
-        spawn(type, null);
     }
 
     // 주어진 종류를 스폰 위치에 놓음. 놓을 수 없으면 게임오버
-    private void spawn(TetrominoType type, Item item) {
-        if (item == null && !type.isBasic()) {
-            throw new NullPointerException("type 유형이 아이템이나 Item == null");
-        }
-        Tetromino candidate;
-        if (type.isBasic()) {
-            candidate = Tetromino.spawn(type, board.getWidth());
-
-        } else {
-            candidate = Tetromino.itemSpawn(type, item, board.getWidth());
-        }
-
+    private void spawn(PieceType type, Item item) {
+        Piece candidate = Piece.spawn(type, item, board.getWidth());
         if (!board.canPlace(candidate)) {
             status = GameStatus.GAMEOVER;
             return;
@@ -313,16 +297,16 @@ public class Game {
             return;
         }
 
-        TetrominoType currentType = currentPiece.type();
+        PieceType currentType = currentPiece.type();
         Item currentItem = currentPiece.item();
-        if (heldPiece == null) {
-            heldPiece = currentType;
+        if (heldPieceType == null) {
+            heldPieceType = currentType;
             heldItem = currentItem;
             spawnNextPiece();
         } else {
-            TetrominoType spawnType = heldPiece;
+            PieceType spawnType = heldPieceType;
             Item spawnItem = heldItem;
-            heldPiece = currentType;
+            heldPieceType = currentType;
             heldItem = currentItem;
             spawn(spawnType, spawnItem);
         }

@@ -28,27 +28,35 @@ public enum ItemType {
             false);
 
     private static final int DEFAULT_WEIGHT = 10;
-    /** 아이템 식별자 */
-    private final int itemId;
+    /** 보드 인코딩에 쓰는 아이템 코드 */
+    private final int itemCode;
     /** 화면에 출력할 아이템 심볼 */
     private final char symbol;
-    /** 블록형 아이템인지 셀형 아이템인지 확인용 */
+    /** 기본 블록의 한칸에 박히는 아이템인지 확인하는 변수 */
     private final boolean embedded;
     /** 생성 시 가중치 */
     private final int weight;
 
-    ItemType(int itemId, char symbol, int weight, boolean embedded) {
-        this.itemId = itemId;
+    ItemType(int itemCode, char symbol, int weight, boolean embedded) {
+        this.itemCode = itemCode;
         this.symbol = symbol;
         this.weight = weight;
         this.embedded = embedded;
     }
 
-    public int getItemId() {
-        return itemId;
+    public int getItemCode() {
+        return itemCode;
     }
 
     public boolean isEmbedded() {
         return embedded;
+    }
+
+    public char getSymbol() {
+        return symbol;
+    }
+
+    public int getWeight() {
+        return weight;
     }
 }

@@ -18,7 +18,7 @@ public class TetrominoGenerator {
     private final Random random;
 
     // 종류별 가중치 (enum 선언 순서로 순회되도록)
-    private final Map<TetrominoType, Integer> weights;
+    private final Map<PieceType, Integer> weights;
 
     // 가중치 합 (매번 다시 계산하지 않도록 저장)
     private final int totalWeight;
@@ -41,11 +41,11 @@ public class TetrominoGenerator {
      * @throws NullPointerException     random 또는 weights가 null인 경우
      * @throws IllegalArgumentException 빠진 종류가 있거나, 음수가 있거나, 합이 0인 경우
      */
-    public TetrominoGenerator(Random random, Map<TetrominoType, Integer> weights) {
+    public TetrominoGenerator(Random random, Map<PieceType, Integer> weights) {
         if (random == null || weights == null) {
             throw new NullPointerException("Parameter is null : " + (random == null ? "random" : "weights"));
         }
-        Map<TetrominoType, Integer> copiedWeights = new EnumMap<>(weights);
+        Map<PieceType, Integer> copiedWeights = new EnumMap<>(weights);
         this.totalWeight = validateAndSum(copiedWeights);
         this.random = random;
         this.weights = copiedWeights;
@@ -56,9 +56,9 @@ public class TetrominoGenerator {
      * 
      * @return 다음 블록 종류
      */
-    public TetrominoType generateNext() {
+    public PieceType generateNext() {
         int r = random.nextInt(totalWeight);
-        for (Map.Entry<TetrominoType, Integer> e : weights.entrySet()) {
+        for (Map.Entry<PieceType, Integer> e : weights.entrySet()) {
             r -= e.getValue();
             if (r < 0) {
                 return e.getKey();
@@ -68,10 +68,10 @@ public class TetrominoGenerator {
     }
 
     // 7종 모두 같은 가중치를 담은 맵을 만든다.
-    private static Map<TetrominoType, Integer> equalWeights() {
-        Map<TetrominoType, Integer> weightMap = new EnumMap<>(TetrominoType.class);
-        for (TetrominoType type : TetrominoType.values()) {
-            if(type.isBasic()){
+    private static Map<PieceType, Integer> equalWeights() {
+        Map<PieceType, Integer> weightMap = new EnumMap<>(PieceType.class);
+        for (PieceType type : PieceType.values()) {
+            if (type.isBasic()) {
                 weightMap.put(type, BASIC_WEIGHT);
             }
         }
@@ -79,10 +79,10 @@ public class TetrominoGenerator {
     }
 
     // 7종이 모두 있고 음수가 없는지 확인한 뒤 합을 반환한다.
-    private static int validateAndSum(Map<TetrominoType, Integer> weights) {
+    private static int validateAndSum(Map<PieceType, Integer> weights) {
         int sum = 0;
-        for (TetrominoType type : TetrominoType.values()) {
-            if(type.isBasic()){
+        for (PieceType type : PieceType.values()) {
+            if (type.isBasic()) {
                 Integer weight = weights.get(type);
                 if (weight == null || weight < 0) {
                     throw new IllegalArgumentException("유효하지 않은 weight " + type + " : " + weight);
