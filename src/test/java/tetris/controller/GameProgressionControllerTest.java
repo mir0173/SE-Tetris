@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 
 import tetris.model.Board;
+import tetris.model.Difficulty;
 import tetris.model.Game;
 import tetris.model.GameCommand;
 import tetris.model.GameSnapshot;
@@ -139,7 +140,7 @@ class GameProgressionControllerTest {
                     }
                 };
 
-        return new Game(new Board(width, height), generator);
+        return new Game(new Board(width, height), generator, Difficulty.NORMAL);
     }
 
     private static class FakeView implements GameView {
