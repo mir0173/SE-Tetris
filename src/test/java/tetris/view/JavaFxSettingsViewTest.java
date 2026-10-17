@@ -22,8 +22,10 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Labeled;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
-
+import tetris.model.Difficulty;
 import tetris.model.GameCommand;
 import tetris.settings.GameSettings;
 import tetris.settings.WindowSize;
@@ -44,12 +46,13 @@ class JavaFxSettingsViewTest {
 
     private static final int WINDOW_SIZE_ROW = 0;
     private static final int COLOR_BLIND_ROW = 1;
-    private static final int MOVE_LEFT_ROW = 2;
-    private static final int MOVE_RIGHT_ROW = 3;
-    private static final int RESET_DEFAULTS_ROW = 11;
-    private static final int RESET_SCOREBOARD_ROW = 12;
-    private static final int BACK_ROW = 13;
-    private static final int ROW_COUNT = 14;
+    private static final int DIFFICULTY_ROW = 2;
+    private static final int MOVE_LEFT_ROW = 3;
+    private static final int MOVE_RIGHT_ROW = 4;
+    private static final int RESET_DEFAULTS_ROW = 12;
+    private static final int RESET_SCOREBOARD_ROW = 13;
+    private static final int BACK_ROW = 14;
+    private static final int ROW_COUNT = 15;
 
     private final List<GameSettings> changes = new ArrayList<>();
     private int resetScoreboardCalls;
@@ -448,7 +451,7 @@ class JavaFxSettingsViewTest {
     void askConfirmationBeforeResettingDefaults() throws Exception {
         runOnFxThread(() -> {
             // given
-            GameSettings changed = new GameSettings(WindowSize.LARGE, GameSettings.getDefaultKeyBindings(), true);
+            GameSettings changed = new GameSettings(WindowSize.LARGE, GameSettings.getDefaultKeyBindings(), true, Difficulty.NORMAL);
             JavaFxSettingsView view = createView(changed);
             moveToRow(view, RESET_DEFAULTS_ROW);
 
@@ -465,7 +468,7 @@ class JavaFxSettingsViewTest {
     void resetDefaultsWhenConfirmed() throws Exception {
         runOnFxThread(() -> {
             // given: 기본값이 아닌 설정으로 시작한 상태
-            GameSettings changed = new GameSettings(WindowSize.LARGE, GameSettings.getDefaultKeyBindings(), true);
+            GameSettings changed = new GameSettings(WindowSize.LARGE, GameSettings.getDefaultKeyBindings(), true, Difficulty.NORMAL);
             JavaFxSettingsView view = createView(changed);
             moveToRow(view, RESET_DEFAULTS_ROW);
             pressKey(view, KeyCode.ENTER);
@@ -671,7 +674,7 @@ class JavaFxSettingsViewTest {
     void showSettingsPassedToConstructor() throws Exception {
         runOnFxThread(() -> {
             // given: 기본값이 아닌 저장된 설정
-            GameSettings saved = new GameSettings(WindowSize.LARGE, GameSettings.getDefaultKeyBindings(), true);
+            GameSettings saved = new GameSettings(WindowSize.LARGE, GameSettings.getDefaultKeyBindings(), true, Difficulty.NORMAL);
 
             // when
             JavaFxSettingsView view = createView(saved);
@@ -691,6 +694,88 @@ class JavaFxSettingsViewTest {
             backButton.fire();
 
             assertEquals(1, backCalls);
+        });
+    }
+
+    @Test
+    void cycleDifficultyWithArrowKeys() throws Exception {
+        runOnFxThread(() -> {
+            JavaFxSettingsView view = createView();
+            moveToRow(view, DIFFICULTY_ROW);
+
+            pressKey(view, KeyCode.LEFT);
+            assertEquals(Difficulty.EASY, getLastChange().getDifficulty());
+
+            pressKey(view, KeyCode.LEFT);
+            assertEquals(Difficulty.HARD, getLastChange().getDifficulty());
+
+            pressKey(view, KeyCode.RIGHT);
+            assertEquals(Difficulty.EASY, getLastChange().getDifficulty());
+        });
+    }
+
+    @Test
+    void cycleDifficultyWithMouse() throws Exception {
+        runOnFxThread(() -> {
+            JavaFxSettingsView view = createView();
+
+            Event.fireEvent(
+                    getRowLabel(view, DIFFICULTY_ROW),
+                    new MouseEvent(
+                            MouseEvent.MOUSE_CLICKED,
+                            0, 0, 0, 0,
+                            MouseButton.PRIMARY, 1,
+                            false, false, false, false,
+                            false, false, false, false,
+                            false, true, null));
+
+            assertEquals(Difficulty.HARD, getLastChange().getDifficulty());
+            assertEquals("난이도: Hard", getRowText(view, DIFFICULTY_ROW));
+        });
+    }
+
+    @Test
+    void keepDifficultyWhenChangingOtherSettings() throws Exception {
+        runOnFxThread(() -> {
+            JavaFxSettingsView view = createView(new GameSettings(
+                    WindowSize.MEDIUM,
+                    GameSettings.getDefaultKeyBindings(),
+                    false,
+                    Difficulty.HARD));
+
+            pressKey(view, KeyCode.RIGHT);
+            assertEquals(Difficulty.HARD, getLastChange().getDifficulty());
+
+            pressKey(view, KeyCode.DOWN);
+            pressKey(view, KeyCode.RIGHT);
+            assertEquals(Difficulty.HARD, getLastChange().getDifficulty());
+
+            pressKey(view, KeyCode.DOWN);
+            pressKey(view, KeyCode.DOWN);
+            pressKey(view, KeyCode.ENTER);
+            pressKey(view, KeyCode.A);
+
+            assertEquals(
+                    "A",
+                    getLastChange().getKeyBindings().get(GameCommand.MOVE_LEFT));
+            assertEquals(Difficulty.HARD, getLastChange().getDifficulty());
+        });
+    }
+
+    @Test
+    void resetDifficultyToNormal() throws Exception {
+        runOnFxThread(() -> {
+            JavaFxSettingsView view = createView(new GameSettings(
+                    WindowSize.LARGE,
+                    GameSettings.getDefaultKeyBindings(),
+                    true,
+                    Difficulty.HARD));
+
+            moveToRow(view, RESET_DEFAULTS_ROW);
+            pressKey(view, KeyCode.ENTER);
+            pressKey(view, KeyCode.Y);
+
+            assertEquals(Difficulty.NORMAL, getLastChange().getDifficulty());
         });
     }
 

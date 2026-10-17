@@ -36,6 +36,7 @@ import javafx.stage.Stage;
 import tetris.model.GameSnapshot;
 import tetris.model.GameStatus;
 import tetris.model.TetrominoType;
+import tetris.model.Difficulty;
 import tetris.model.GameCommand;
 
 import tetris.settings.GameSettings;
@@ -96,7 +97,8 @@ class JavaFxGameViewTest {
                 GameSettings settings = new GameSettings(
                         GameSettings.getDefaultWindowSize(),
                         bindings,
-                        false
+                        false, 
+                        Difficulty.NORMAL
                 );
 
                 JavaFxGameView view =
@@ -129,7 +131,8 @@ class JavaFxGameViewTest {
                 GameSettings settings = new GameSettings(
                         GameSettings.getDefaultWindowSize(),
                         bindings,
-                        false
+                        false, 
+                        Difficulty.NORMAL
                 );
 
                 JavaFxGameView view =
@@ -337,7 +340,8 @@ class JavaFxGameViewTest {
                 GameSettings settings = new GameSettings(
                         GameSettings.getDefaultWindowSize(),
                         GameSettings.getDefaultKeyBindings(),
-                        true);
+                        true, 
+                        Difficulty.NORMAL);
 
                 JavaFxGameView view =
                         new JavaFxGameView(stage, settings);
@@ -382,7 +386,7 @@ class JavaFxGameViewTest {
                 bindings.put(GameCommand.PAUSE, "A");
 
                 GameSettings settings = new GameSettings(
-                        GameSettings.getDefaultWindowSize(), bindings, false);
+                        GameSettings.getDefaultWindowSize(), bindings, false, Difficulty.NORMAL);
                 JavaFxGameView view = new JavaFxGameView(stage, settings);
 
                 List<GameCommand> commands = new ArrayList<>();
@@ -450,7 +454,8 @@ class JavaFxGameViewTest {
                 GameSettings settings = new GameSettings(
                         windowSize,
                         GameSettings.getDefaultKeyBindings(),
-                        false);
+                        false, 
+                        Difficulty.NORMAL);
 
                 JavaFxGameView view = new JavaFxGameView(stage, settings);
                 view.render(new GameSnapshot(
@@ -501,7 +506,8 @@ class JavaFxGameViewTest {
                 GameSettings settings = new GameSettings(
                         windowSize,
                         GameSettings.getDefaultKeyBindings(),
-                        false);
+                        false, 
+                        Difficulty.NORMAL);
 
                 JavaFxGameView view = new JavaFxGameView(stage, settings);
                 view.render(new GameSnapshot(

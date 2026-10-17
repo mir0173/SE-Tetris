@@ -20,6 +20,7 @@ import javafx.scene.input.KeyCode;
 import tetris.settings.GameSettings;
 import tetris.settings.WindowSize;
 import tetris.model.GameCommand;
+import tetris.model.Difficulty;
 
 public class FileSettingsRepository implements SettingsRepository {
 
@@ -90,8 +91,8 @@ public class FileSettingsRepository implements SettingsRepository {
         return new SettingsData(
                 settings.getWindowSize(),
                 keyBindings,
-                settings.isColorBlindMode()
-        );
+                settings.isColorBlindMode(),
+                settings.getDifficulty());
     }
     // AI-assisted code end
 
@@ -100,8 +101,8 @@ public class FileSettingsRepository implements SettingsRepository {
         return new GameSettings(
                 normalizeWindowSize(data.windowSize),
                 normalizeKeyBindings(data.keyBindings),
-                data.colorBlindMode
-        );
+                data.colorBlindMode,
+                data.difficulty == null ? GameSettings.getDefaultDifficulty() : data.difficulty);
     }
     // AI-assisted code end
 
@@ -168,11 +169,13 @@ public class FileSettingsRepository implements SettingsRepository {
         private final WindowSize windowSize;
         private final Map<String, String> keyBindings;
         private final boolean colorBlindMode;
+        private final Difficulty difficulty;
 
-        private SettingsData(WindowSize windowSize, Map<String, String> keyBindings, boolean colorBlindMode) {
+        private SettingsData(WindowSize windowSize, Map<String, String> keyBindings, boolean colorBlindMode, Difficulty difficulty) {
             this.windowSize = windowSize;
             this.keyBindings = keyBindings;
             this.colorBlindMode = colorBlindMode;
+            this.difficulty = difficulty;
         }
     }
 

@@ -14,6 +14,7 @@ public class Game {
 
     private final Board board;
     private final TetrominoGenerator generator;
+    private final Difficulty difficulty;
     private GameStatus status;
     private Tetromino currentPiece;
     private TetrominoType nextPiece;
@@ -29,13 +30,17 @@ public class Game {
     private long dropInterval = INITIAL_DROP_INTERVAL;
     private long totalClearedLines;
 
-    public Game(Board board, TetrominoGenerator generator) {
+    public Game(Board board, TetrominoGenerator generator, Difficulty difficulty) {
         if (board == null || generator == null) {
             String nullObject = board == null ? "board" : "generator";
             throw new NullPointerException("param : " + nullObject + " is null");
         }
+        if (difficulty == null) {
+            throw new NullPointerException("null difficulty");
+        }
         this.board = board;
         this.generator = generator;
+        this.difficulty = difficulty;
         this.status = GameStatus.READY;
     }
     
@@ -300,7 +305,8 @@ public class Game {
     private void updateProgress(long previousDropCells, long previousLockedPieceCount, long previousSpawnedPieceCount) {
 
         long previousClearedLines = totalClearedLines;
-        long level = (INITIAL_DROP_INTERVAL - dropInterval) / DROP_INTERVAL_STEP + 1;
+        long speedReduction = INITIAL_DROP_INTERVAL - dropInterval;
+        long level =  (speedReduction + DROP_INTERVAL_STEP - 1) / DROP_INTERVAL_STEP + 1;
         long droppedCells = getTotalDropCells() - previousDropCells;
 
         score += droppedCells * level;
@@ -314,7 +320,9 @@ public class Game {
 
         long lineIncreases = totalClearedLines / LINES_PER_LEVEL - previousClearedLines / LINES_PER_LEVEL;
         long pieceIncreases = spawnedPieceCount / PIECES_PER_LEVEL - previousSpawnedPieceCount / PIECES_PER_LEVEL;
-        long speedIncreases = lineIncreases + pieceIncreases;
-        dropInterval = Math.max(MIN_DROP_INTERVAL, dropInterval - speedIncreases * DROP_INTERVAL_STEP);
+        long intervalReduction =
+        lineIncreases * difficulty.getLineDropIntervalStep() + pieceIncreases * DROP_INTERVAL_STEP;
+
+        dropInterval = Math.max(MIN_DROP_INTERVAL, dropInterval - intervalReduction);
     }
 }

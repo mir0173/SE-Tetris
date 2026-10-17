@@ -2,11 +2,13 @@ package tetris.settings;
 
 import java.util.Map;
 import tetris.model.GameCommand;
+import tetris.model.Difficulty;
 
 public class GameSettings {
 
     private static final WindowSize DEFAULT_WINDOW_SIZE = WindowSize.MEDIUM;
     private static final boolean DEFAULT_COLOR_BLIND_MODE = false;
+    private static final Difficulty DEFAULT_DIFFICULTY = Difficulty.NORMAL;
     private static final Map<GameCommand, String> DEFAULT_KEY_BINDINGS = Map.of(
         GameCommand.MOVE_LEFT, "LEFT",
         GameCommand.MOVE_RIGHT, "RIGHT",
@@ -22,11 +24,16 @@ public class GameSettings {
     private final WindowSize windowSize;
     private final Map<GameCommand, String> keyBindings;
     private final boolean colorBlindMode;
+    private final Difficulty difficulty;
 
-    public GameSettings(WindowSize windowSize, Map<GameCommand, String> keyBindings, boolean colorBlindMode) {
+    public GameSettings(WindowSize windowSize, Map<GameCommand, String> keyBindings, boolean colorBlindMode, Difficulty difficulty) {
+        if (difficulty == null) {
+            throw new NullPointerException("null difficulty");
+        }
         this.windowSize = windowSize;
         this.keyBindings = Map.copyOf(keyBindings);
         this.colorBlindMode = colorBlindMode;
+        this.difficulty = difficulty;
     }
 
     public static Map<GameCommand, String> getDefaultKeyBindings() {
@@ -40,7 +47,7 @@ public class GameSettings {
     // AI-assisted code end
 
     public static GameSettings defaults() {
-        return new GameSettings(DEFAULT_WINDOW_SIZE, DEFAULT_KEY_BINDINGS, DEFAULT_COLOR_BLIND_MODE);
+        return new GameSettings(DEFAULT_WINDOW_SIZE, DEFAULT_KEY_BINDINGS, DEFAULT_COLOR_BLIND_MODE, DEFAULT_DIFFICULTY);
     }
 
     public WindowSize getWindowSize() {
@@ -53,5 +60,13 @@ public class GameSettings {
 
     public boolean isColorBlindMode() {
         return colorBlindMode;
+    }
+
+    public static Difficulty getDefaultDifficulty() {
+        return DEFAULT_DIFFICULTY;
+    }
+
+    public Difficulty getDifficulty() {
+        return difficulty;
     }
 }
