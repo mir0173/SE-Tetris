@@ -11,6 +11,7 @@ import java.util.Random;
 import org.junit.jupiter.api.Test;
 
 import tetris.model.Board;
+import tetris.model.Difficulty;
 import tetris.model.Game;
 import tetris.model.GameCommand;
 import tetris.model.GameSnapshot;
@@ -33,8 +34,7 @@ class GameControllerTest {
     void startConnectsViewAndTimer() {
         FakeGameView view = new FakeGameView();
         FakeGameTimer timer = new FakeGameTimer();
-        GameController controller = newController(new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT),
-                sequenceGenerator(TetrominoType.O)), view, timer, new Callback());
+        GameController controller = newController(new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(TetrominoType.O), Difficulty.NORMAL), view, timer, new Callback());
 
         controller.start();
 
@@ -49,7 +49,7 @@ class GameControllerTest {
     void runTimerTaskTicksAndRenders() {
         FakeGameView view = new FakeGameView();
         FakeGameTimer timer = new FakeGameTimer();
-        Game game = new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(TetrominoType.O));
+        Game game = new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(TetrominoType.O), Difficulty.NORMAL);
         GameController controller = newController(game, view, timer, new Callback());
         controller.start();
         int renderCountBeforeTick = view.renderCount;
@@ -65,7 +65,7 @@ class GameControllerTest {
         FakeGameView view = new FakeGameView();
         FakeGameTimer timer = new FakeGameTimer();
         GameController controller = newController(
-                new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(TetrominoType.O)),
+                new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(TetrominoType.O), Difficulty.NORMAL),
                 view, timer, new Callback());
         controller.start();
         int renderCountBeforeCommand = view.renderCount;
@@ -81,7 +81,7 @@ class GameControllerTest {
         FakeGameTimer timer = new FakeGameTimer();
         Callback callback = new Callback(timer);
         GameController controller = newController(
-                new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(TetrominoType.O)),
+                new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(TetrominoType.O), Difficulty.NORMAL),
                 view, timer, callback);
         controller.start();
 
@@ -97,8 +97,7 @@ class GameControllerTest {
         FakeGameView view = new FakeGameView();
         FakeGameTimer timer = new FakeGameTimer();
         Callback callback = new Callback();
-        Game game = new Game(new Board(GAME_OVER_BOARD_WIDTH, GAME_OVER_BOARD_HEIGHT),
-                sequenceGenerator(TetrominoType.O));
+        Game game = new Game(new Board(GAME_OVER_BOARD_WIDTH, GAME_OVER_BOARD_HEIGHT), sequenceGenerator(TetrominoType.O), Difficulty.NORMAL);
         GameController controller = newController(game, view, timer, callback);
         controller.start();
 
@@ -114,8 +113,7 @@ class GameControllerTest {
         FakeGameView view = new FakeGameView();
         FakeGameTimer timer = new FakeGameTimer();
         Callback callback = new Callback();
-        Game game = new Game(new Board(GAME_OVER_BOARD_WIDTH, GAME_OVER_BOARD_HEIGHT),
-                sequenceGenerator(TetrominoType.O));
+        Game game = new Game(new Board(GAME_OVER_BOARD_WIDTH, GAME_OVER_BOARD_HEIGHT), sequenceGenerator(TetrominoType.O), Difficulty.NORMAL);
         GameController controller = newController(game, view, timer, callback);
         controller.start();
         timer.task.run();
@@ -131,7 +129,7 @@ class GameControllerTest {
         FakeGameTimer timer = new FakeGameTimer();
         Callback callback = new Callback();
         GameController controller = newController(
-                new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(TetrominoType.O)),
+                new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(TetrominoType.O), Difficulty.NORMAL),
                 view, timer, callback);
         controller.start();
         view.commandHandler.accept(GameCommand.QUIT_GAME);

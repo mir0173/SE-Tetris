@@ -17,6 +17,7 @@ import tetris.controller.GameController;
 import tetris.model.Board;
 import tetris.model.Game;
 import tetris.model.GameConfig;
+import tetris.model.Difficulty;
 import tetris.model.TetrominoGenerator;
 import tetris.controller.GameTimer;
 import tetris.persistence.FileScoreRepository;
@@ -75,7 +76,7 @@ public class TetrisApplication extends Application {
 
             if (validator.hasDuplicate(loadedSettings.getKeyBindings())) {
                 showError(stage, "중복된 키 설정이 있습니다. 기본 키 설정을 사용합니다." );
-                return new GameSettings(loadedSettings.getWindowSize(), GameSettings.getDefaultKeyBindings(), loadedSettings.isColorBlindMode());
+                return new GameSettings(loadedSettings.getWindowSize(), GameSettings.getDefaultKeyBindings(), loadedSettings.isColorBlindMode(), loadedSettings.getDifficulty());
             }
             return loadedSettings;
         } catch (IOException exception) {
@@ -109,8 +110,9 @@ public class TetrisApplication extends Application {
         
         GameConfig config = new GameConfig(BOARD_WIDTH, BOARD_HEIGHT);
         Board board = new Board(config.getBoardWidth(), config.getBoardHeight());
-        TetrominoGenerator generator = new TetrominoGenerator(new Random());
-        Game game = new Game(board, generator);
+        Difficulty difficulty = currentSettings.getDifficulty();
+        TetrominoGenerator generator = new TetrominoGenerator(new Random(), difficulty.createWeights());
+        Game game = new Game(board, generator, difficulty);
         GameView view = new JavaFxGameView(stage, currentSettings);
         GameTimer timer = new JavaFxGameTimer(Game.getInitialDropInterval());
         GameController controller = new GameController(game, view, timer, () -> showStartMenu(stage), score -> Platform.runLater(() -> handleGameOver(stage, score)));
