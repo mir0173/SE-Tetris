@@ -6,8 +6,9 @@ public class Game {
 
     private static final long INITIAL_SCORE = 0L;
     private static final long INITIAL_DROP_INTERVAL = 1_000L;
-    private static final int LINES_PER_LEVEL = 10;
+    private static final int LINES_PER_LEVEL = 5;
     private static final int LINES_PER_ITEM_SPAWN = 10;
+    private static final int PIECES_PER_LEVEL = 10;
     private static final long DROP_INTERVAL_STEP = 100L;
     private static final long MIN_DROP_INTERVAL = 100L;
     private static final long LINE_CLEAR_BONUS = 100L;
@@ -27,6 +28,7 @@ public class Game {
     private int lastClearedLines;       // 마지막 고정 때 지운 줄 수 (T6 점수 계산용)
     private int itemLineCounter;        // 아이템 생성까지 지운 줄 수 카운터
     private long lockedPieceCount;      // 고정된 블록 수
+    private long spawnedPieceCount;     // 실제 생성된 블록 수
     private long gravityDropCells;      // 자동 낙하 칸 수
     private long softDropCells;         // 소프트 드롭 칸 수
     private long hardDropCells;         // 하드 드롭 칸 수
@@ -40,10 +42,10 @@ public class Game {
 
     public Game(Board board, TetrominoGenerator generator, GameMode mode) {
         if (board == null || generator == null || mode == null) {
-            String nullObject = board == null ? "board" : ( generator == null ? "generator" : "mode");
+            String nullObject = board == null ? "board" : (generator == null ? "generator" : "mode");
             throw new NullPointerException("param : " + nullObject + " is null");
         }
-        
+
         this.board = board;
         this.generator = generator;
         this.status = GameStatus.READY;
@@ -135,6 +137,7 @@ public class Game {
 
         long previousDropCells = getTotalDropCells();
         long previousLockedPieceCount = lockedPieceCount;
+        long previousSpawnedPieceCount = spawnedPieceCount;
 
         switch (command) {
             case MOVE_LEFT -> tryReplace(currentPiece.move(0, -1));
@@ -160,7 +163,7 @@ public class Game {
             }
         }
 
-        updateProgress(previousDropCells, previousLockedPieceCount);
+        updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
     }
 
     /**
@@ -174,12 +177,13 @@ public class Game {
 
         long previousDropCells = getTotalDropCells();
         long previousLockedPieceCount = lockedPieceCount;
+        long previousSpawnedPieceCount = spawnedPieceCount;
 
         if (softDrop()) {
             gravityDropCells++;
         }
 
-        updateProgress(previousDropCells, previousLockedPieceCount);
+        updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
     }
 
     public boolean isPaused() {
@@ -273,6 +277,9 @@ public class Game {
     // nextPieceType를 꺼내 스폰하고, nextPieceType를 새로 채움
     private void spawnNextPiece() {
         spawn(nextPieceType, nextItem);
+        if (!isGameOver()) {
+            spawnedPieceCount++;
+        }
         nextPieceType = generator.generateNext();
         nextItem = null;
         if (itemReserved) {
@@ -321,11 +328,14 @@ public class Game {
      * 이번 명령 또는 자동 낙하의 결과만 점수에 반영한다
      * 줄 삭제 보너스는 블록이 새로 고정된 경우에만 반영한다
      *
-     * @param previousDropCells        실행 전 누적 낙하 칸 수
-     * @param previousLockedPieceCount 실행 전 누적 블록 고정 횟수
+     * @param previousDropCells         실행 전 누적 낙하 칸 수
+     * @param previousLockedPieceCount  실행 전 누적 블록 고정 횟수
+     * @param previousSpawnedPieceCount 실행 전 누적 블록 생성 수
      */
-    private void updateProgress(long previousDropCells, long previousLockedPieceCount) {
-        long level = totalClearedLines / LINES_PER_LEVEL + 1;
+    private void updateProgress(long previousDropCells, long previousLockedPieceCount, long previousSpawnedPieceCount) {
+
+        long previousClearedLines = totalClearedLines;
+        long level = (INITIAL_DROP_INTERVAL - dropInterval) / DROP_INTERVAL_STEP + 1;
         long droppedCells = getTotalDropCells() - previousDropCells;
 
         score += droppedCells * level;
@@ -335,9 +345,11 @@ public class Game {
 
             score += LINE_CLEAR_BONUS * clearedLines * clearedLines * level;
             totalClearedLines += clearedLines;
-
-            long completedLevels = totalClearedLines / LINES_PER_LEVEL;
-            dropInterval = Math.max(MIN_DROP_INTERVAL, INITIAL_DROP_INTERVAL - completedLevels * DROP_INTERVAL_STEP);
         }
+
+        long lineIncreases = totalClearedLines / LINES_PER_LEVEL - previousClearedLines / LINES_PER_LEVEL;
+        long pieceIncreases = spawnedPieceCount / PIECES_PER_LEVEL - previousSpawnedPieceCount / PIECES_PER_LEVEL;
+        long speedIncreases = lineIncreases + pieceIncreases;
+        dropInterval = Math.max(MIN_DROP_INTERVAL, dropInterval - speedIncreases * DROP_INTERVAL_STEP);
     }
 }

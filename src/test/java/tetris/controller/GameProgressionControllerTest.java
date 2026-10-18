@@ -113,7 +113,7 @@ class GameProgressionControllerTest {
 
         controller.start();
 
-        for (int index = 0; index < 10; index++) {
+        for (int index = 0; index < 5; index++) {
             view.commandHandler.accept(GameCommand.HARD_DROP);
         }
 

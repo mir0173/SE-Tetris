@@ -18,6 +18,8 @@ import javafx.application.Platform;
 import javafx.event.Event;
 import javafx.event.EventType;
 import javafx.scene.control.Label;
+import javafx.scene.control.Button;
+import javafx.scene.control.Labeled;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.VBox;
@@ -680,6 +682,18 @@ class JavaFxSettingsViewTest {
         });
     }
 
+    @Test
+    void returnToMenuWithBackButton() throws Exception {
+        runOnFxThread(() -> {
+            JavaFxSettingsView view = createView();
+
+            Button backButton = (Button) getRowLabel(view, BACK_ROW);
+            backButton.fire();
+
+            assertEquals(1, backCalls);
+        });
+    }
+
     private JavaFxSettingsView createView() {
         return createView(GameSettings.defaults());
     }
@@ -703,8 +717,8 @@ class JavaFxSettingsViewTest {
         return (Label) getRoot(view).getChildren().get(0);
     }
 
-    private Label getRowLabel(JavaFxSettingsView view, int row) {
-        return (Label) getRoot(view).getChildren().get(row + 1);
+    private Labeled getRowLabel(JavaFxSettingsView view, int row) {
+        return (Labeled) getRoot(view).getChildren().get(row + 1);
     }
 
     private Label getMessageLabel(JavaFxSettingsView view) {
@@ -715,8 +729,16 @@ class JavaFxSettingsViewTest {
 
     private String getRowText(JavaFxSettingsView view, int row) {
         String text = getRowLabel(view, row).getText();
-        String marker = text.startsWith(SELECTED_MARKER) ? SELECTED_MARKER : UNSELECTED_MARKER;
-        return text.substring(marker.length());
+
+        if (text.startsWith(SELECTED_MARKER)) {
+            return text.substring(SELECTED_MARKER.length());
+        }
+
+        if (text.startsWith(UNSELECTED_MARKER)) {
+            return text.substring(UNSELECTED_MARKER.length());
+        }
+
+        return text;
     }
 
     private boolean isSelected(JavaFxSettingsView view, int row) {

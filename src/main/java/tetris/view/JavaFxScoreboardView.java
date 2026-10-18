@@ -57,12 +57,8 @@ public class JavaFxScoreboardView {
         root.getChildren().addAll(title, rows, backButton);
 
         if (onExit != null) {
-            Button exitButton = new Button("종료");
-            exitButton.setPrefSize(BUTTON_WIDTH, BUTTON_HEIGHT);
-            exitButton.setOnAction(event -> onExit.run());
-            
             Label help = new Label("Enter / ESC: 메뉴 · Q: 종료");
-            root.getChildren().addAll(exitButton, help);
+            root.getChildren().add(help);
         }
 
         scene = new Scene(root, SCOREBOARD_WIDTH, SCOREBOARD_HEIGHT);
