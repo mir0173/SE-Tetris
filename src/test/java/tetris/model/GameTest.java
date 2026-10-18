@@ -37,12 +37,12 @@ class GameTest {
 
     @Test
     void rejectNullBoard() {
-        assertThrows(NullPointerException.class, () -> new Game(null, sequenceGenerator(PieceType.O)));
+        assertThrows(NullPointerException.class, () -> new Game(null, sequenceGenerator(PieceType.O), Difficulty.NORMAL, GameMode.NORMAL));
     }
 
     @Test
     void rejectNullGenerator() {
-        assertThrows(NullPointerException.class, () -> new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), null));
+        assertThrows(NullPointerException.class, () -> new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), null, Difficulty.NORMAL, GameMode.NORMAL));
     }
 
     @Test
@@ -267,7 +267,7 @@ class GameTest {
 
     @Test
     void clearTwoLinesAfterFillingSmallBoard() {
-        Game game = new Game(new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT), sequenceGenerator(PieceType.O));
+        Game game = new Game(new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT), sequenceGenerator(PieceType.O), Difficulty.NORMAL, GameMode.NORMAL);
         game.start();
         game.handleCommand(GameCommand.MOVE_LEFT);
         game.handleCommand(GameCommand.HARD_DROP);
@@ -281,7 +281,7 @@ class GameTest {
 
     @Test
     void reportOnlyMostRecentClearedLines() {
-        Game game = new Game(new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT), sequenceGenerator(PieceType.O));
+        Game game = new Game(new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT), sequenceGenerator(PieceType.O), Difficulty.NORMAL, GameMode.NORMAL);
         game.start();
         game.handleCommand(GameCommand.MOVE_LEFT);
         game.handleCommand(GameCommand.HARD_DROP);
@@ -375,7 +375,7 @@ class GameTest {
 
     @Test
     void becomeGameOverWhenNextSpawnIsBlocked() {
-        Game game = new Game(new Board(SMALL_BOARD_WIDTH, GAME_OVER_HEIGHT), sequenceGenerator(PieceType.O));
+        Game game = new Game(new Board(SMALL_BOARD_WIDTH, GAME_OVER_HEIGHT), sequenceGenerator(PieceType.O), Difficulty.NORMAL, GameMode.NORMAL);
         game.start();
         game.handleCommand(GameCommand.HARD_DROP);
 
@@ -386,7 +386,7 @@ class GameTest {
 
     @Test
     void showOnlyLockedCellsAfterGameOver() {
-        Game game = new Game(new Board(SMALL_BOARD_WIDTH, GAME_OVER_HEIGHT), sequenceGenerator(PieceType.O));
+        Game game = new Game(new Board(SMALL_BOARD_WIDTH, GAME_OVER_HEIGHT), sequenceGenerator(PieceType.O), Difficulty.NORMAL, GameMode.NORMAL);
         game.start();
         game.handleCommand(GameCommand.HARD_DROP);
 
@@ -395,7 +395,7 @@ class GameTest {
 
     @Test
     void ignoreCommandsAfterGameOver() {
-        Game game = new Game(new Board(SMALL_BOARD_WIDTH, GAME_OVER_HEIGHT), sequenceGenerator(PieceType.O));
+        Game game = new Game(new Board(SMALL_BOARD_WIDTH, GAME_OVER_HEIGHT), sequenceGenerator(PieceType.O), Difficulty.NORMAL, GameMode.NORMAL);
         game.start();
         game.handleCommand(GameCommand.HARD_DROP);
         long lockedPieces = game.getLockedPieceCount();
@@ -437,7 +437,7 @@ class GameTest {
     }
 
     private Game newGame(PieceType... types) {
-        return new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(types));
+        return new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(types), Difficulty.NORMAL, GameMode.NORMAL);
     }
 
     private Game startedGame(PieceType... types) {

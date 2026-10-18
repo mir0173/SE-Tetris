@@ -168,7 +168,7 @@ class GameProgressionTest {
                     }
                 };
 
-        Game game = new Game(new Board(width, height), generator);
+        Game game = new Game(new Board(width, height), generator, Difficulty.NORMAL, GameMode.NORMAL);
         game.start();
         return game;
     }

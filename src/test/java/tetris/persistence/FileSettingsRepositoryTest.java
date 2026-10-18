@@ -14,7 +14,11 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import tetris.model.Difficulty;
 import tetris.model.GameCommand;
 import tetris.settings.GameSettings;
 import tetris.settings.WindowSize;
@@ -310,7 +314,7 @@ class FileSettingsRepositoryTest {
         Map<GameCommand, String> keyBindings = new EnumMap<>(GameCommand.class);
         keyBindings.putAll(GameSettings.getDefaultKeyBindings());
         keyBindings.put(GameCommand.HOLD, INVALID_KEY_NAME);
-        repository.save(new GameSettings(WindowSize.SMALL, keyBindings, false));
+        repository.save(new GameSettings(WindowSize.SMALL, keyBindings, false, Difficulty.NORMAL));
 
         // when
         GameSettings loaded = repository.load();
@@ -320,12 +324,66 @@ class FileSettingsRepositoryTest {
         assertEquals(GameSettings.getDefaultKeyBindings(), loaded.getKeyBindings());
     }
 
+    @ParameterizedTest
+    @EnumSource(Difficulty.class)
+    void saveAndReloadEveryDifficulty(Difficulty difficulty)
+            throws IOException {
+        repository.save(new GameSettings(
+                WindowSize.LARGE,
+                GameSettings.getDefaultKeyBindings(),
+                true,
+                difficulty));
+
+        GameSettings loaded =
+                new FileSettingsRepository(settingsFile).load();
+
+        assertEquals(difficulty, loaded.getDifficulty());
+        assertEquals(WindowSize.LARGE, loaded.getWindowSize());
+        assertTrue(loaded.isColorBlindMode());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "{}",
+        "{\"difficulty\":null}",
+        "{\"difficulty\":\"UNKNOWN\"}"
+    })
+    void useNormalForMissingOrUnknownDifficulty(String json)
+            throws IOException {
+        Files.writeString(settingsFile, json);
+
+        assertEquals(
+                Difficulty.NORMAL,
+                repository.load().getDifficulty());
+    }
+
+    @Test
+    void preserveOldSettingsWhenAddingDefaultDifficulty()
+            throws IOException {
+        Files.writeString(settingsFile, """
+                {
+                "windowSize": "LARGE",
+                "colorBlindMode": true,
+                "keyBindings": {"MOVE_LEFT": "A"}
+                }
+                """);
+
+        GameSettings loaded = repository.load();
+
+        assertEquals(Difficulty.NORMAL, loaded.getDifficulty());
+        assertEquals(WindowSize.LARGE, loaded.getWindowSize());
+        assertTrue(loaded.isColorBlindMode());
+        assertEquals(
+                "A",
+                loaded.getKeyBindings().get(GameCommand.MOVE_LEFT));
+    }
+
     private GameSettings createCustomSettings() {
         Map<GameCommand, String> keyBindings = new EnumMap<>(GameCommand.class);
         keyBindings.putAll(GameSettings.getDefaultKeyBindings());
         keyBindings.put(GameCommand.MOVE_LEFT, CUSTOM_LEFT_KEY);
         keyBindings.put(GameCommand.MOVE_RIGHT, CUSTOM_RIGHT_KEY);
-        return new GameSettings(WindowSize.LARGE, keyBindings, true);
+        return new GameSettings(WindowSize.LARGE, keyBindings, true, Difficulty.NORMAL);
     }
 
     private void assertSameAsDefaults(GameSettings actual) {
@@ -339,6 +397,7 @@ class FileSettingsRepositoryTest {
         assertEquals(expected.getWindowSize(), actual.getWindowSize());
         assertEquals(expected.isColorBlindMode(), actual.isColorBlindMode());
         assertEquals(expected.getKeyBindings(), actual.getKeyBindings());
+        assertEquals(expected.getDifficulty(), actual.getDifficulty());
     }
 
     /**

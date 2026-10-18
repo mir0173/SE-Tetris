@@ -22,6 +22,7 @@ import javafx.scene.text.Font;
 import javafx.util.Duration;
 
 import tetris.model.GameCommand;
+import tetris.model.Difficulty;
 import tetris.settings.GameSettings;
 import tetris.settings.KeyBindingValidator;
 import tetris.settings.WindowSize;
@@ -34,6 +35,7 @@ import tetris.settings.WindowSize;
  */
 public class JavaFxSettingsView {
 
+    private static final long CLICK_COOLDOWN_NANOS = 150_000_000L;
     private static final double SETTINGS_WIDTH = 500;
     private static final double SETTINGS_HEIGHT = 600;
     private static final double ROOT_SPACING = 10;
@@ -73,13 +75,15 @@ public class JavaFxSettingsView {
 
     private static final int WINDOW_SIZE_ROW = 0;
     private static final int COLOR_BLIND_ROW = 1;
-    private static final int FIRST_KEY_ROW = 2;
+    private static final int DIFFICULTY_ROW = 2;
+    private static final int FIRST_KEY_ROW = 3;
     private static final int RESET_DEFAULTS_ROW = FIRST_KEY_ROW + KEY_COMMANDS.size();
     private static final int RESET_SCOREBOARD_ROW = RESET_DEFAULTS_ROW + 1;
     private static final int BACK_ROW = RESET_SCOREBOARD_ROW + 1;
     private static final int ROW_COUNT = BACK_ROW + 1;
 
     private static final String WINDOW_SIZE_TEXT = "화면 크기: ";
+    private static final String DIFFICULTY_TEXT = "난이도: ";
     private static final String COLOR_BLIND_TEXT = "색맹 모드: ";
     private static final String RESET_DEFAULTS_ROW_TEXT = "기본값으로 되돌리기";
     private static final String RESET_DEFAULTS_CONFIRMATION_TEXT =
@@ -117,6 +121,7 @@ public class JavaFxSettingsView {
     private GameSettings settings;
     private int selectedIndex = 0;
     private int confirmingRow = NO_CONFIRMING_ROW;
+    private long lastMouseClickNanos = System.nanoTime() - CLICK_COOLDOWN_NANOS;
     private boolean waitingForKey = false;
     private boolean captureStartKeyHeld = false;
     private TranslateTransition shakeAnimation;
@@ -156,11 +161,18 @@ public class JavaFxSettingsView {
             rowLabel.setCursor(Cursor.HAND);
 
             rowLabel.setOnMouseClicked(event -> {
-                if (event.getButton() == MouseButton.PRIMARY
-                        && event.getClickCount() == 1) {
-                    handleRowClick(rowIndex);
-                    event.consume();
+                if (event.getButton() != MouseButton.PRIMARY) {
+                    return;
                 }
+
+                long now = System.nanoTime();
+
+                if (now - lastMouseClickNanos >= CLICK_COOLDOWN_NANOS) {
+                    lastMouseClickNanos = now;
+                    handleRowClick(rowIndex);
+                }
+
+                event.consume();
             });
 
             rowLabels.add(rowLabel);
@@ -256,6 +268,8 @@ public class JavaFxSettingsView {
             changeWindowSize(direction);
         } else if (selectedIndex == COLOR_BLIND_ROW) {
             toggleColorBlindMode();
+        } else if (selectedIndex == DIFFICULTY_ROW) {
+            changeDifficulty(direction);
         }
     }
 
@@ -264,6 +278,8 @@ public class JavaFxSettingsView {
             changeWindowSize(1);
         } else if (selectedIndex == COLOR_BLIND_ROW) {
             toggleColorBlindMode();
+        } else if (selectedIndex == DIFFICULTY_ROW) {
+            changeDifficulty(1);
         } else if (isKeyRow(selectedIndex)) {
             startKeyCapture(startedByKeyboard);
         } else if (selectedIndex == RESET_DEFAULTS_ROW || selectedIndex == RESET_SCOREBOARD_ROW) {
@@ -273,14 +289,22 @@ public class JavaFxSettingsView {
         }
     }
 
+    private void changeDifficulty(int direction) {
+        Difficulty[] difficulties = Difficulty.values();
+
+        int nextIndex = Math.floorMod(settings.getDifficulty().ordinal() + direction, difficulties.length);
+
+        updateSettings(new GameSettings(settings.getWindowSize(), settings.getKeyBindings(), settings.isColorBlindMode(), difficulties[nextIndex]));
+    }
+
     private void changeWindowSize(int direction) {
         WindowSize[] sizes = WindowSize.values();
         int nextIndex = Math.floorMod(settings.getWindowSize().ordinal() + direction, sizes.length);
-        updateSettings(new GameSettings(sizes[nextIndex], settings.getKeyBindings(), settings.isColorBlindMode()));
+        updateSettings(new GameSettings(sizes[nextIndex], settings.getKeyBindings(), settings.isColorBlindMode(), settings.getDifficulty()));
     }
 
     private void toggleColorBlindMode() {
-        updateSettings(new GameSettings(settings.getWindowSize(), settings.getKeyBindings(), !settings.isColorBlindMode()));
+        updateSettings(new GameSettings(settings.getWindowSize(), settings.getKeyBindings(), !settings.isColorBlindMode(), settings.getDifficulty()));
     }
 
     private void changeKeyBinding(GameCommand command, String keyName) {
@@ -291,7 +315,7 @@ public class JavaFxSettingsView {
 
         Map<GameCommand, String> newKeyBindings = new HashMap<>(settings.getKeyBindings());
         newKeyBindings.put(command, keyName);
-        updateSettings(new GameSettings(settings.getWindowSize(), newKeyBindings, settings.isColorBlindMode()));
+        updateSettings(new GameSettings(settings.getWindowSize(), newKeyBindings, settings.isColorBlindMode(), settings.getDifficulty()));
     }
 
     private void updateSettings(GameSettings newSettings) {
@@ -380,6 +404,9 @@ public class JavaFxSettingsView {
         }
         if (rowIndex == COLOR_BLIND_ROW) {
             return COLOR_BLIND_TEXT + (settings.isColorBlindMode() ? ON_TEXT : OFF_TEXT);
+        }
+        if (rowIndex == DIFFICULTY_ROW) {
+            return DIFFICULTY_TEXT + settings.getDifficulty().getDisplayName();
         }
         if (isKeyRow(rowIndex)) {
             GameCommand command = KEY_COMMANDS.get(rowIndex - FIRST_KEY_ROW);
