@@ -5,27 +5,32 @@ public enum ItemType {
             1,
             'L',
             ItemType.DEFAULT_WEIGHT,
-            true),
+            true,
+            null),
     BLOCK_GENERATE(
             2,
             'B',
             ItemType.DEFAULT_WEIGHT,
-            true),
+            true,
+            null),
     SLOW(
             3,
             'S',
             ItemType.DEFAULT_WEIGHT,
-            false),
+            false,
+            PieceType.SLOW),
     HEAVY_WEIGHT(
             4,
             'O',
             ItemType.DEFAULT_WEIGHT,
-            false),
+            false,
+            PieceType.HEAVY_WEIGHT),
     SPECIAL_I(
             5,
             '@',
             ItemType.DEFAULT_WEIGHT,
-            false);
+            false,
+            PieceType.SPECIAL_I);
 
     private static final int DEFAULT_WEIGHT = 10;
     /** 보드 인코딩에 쓰는 아이템 코드 */
@@ -36,12 +41,15 @@ public enum ItemType {
     private final boolean embedded;
     /** 생성 시 가중치 */
     private final int weight;
+    /** 아이템이 담길 블록 타입 변수 */
+    private final PieceType pieceType;
 
-    ItemType(int itemCode, char symbol, int weight, boolean embedded) {
+    ItemType(int itemCode, char symbol, int weight, boolean embedded, PieceType pieceType) {
         this.itemCode = itemCode;
         this.symbol = symbol;
         this.weight = weight;
         this.embedded = embedded;
+        this.pieceType = pieceType;
     }
 
     public int getItemCode() {
@@ -58,5 +66,9 @@ public enum ItemType {
 
     public int getWeight() {
         return weight;
+    }
+
+    public PieceType getDedicatedPieceType(){
+        return pieceType;
     }
 }
