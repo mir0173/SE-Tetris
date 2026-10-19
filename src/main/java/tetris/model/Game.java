@@ -1,6 +1,8 @@
 package tetris.model;
 
 import java.util.List;
+import java.util.Random;
+import static java.util.Objects.requireNonNull;
 
 public class Game {
 
@@ -15,6 +17,7 @@ public class Game {
 
     private final Board board;
     private final TetrominoGenerator generator;
+    private final ItemGenerator itemGenerator;
     private final GameMode mode;
     private final Difficulty difficulty;
     private GameStatus status;
@@ -38,18 +41,22 @@ public class Game {
     private long totalClearedLines;
 
     public Game(Board board, TetrominoGenerator generator, Difficulty difficulty, GameMode mode) {
-        if (board == null || generator == null || mode == null) {
-            String nullObject = board == null ? "board" : (mode == null ? "mode" : "generator");
-            throw new NullPointerException("param : " + nullObject + " is null");
-        }
-        if (difficulty == null) {
-            throw new NullPointerException("null difficulty");
-        }
+        this(board,generator,new ItemGenerator(new Random()),difficulty,mode);
+    }
+
+    public Game(Board board, TetrominoGenerator generator, ItemGenerator itemGenerator, Difficulty difficulty, GameMode mode) {
+        requireNonNull(board, "board");
+        requireNonNull(generator, "generator");
+        requireNonNull(itemGenerator, "itemGenerator");
+        requireNonNull(difficulty, "difficulty");
+        requireNonNull(mode, "mode");
+
         this.board = board;
         this.generator = generator;
+        this.itemGenerator = itemGenerator;
         this.difficulty = difficulty;
-        this.status = GameStatus.READY;
         this.mode = mode;
+        this.status = GameStatus.READY;
     }
 
     /**
@@ -283,7 +290,11 @@ public class Game {
         nextPieceType = generator.generateNext();
         nextItem = null;
         if (itemReserved) {
-            // Todo : nextItem 채우기
+            nextItem = itemGenerator.generateNext();
+            PieceType dedicatedPieceType = nextItem.type().getDedicatedPieceType();
+            if (dedicatedPieceType != null) {
+                nextPieceType = dedicatedPieceType;
+            }
             itemReserved = false;
         }
     }
