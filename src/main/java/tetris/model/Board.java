@@ -10,6 +10,8 @@ public class Board {
 
     /** 빈 칸을 나타내는 셀 값. */
     public static final int EMPTY_CELL = 0;
+    /** 칸 값 = 아이템 코드 * 이 값 + cellID */
+    public static final int ITEM_CODE_MULTIPLIER = 100;
     /** 보드의 가로 칸 수. */
     private final int width;
     /** 보드의 세로 칸 수. */
@@ -31,6 +33,14 @@ public class Board {
         this.width = width;
         this.height = height;
         this.cells = new int[height][width];
+    }
+
+    public static int extractCellId(int cellValue) {
+        return cellValue % ITEM_CODE_MULTIPLIER;
+    }
+
+    public static int extractItemCode(int cellValue) {
+        return cellValue / ITEM_CODE_MULTIPLIER;
     }
 
     public int getWidth() {
@@ -97,8 +107,11 @@ public class Board {
         }
         int[][] copy = copyCells();
         List<Position> positions = piece.getAbsolutePositions();
+
+        int index = 0;
         for (Position pos : positions) {
-            copy[pos.row()][pos.column()] = piece.type().getCellId();
+            copy[pos.row()][pos.column()] = calculateCellValue(piece, index);
+            index++;
         }
         return copy;
     }
@@ -137,6 +150,7 @@ public class Board {
     /**
      * 떨어지던 블록을 현재 위치에 보드의 일부로 고정한다.
      * 블록이 차지하는 칸마다 해당 블록 종류의 cellId를 기록한다.
+     * 아이템 블록이나 칸일 시 itemCode * ITEM_CODE_MULTIPLIER + cellId를 기록한다.
      * 호출 전에 canPlace(piece)가 true인지 확인해야 한다.
      *
      * @param piece 고정할 떨어지는 블록
@@ -147,8 +161,10 @@ public class Board {
             throw new IllegalArgumentException("현 위치에 블럭이 놓일 수 없음");
         }
         List<Position> positions = piece.getAbsolutePositions();
+        int index = 0;
         for (Position pos : positions) {
-            cells[pos.row()][pos.column()] = piece.type().getCellId();
+            cells[pos.row()][pos.column()] = calculateCellValue(piece, index);
+            index++;
         }
     }
 
@@ -181,5 +197,22 @@ public class Board {
             }
         }
         return true;
+    }
+
+    // Piece의 index번째 칸에 적을 값을 반환
+    private int calculateCellValue(Piece piece, int index) {
+        if (piece.item() == null) {
+            return piece.type().getCellId();
+        }
+
+        if (!piece.item().isEmbedded()) {
+            return piece.item().type().getItemCode() * ITEM_CODE_MULTIPLIER + piece.type().getCellId();
+        }
+
+        if (index == piece.item().cellIndex()) {
+            return piece.item().type().getItemCode() * ITEM_CODE_MULTIPLIER + piece.type().getCellId();
+        } else {
+            return piece.type().getCellId();
+        }
     }
 }

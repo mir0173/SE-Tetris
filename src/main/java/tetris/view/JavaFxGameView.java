@@ -234,7 +234,7 @@ public class JavaFxGameView implements GameView {
             drawSymbol(graphics, BORDER_SYMBOL, Color.WHITE, (cols + 1) * cellWidth, (row + 1) * cellHeight);
 
             for (int col = 0; col < cols; col++) {
-                PieceType type = findType(cells[row][col]);
+                PieceType type = findType(Board.extractCellId(cells[row][col]));
                 drawCell(graphics, (col + 1) * cellWidth, (row + 1) * cellHeight, type);
             }
         }
