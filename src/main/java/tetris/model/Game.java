@@ -32,6 +32,7 @@ public class Game {
     private boolean holdUsed; // 이번 블록에서 홀드를 이미 썼는지
     private boolean itemReserved; // spawnNextPiece 에서 아이템을 스폰하도록 예약하는 필드
     private boolean drilling; // 아이템 HEAVY WEIGHT(무게추)이 고정되지 않고 아래 칸을 부수는 상태인가
+    private boolean doubleScoreReserved; // 점수를 두배로 계산하는 것을 예약하는 변수
     private int lastClearedLines; // 마지막 고정 때 지운 줄 수 (T6 점수 계산용)
     private int itemLineCounter; // 아이템 생성까지 지운 줄 수 카운터, 초과분은 이월됨.
     private int itemClearedLines; // 아이템 효과로 지운 줄 수
@@ -43,6 +44,7 @@ public class Game {
     private long score = INITIAL_SCORE;
     private long dropInterval = INITIAL_DROP_INTERVAL;
     private long totalClearedLines;
+    private long currentPieceScore; // 지금 블록이 스폰된 뒤 얻은 점수 합계
 
     public Game(Board board, TetrominoGenerator generator, Difficulty difficulty, GameMode mode) {
         this(board, generator, new ItemGenerator(new Random()), difficulty, mode);
@@ -197,7 +199,7 @@ public class Game {
 
         if (drilling) {
             drillDown();
-        } else if(softDrop()){
+        } else if (softDrop()) {
             gravityDropCells++;
         }
         updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
@@ -284,8 +286,13 @@ public class Game {
             Position position = currentPiece.getAbsolutePositions().get(cellIndex);
             currentPiece.item().type().getItemEffect().handleLock(context, position);
         }
+
         lastClearedLines = board.clearFullLines() + itemClearedLines;
+        if (currentPiece.item() != null) {
+            currentPiece.item().type().getItemEffect().handleLinesCleared(context, lastClearedLines);
+        }
         holdUsed = false;
+
         if (mode == GameMode.ITEM) {
             itemLineCounter += lastClearedLines;
             if (itemLineCounter >= LINES_PER_ITEM_SPAWN) {
@@ -343,6 +350,7 @@ public class Game {
             heldItem = currentItem;
             spawn(spawnType, spawnItem);
         }
+        currentPieceScore = 0;
         holdUsed = true;
     }
 
@@ -360,18 +368,30 @@ public class Game {
      */
     private void updateProgress(long previousDropCells, long previousLockedPieceCount, long previousSpawnedPieceCount) {
 
+        long previousScore = score;
         long previousClearedLines = totalClearedLines;
         long speedReduction = INITIAL_DROP_INTERVAL - dropInterval;
         long level = (speedReduction + DROP_INTERVAL_STEP - 1) / DROP_INTERVAL_STEP + 1;
         long droppedCells = getTotalDropCells() - previousDropCells;
+        boolean pieceLocked = lockedPieceCount > previousLockedPieceCount;
 
         score += droppedCells * level;
 
-        if (lockedPieceCount > previousLockedPieceCount) {
+        if (pieceLocked) {
             long clearedLines = lastClearedLines;
 
             score += LINE_CLEAR_BONUS * clearedLines * clearedLines * level;
             totalClearedLines += clearedLines;
+        }
+
+        currentPieceScore += score - previousScore;
+
+        if (pieceLocked) {
+            if (doubleScoreReserved) {
+                score += currentPieceScore;
+                doubleScoreReserved = false;
+            }
+            currentPieceScore = 0;
         }
 
         long lineIncreases = totalClearedLines / LINES_PER_LEVEL - previousClearedLines / LINES_PER_LEVEL;
@@ -421,6 +441,11 @@ public class Game {
         @Override
         public void startDrilling() {
             drilling = true;
+        }
+
+        @Override
+        public void doubleScore() {
+            doubleScoreReserved = true;
         }
     }
 }

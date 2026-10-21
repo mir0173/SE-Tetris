@@ -15,4 +15,9 @@ public interface ItemContext {
      * 현재 블록이 고정되지 않고, 아래 칸을 부수며 내려가는 드릴 상태로 바꿔달라고 요청한다.
      */
     void startDrilling();
+
+    /**
+     * 이번에 고정된 블록이 얻은 점수 전체를 두배로 만들어 달라고 요청한다.
+     */
+    void doubleScore();
 }

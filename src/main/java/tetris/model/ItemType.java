@@ -2,6 +2,7 @@ package tetris.model;
 
 import tetris.model.effect.LineClearEffect;
 import tetris.model.effect.HeavyWeightEffect;
+import tetris.model.effect.SpecialIEffect;
 
 public enum ItemType {
     LINE_CLEAR(
@@ -40,8 +41,7 @@ public enum ItemType {
             ItemType.DEFAULT_WEIGHT,
             false,
             PieceType.SPECIAL_I,
-            new ItemEffect() {
-            });
+            new SpecialIEffect());
 
     private static final int DEFAULT_WEIGHT = 10;
     /** 보드 인코딩에 쓰는 아이템 코드 */
