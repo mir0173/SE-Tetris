@@ -12,11 +12,11 @@ class GameSnapshotTest {
     @Test
     void preserveCellsWhenExternalArraysChange() {
         int[][] cells = new int[20][10];
-        cells[0][0] = TetrominoType.T.getCellId();
+        cells[0][0] = PieceType.T.getCellId();
 
         GameSnapshot snapshot = new GameSnapshot(
                 cells,
-                List.of(TetrominoType.I),
+                List.of(PieceType.I),
                 null,
                 0L,
                 GameStatus.READY,
@@ -29,15 +29,15 @@ class GameSnapshotTest {
         returnedCells[0][0] = 0;
 
         assertEquals(
-                TetrominoType.T.getCellId(),
+                PieceType.T.getCellId(),
                 snapshot.getCells()[0][0]
         );
     }
 
     @Test
     void preserveNextPiecesWhenExternalListChanges() {
-        List<TetrominoType> nextPieces = new ArrayList<>();
-        nextPieces.add(TetrominoType.I);
+        List<PieceType> nextPieces = new ArrayList<>();
+        nextPieces.add(PieceType.I);
 
         GameSnapshot snapshot = new GameSnapshot(
                 new int[20][10],
@@ -51,7 +51,7 @@ class GameSnapshotTest {
         nextPieces.clear();
 
         assertEquals(
-                List.of(TetrominoType.I),
+                List.of(PieceType.I),
                 snapshot.getNextPieces()
         );
 

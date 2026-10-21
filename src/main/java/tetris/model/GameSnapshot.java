@@ -1,16 +1,18 @@
 package tetris.model;
+
 import java.util.List;
 
 public class GameSnapshot {
 
     private final int[][] cells;
-    private final List<TetrominoType> nextPieces;
-    private final TetrominoType heldPiece; // 홀드가 없으면 null
+    private final List<PieceType> nextPieces;
+    private final PieceType heldPiece; // 홀드가 없으면 null
     private final long score;
     private final GameStatus status;
     private final long dropInterval;
 
-    public GameSnapshot(int[][] cells, List<TetrominoType> nextPieces, TetrominoType heldPiece, long score, GameStatus status, long dropInterval) {
+    public GameSnapshot(int[][] cells, List<PieceType> nextPieces, PieceType heldPiece, long score, GameStatus status,
+            long dropInterval) {
         this.cells = copyCells(cells);
         this.nextPieces = List.copyOf(nextPieces);
         this.heldPiece = heldPiece;
@@ -23,14 +25,14 @@ public class GameSnapshot {
         return copyCells(cells);
     }
 
-    public List<TetrominoType> getNextPieces() {
+    public List<PieceType> getNextPieces() {
         return nextPieces;
     }
 
     /**
      * hold된 블록이 없으면 null 반환 가능
      */
-    public TetrominoType getHeldPiece() {
+    public PieceType getHeldPiece() {
         return heldPiece;
     }
 

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Random;
@@ -27,7 +28,7 @@ class DifficultyTest {
     })
     void changeActualIProbabilityByTwentyPercent(
             Difficulty difficulty, double factor) {
-        Map<TetrominoType, Integer> weights =
+        Map<PieceType, Integer> weights =
                 difficulty.createWeights();
 
         int total = weights.values().stream()
@@ -37,7 +38,7 @@ class DifficultyTest {
         assertEquals(7, weights.size());
         assertEquals(
                 1.0 / 7.0 * factor,
-                (double) weights.get(TetrominoType.I) / total,
+                (double) weights.get(PieceType.I) / total,
                 1.0e-12);
     }
 
@@ -53,10 +54,10 @@ class DifficultyTest {
                 new Random(RANDOM_SEED),
                 difficulty.createWeights());
 
-        Map<TetrominoType, Integer> counts =
-                new EnumMap<>(TetrominoType.class);
+        Map<PieceType, Integer> counts =
+                new EnumMap<>(PieceType.class);
 
-        for (TetrominoType type : TetrominoType.values()) {
+        for (PieceType type : basicTypes()) {
             counts.put(type, 0);
         }
 
@@ -67,9 +68,9 @@ class DifficultyTest {
         double iProbability = 1.0 / 7.0 * factor;
         double otherProbability = (1.0 - iProbability) / 6.0;
 
-        for (TetrominoType type : TetrominoType.values()) {
+        for (PieceType type : basicTypes()) {
             double expectedProbability =
-                    type == TetrominoType.I
+                    type == PieceType.I
                             ? iProbability
                             : otherProbability;
 
@@ -87,12 +88,18 @@ class DifficultyTest {
         }
     }
 
+    private PieceType[] basicTypes() {
+        return Arrays.stream(PieceType.values())
+                .filter(PieceType::isBasic)
+                .toArray(PieceType[]::new);
+    }
+
     @Test
     void preventExternalWeightChanges() {
         assertThrows(
                 UnsupportedOperationException.class,
                 () -> Difficulty.EASY.createWeights()
-                        .put(TetrominoType.I, 0));
+                        .put(PieceType.I, 0));
     }
 }
 // AI-assisted code end

@@ -35,7 +35,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import tetris.model.GameSnapshot;
 import tetris.model.GameStatus;
-import tetris.model.TetrominoType;
+import tetris.model.PieceType;
 import tetris.model.Difficulty;
 import tetris.model.GameCommand;
 
@@ -211,7 +211,7 @@ class JavaFxGameViewTest {
 
                 view.render(new GameSnapshot(
                         new int[20][10],
-                        List.of(TetrominoType.O),
+                        List.of(PieceType.O),
                         null,
                         0L,
                         GameStatus.PLAYING,
@@ -223,7 +223,7 @@ class JavaFxGameViewTest {
 
                 view.render(new GameSnapshot(
                         new int[20][10],
-                        List.of(TetrominoType.I),
+                        List.of(PieceType.I),
                         null,
                         0L,
                         GameStatus.PLAYING,
@@ -268,7 +268,7 @@ class JavaFxGameViewTest {
                 view.render(new GameSnapshot(
                         new int[20][10],
                         List.of(),
-                        TetrominoType.T,
+                        PieceType.T,
                         0L,
                         GameStatus.PLAYING,
                         1_000L));
@@ -347,12 +347,12 @@ class JavaFxGameViewTest {
                         new JavaFxGameView(stage, settings);
 
                 int[][] cells = new int[20][10];
-                cells[0][0] = TetrominoType.I.getCellId();
+                cells[0][0] = PieceType.I.getCellId();
 
                 view.render(new GameSnapshot(
                         cells,
-                        List.of(TetrominoType.I),
-                        TetrominoType.I,
+                        List.of(PieceType.I),
+                        PieceType.I,
                         0L,
                         GameStatus.PLAYING,
                         1_000L));
@@ -460,8 +460,8 @@ class JavaFxGameViewTest {
                 JavaFxGameView view = new JavaFxGameView(stage, settings);
                 view.render(new GameSnapshot(
                         new int[20][10],
-                        List.of(TetrominoType.I),
-                        TetrominoType.T,
+                        List.of(PieceType.I),
+                        PieceType.T,
                         100L,
                         GameStatus.PLAYING,
                         1_000L));
@@ -512,8 +512,8 @@ class JavaFxGameViewTest {
                 JavaFxGameView view = new JavaFxGameView(stage, settings);
                 view.render(new GameSnapshot(
                         new int[20][10],
-                        List.of(TetrominoType.I),
-                        TetrominoType.T,
+                        List.of(PieceType.I),
+                        PieceType.T,
                         100L,
                         GameStatus.PAUSED,
                         1_000L));

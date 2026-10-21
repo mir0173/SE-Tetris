@@ -24,10 +24,12 @@ public enum Difficulty {
         return displayName;
     }
 
-    public Map<TetrominoType, Integer> createWeights() {
-        Map<TetrominoType, Integer> weights = new EnumMap<>(TetrominoType.class);
-        for (TetrominoType type : TetrominoType.values()) {
-            weights.put(type, type == TetrominoType.I ? iWeight : otherWeight);
+    public Map<PieceType, Integer> createWeights() {
+        Map<PieceType, Integer> weights = new EnumMap<>(PieceType.class);
+        for (PieceType type : PieceType.values()) {
+            if (type.isBasic()) {
+                weights.put(type, type == PieceType.I ? iWeight : otherWeight);
+            }
         }
         return Map.copyOf(weights);
     }

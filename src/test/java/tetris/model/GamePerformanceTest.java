@@ -44,7 +44,7 @@ class GamePerformanceTest {
     }
 
     private Game newGame() {
-        Game game = new Game(new Board(10, 20), new TetrominoGenerator(new Random(42L)), Difficulty.NORMAL);
+        Game game = new Game(new Board(10, 20), new TetrominoGenerator(new Random(42L)), Difficulty.NORMAL, GameMode.NORMAL);
         game.start();
         return game;
     }

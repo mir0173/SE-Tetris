@@ -37,17 +37,17 @@ class GameTest {
 
     @Test
     void rejectNullBoard() {
-        assertThrows(NullPointerException.class, () -> new Game(null, sequenceGenerator(TetrominoType.O), Difficulty.NORMAL));
+        assertThrows(NullPointerException.class, () -> new Game(null, sequenceGenerator(PieceType.O), Difficulty.NORMAL, GameMode.NORMAL));
     }
 
     @Test
     void rejectNullGenerator() {
-        assertThrows(NullPointerException.class, () -> new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), null, Difficulty.NORMAL));
+        assertThrows(NullPointerException.class, () -> new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), null, Difficulty.NORMAL, GameMode.NORMAL));
     }
 
     @Test
     void createEmptyReadySnapshotBeforeStart() {
-        GameSnapshot snapshot = newGame(TetrominoType.O).createSnapshot();
+        GameSnapshot snapshot = newGame(PieceType.O).createSnapshot();
 
         assertEquals(GameStatus.READY, snapshot.getStatus());
         assertTrue(snapshot.getNextPieces().isEmpty());
@@ -57,7 +57,7 @@ class GameTest {
 
     @Test
     void ignoreCommandsAndTicksBeforeStart() {
-        Game game = newGame(TetrominoType.O);
+        Game game = newGame(PieceType.O);
 
         game.handleCommand(GameCommand.MOVE_LEFT);
         game.tick();
@@ -68,29 +68,29 @@ class GameTest {
 
     @Test
     void startWithOBlock() {
-        Game game = newGame(TetrominoType.O);
+        Game game = newGame(PieceType.O);
         game.start();
 
         assertEquals(GameStatus.PLAYING, game.createSnapshot().getStatus());
         assertCells(game.createSnapshot(), Set.of("0,4", "0,5", "1,4", "1,5"), CELL_ID_O);
-        assertEquals(List.of(TetrominoType.O), game.createSnapshot().getNextPieces());
+        assertEquals(List.of(PieceType.O), game.createSnapshot().getNextPieces());
     }
 
     @Test
     void showNextBlockAfterStart() {
-        Game game = newGame(TetrominoType.T, TetrominoType.I, TetrominoType.O);
+        Game game = newGame(PieceType.T, PieceType.I, PieceType.O);
         game.start();
 
-        assertEquals(List.of(TetrominoType.I), game.createSnapshot().getNextPieces());
+        assertEquals(List.of(PieceType.I), game.createSnapshot().getNextPieces());
     }
 
     @Test
     void showFollowingBlockAfterHardDrop() {
-        Game game = newGame(TetrominoType.T, TetrominoType.I, TetrominoType.O);
+        Game game = newGame(PieceType.T, PieceType.I, PieceType.O);
         game.start();
         game.handleCommand(GameCommand.HARD_DROP);
 
-        assertEquals(List.of(TetrominoType.O), game.createSnapshot().getNextPieces());
+        assertEquals(List.of(PieceType.O), game.createSnapshot().getNextPieces());
         assertCellIds(
                 game.createSnapshot(),
                 Map.of(
@@ -100,7 +100,7 @@ class GameTest {
 
     @Test
     void ignoreSecondStart() {
-        Game game = newGame(TetrominoType.O);
+        Game game = newGame(PieceType.O);
         game.start();
         game.handleCommand(GameCommand.MOVE_LEFT);
         game.start();
@@ -115,7 +115,7 @@ class GameTest {
 
     @Test
     void moveOBlockLeftOnce() {
-        Game game = startedGame(TetrominoType.O);
+        Game game = startedGame(PieceType.O);
         game.handleCommand(GameCommand.MOVE_LEFT);
 
         assertCells(game.createSnapshot(), Set.of("0,3", "0,4", "1,3", "1,4"), CELL_ID_O);
@@ -123,7 +123,7 @@ class GameTest {
 
     @Test
     void stopOBlockAtLeftWall() {
-        Game game = startedGame(TetrominoType.O);
+        Game game = startedGame(PieceType.O);
         repeatCommand(game, GameCommand.MOVE_LEFT, 5);
 
         assertCells(game.createSnapshot(), Set.of("0,0", "0,1", "1,0", "1,1"), CELL_ID_O);
@@ -131,7 +131,7 @@ class GameTest {
 
     @Test
     void stopOBlockAtRightWall() {
-        Game game = startedGame(TetrominoType.O);
+        Game game = startedGame(PieceType.O);
         repeatCommand(game, GameCommand.MOVE_RIGHT, 5);
 
         assertCells(game.createSnapshot(), Set.of("0,8", "0,9", "1,8", "1,9"), CELL_ID_O);
@@ -139,7 +139,7 @@ class GameTest {
 
     @Test
     void rotateIBlockClockwise() {
-        Game game = startedGame(TetrominoType.I);
+        Game game = startedGame(PieceType.I);
         game.handleCommand(GameCommand.ROTATE_CLOCKWISE);
 
         assertCells(game.createSnapshot(), Set.of("0,5", "1,5", "2,5", "3,5"), CELL_ID_I);
@@ -147,7 +147,7 @@ class GameTest {
 
     @Test
     void moveRotatedIBlockToRightWall() {
-        Game game = startedGame(TetrominoType.I);
+        Game game = startedGame(PieceType.I);
         game.handleCommand(GameCommand.ROTATE_CLOCKWISE);
         repeatCommand(game, GameCommand.MOVE_RIGHT, 5);
 
@@ -156,7 +156,7 @@ class GameTest {
 
     @Test
     void ignoreRotationOutsideRightWall() {
-        Game game = startedGame(TetrominoType.I);
+        Game game = startedGame(PieceType.I);
         game.handleCommand(GameCommand.ROTATE_CLOCKWISE);
         repeatCommand(game, GameCommand.MOVE_RIGHT, 5);
         game.handleCommand(GameCommand.ROTATE_CLOCKWISE);
@@ -166,7 +166,7 @@ class GameTest {
 
     @Test
     void rotateIBlockBackCounterClockwise() {
-        Game game = startedGame(TetrominoType.I);
+        Game game = startedGame(PieceType.I);
         game.handleCommand(GameCommand.ROTATE_CLOCKWISE);
         game.handleCommand(GameCommand.ROTATE_COUNTERCLOCKWISE);
 
@@ -175,7 +175,7 @@ class GameTest {
 
     @Test
     void countGravityDrops() {
-        Game game = startedGame(TetrominoType.O);
+        Game game = startedGame(PieceType.O);
         game.tick();
         game.tick();
 
@@ -185,7 +185,7 @@ class GameTest {
 
     @Test
     void countSoftDrop() {
-        Game game = startedGame(TetrominoType.O);
+        Game game = startedGame(PieceType.O);
         game.handleCommand(GameCommand.SOFT_DROP);
 
         assertEquals(ONE_DROP, game.getSoftDropCells());
@@ -194,7 +194,7 @@ class GameTest {
 
     @Test
     void hardDropAndSpawnNextBlock() {
-        Game game = startedGame(TetrominoType.O);
+        Game game = startedGame(PieceType.O);
         game.handleCommand(GameCommand.HARD_DROP);
 
         assertEquals(FIRST_HARD_DROP, game.getHardDropCells());
@@ -207,7 +207,7 @@ class GameTest {
 
     @Test
     void keepDropCountersSeparateAfterHardDrop() {
-        Game game = startedGame(TetrominoType.O);
+        Game game = startedGame(PieceType.O);
         game.handleCommand(GameCommand.HARD_DROP);
 
         assertEquals(HARD_DROP_COUNT, game.getHardDropCells());
@@ -217,7 +217,7 @@ class GameTest {
 
     @Test
     void keepDropCountersSeparateAfterGravityAndSoftDrop() {
-        Game game = startedGame(TetrominoType.O);
+        Game game = startedGame(PieceType.O);
         game.tick();
         game.handleCommand(GameCommand.SOFT_DROP);
 
@@ -228,7 +228,7 @@ class GameTest {
 
     @Test
     void lockWhenSoftDropReachesFloor() {
-        Game game = startedGame(TetrominoType.O);
+        Game game = startedGame(PieceType.O);
         repeatCommand(game, GameCommand.SOFT_DROP, BOARD_HEIGHT - 2);
         long dropsBeforeLock = game.getSoftDropCells();
         game.handleCommand(GameCommand.SOFT_DROP);
@@ -239,7 +239,7 @@ class GameTest {
 
     @Test
     void lockWhenTickReachesFloor() {
-        Game game = startedGame(TetrominoType.O);
+        Game game = startedGame(PieceType.O);
         repeatTick(game, BOARD_HEIGHT - 2);
         long dropsBeforeLock = game.getGravityDropCells();
         game.tick();
@@ -250,7 +250,7 @@ class GameTest {
 
     @Test
     void stackTwoHardDroppedBlocks() {
-        Game game = startedGame(TetrominoType.O);
+        Game game = startedGame(PieceType.O);
         game.handleCommand(GameCommand.HARD_DROP);
         game.handleCommand(GameCommand.HARD_DROP);
 
@@ -267,7 +267,7 @@ class GameTest {
 
     @Test
     void clearTwoLinesAfterFillingSmallBoard() {
-        Game game = new Game(new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT), sequenceGenerator(TetrominoType.O), Difficulty.NORMAL);
+        Game game = new Game(new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT), sequenceGenerator(PieceType.O), Difficulty.NORMAL, GameMode.NORMAL);
         game.start();
         game.handleCommand(GameCommand.MOVE_LEFT);
         game.handleCommand(GameCommand.HARD_DROP);
@@ -281,7 +281,7 @@ class GameTest {
 
     @Test
     void reportOnlyMostRecentClearedLines() {
-        Game game = new Game(new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT), sequenceGenerator(TetrominoType.O), Difficulty.NORMAL);
+        Game game = new Game(new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT), sequenceGenerator(PieceType.O), Difficulty.NORMAL, GameMode.NORMAL);
         game.start();
         game.handleCommand(GameCommand.MOVE_LEFT);
         game.handleCommand(GameCommand.HARD_DROP);
@@ -295,7 +295,7 @@ class GameTest {
 
     @Test
     void reportNoClearedLinesWhenNoLineIsFull() {
-        Game game = newGame(TetrominoType.O);
+        Game game = newGame(PieceType.O);
         game.start();
         game.handleCommand(GameCommand.HARD_DROP);
 
@@ -304,34 +304,34 @@ class GameTest {
 
     @Test
     void holdFirstBlock() {
-        Game game = newGame(TetrominoType.T, TetrominoType.I, TetrominoType.O);
+        Game game = newGame(PieceType.T, PieceType.I, PieceType.O);
         game.start();
         game.handleCommand(GameCommand.HOLD);
 
-        assertEquals(TetrominoType.T, game.createSnapshot().getHeldPiece());
+        assertEquals(PieceType.T, game.createSnapshot().getHeldPiece());
         assertCells(game.createSnapshot(), Set.of("1,3", "1,4", "1,5", "1,6"), CELL_ID_I);
     }
 
     @Test
     void ignoreSecondHoldBeforeLocking() {
-        Game game = newGame(TetrominoType.T, TetrominoType.I, TetrominoType.O);
+        Game game = newGame(PieceType.T, PieceType.I, PieceType.O);
         game.start();
         game.handleCommand(GameCommand.HOLD);
         game.handleCommand(GameCommand.HOLD);
 
-        assertEquals(TetrominoType.T, game.createSnapshot().getHeldPiece());
+        assertEquals(PieceType.T, game.createSnapshot().getHeldPiece());
         assertCells(game.createSnapshot(), Set.of("1,3", "1,4", "1,5", "1,6"), CELL_ID_I);
     }
 
     @Test
     void holdAgainAfterLocking() {
-        Game game = newGame(TetrominoType.T, TetrominoType.I, TetrominoType.O);
+        Game game = newGame(PieceType.T, PieceType.I, PieceType.O);
         game.start();
         game.handleCommand(GameCommand.HOLD);
         game.handleCommand(GameCommand.HARD_DROP);
         game.handleCommand(GameCommand.HOLD);
 
-        assertEquals(TetrominoType.O, game.createSnapshot().getHeldPiece());
+        assertEquals(PieceType.O, game.createSnapshot().getHeldPiece());
         assertCellIds(
                 game.createSnapshot(),
                 Map.of(
@@ -341,14 +341,14 @@ class GameTest {
 
     @Test
     void resetHeldBlockRotationWhenTakingItOut() {
-        Game game = newGame(TetrominoType.I, TetrominoType.O);
+        Game game = newGame(PieceType.I, PieceType.O);
         game.start();
         game.handleCommand(GameCommand.ROTATE_CLOCKWISE);
         game.handleCommand(GameCommand.HOLD);
         game.handleCommand(GameCommand.HARD_DROP);
         game.handleCommand(GameCommand.HOLD);
 
-        assertEquals(TetrominoType.O, game.createSnapshot().getHeldPiece());
+        assertEquals(PieceType.O, game.createSnapshot().getHeldPiece());
         assertCellIds(
                         game.createSnapshot(),
                         Map.of(
@@ -359,7 +359,7 @@ class GameTest {
 
     @Test
     void rejectMovementBlockedByLockedBlock() {
-        Game game = startedGame(TetrominoType.O);
+        Game game = startedGame(PieceType.O);
         game.handleCommand(GameCommand.HARD_DROP);
         game.handleCommand(GameCommand.MOVE_RIGHT);
         game.handleCommand(GameCommand.MOVE_RIGHT);
@@ -375,7 +375,7 @@ class GameTest {
 
     @Test
     void becomeGameOverWhenNextSpawnIsBlocked() {
-        Game game = new Game(new Board(SMALL_BOARD_WIDTH, GAME_OVER_HEIGHT), sequenceGenerator(TetrominoType.O), Difficulty.NORMAL);
+        Game game = new Game(new Board(SMALL_BOARD_WIDTH, GAME_OVER_HEIGHT), sequenceGenerator(PieceType.O), Difficulty.NORMAL, GameMode.NORMAL);
         game.start();
         game.handleCommand(GameCommand.HARD_DROP);
 
@@ -386,7 +386,7 @@ class GameTest {
 
     @Test
     void showOnlyLockedCellsAfterGameOver() {
-        Game game = new Game(new Board(SMALL_BOARD_WIDTH, GAME_OVER_HEIGHT), sequenceGenerator(TetrominoType.O), Difficulty.NORMAL);
+        Game game = new Game(new Board(SMALL_BOARD_WIDTH, GAME_OVER_HEIGHT), sequenceGenerator(PieceType.O), Difficulty.NORMAL, GameMode.NORMAL);
         game.start();
         game.handleCommand(GameCommand.HARD_DROP);
 
@@ -395,7 +395,7 @@ class GameTest {
 
     @Test
     void ignoreCommandsAfterGameOver() {
-        Game game = new Game(new Board(SMALL_BOARD_WIDTH, GAME_OVER_HEIGHT), sequenceGenerator(TetrominoType.O), Difficulty.NORMAL);
+        Game game = new Game(new Board(SMALL_BOARD_WIDTH, GAME_OVER_HEIGHT), sequenceGenerator(PieceType.O), Difficulty.NORMAL, GameMode.NORMAL);
         game.start();
         game.handleCommand(GameCommand.HARD_DROP);
         long lockedPieces = game.getLockedPieceCount();
@@ -408,7 +408,7 @@ class GameTest {
 
     @Test
     void quitWithoutGameOver() {
-        Game game = startedGame(TetrominoType.O);
+        Game game = startedGame(PieceType.O);
         game.handleCommand(GameCommand.QUIT_GAME);
 
         assertTrue(game.isFinished());
@@ -417,7 +417,7 @@ class GameTest {
 
     @Test
     void ignoreCommandsAfterQuit() {
-        Game game = startedGame(TetrominoType.O);
+        Game game = startedGame(PieceType.O);
         game.handleCommand(GameCommand.QUIT_GAME);
         game.handleCommand(GameCommand.MOVE_LEFT);
         game.tick();
@@ -428,7 +428,7 @@ class GameTest {
 
     @Test
     void pauseWithoutMovingPiece() {
-        Game game = startedGame(TetrominoType.O);
+        Game game = startedGame(PieceType.O);
         game.handleCommand(GameCommand.PAUSE);
         game.handleCommand(GameCommand.NONE);
 
@@ -436,23 +436,23 @@ class GameTest {
         assertEquals(GameStatus.PAUSED, game.createSnapshot().getStatus());
     }
 
-    private Game newGame(TetrominoType... types) {
-        return new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(types), Difficulty.NORMAL);
+    private Game newGame(PieceType... types) {
+        return new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(types), Difficulty.NORMAL, GameMode.NORMAL);
     }
 
-    private Game startedGame(TetrominoType... types) {
+    private Game startedGame(PieceType... types) {
         Game game = newGame(types);
         game.start();
         return game;
     }
 
-    private TetrominoGenerator sequenceGenerator(TetrominoType... types) {
+    private TetrominoGenerator sequenceGenerator(PieceType... types) {
         return new TetrominoGenerator(new Random(0L)) {
             private int index;
 
             @Override
-            public TetrominoType generateNext() {
-                TetrominoType type = types[Math.min(index, types.length - 1)];
+            public PieceType generateNext() {
+                PieceType type = types[Math.min(index, types.length - 1)];
                 index++;
                 return type;
             }

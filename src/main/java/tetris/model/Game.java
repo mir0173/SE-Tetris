@@ -7,6 +7,7 @@ public class Game {
     private static final long INITIAL_SCORE = 0L;
     private static final long INITIAL_DROP_INTERVAL = 1_000L;
     private static final int LINES_PER_LEVEL = 5;
+    private static final int LINES_PER_ITEM_SPAWN = 10;
     private static final int PIECES_PER_LEVEL = 10;
     private static final long DROP_INTERVAL_STEP = 100L;
     private static final long MIN_DROP_INTERVAL = 100L;
@@ -14,25 +15,31 @@ public class Game {
 
     private final Board board;
     private final TetrominoGenerator generator;
+    private final GameMode mode;
     private final Difficulty difficulty;
     private GameStatus status;
-    private Tetromino currentPiece;
-    private TetrominoType nextPiece;
-    private TetrominoType heldPiece; // 홀드된 블록 종류
-    private boolean holdUsed; // 이번 블록에서 홀드를 이미 썼는지
-    private int lastClearedLines; // 마지막 고정 때 지운 줄 수 (T6 점수 계산용)
-    private long lockedPieceCount; // 고정된 블록 수
-    private long spawnedPieceCount; // 실제 생성 수
-    private long gravityDropCells; // 자동 낙하 칸 수
-    private long softDropCells; // 소프트 드롭 칸 수
-    private long hardDropCells; // 하드 드롭 칸 수
+
+    private Piece currentPiece;         // 현재 드랍중인 블록
+    private PieceType nextPieceType;    // 다음에 드랍될 블록 타입
+    private Item nextItem;              // 다음에 생성될 아이템
+    private PieceType heldPieceType;    // 홀드된 블록 종류
+    private Item heldItem;              // 홀드된 블록의 아이템 종류
+    private boolean holdUsed;           // 이번 블록에서 홀드를 이미 썼는지
+    private boolean itemReserved;       // spawnNextPiece 에서 아이템을 스폰하도록 예약하는 필드
+    private int lastClearedLines;       // 마지막 고정 때 지운 줄 수 (T6 점수 계산용)
+    private int itemLineCounter;        // 아이템 생성까지 지운 줄 수 카운터
+    private long lockedPieceCount;      // 고정된 블록 수
+    private long spawnedPieceCount;     // 실제 생성된 블록 수
+    private long gravityDropCells;      // 자동 낙하 칸 수
+    private long softDropCells;         // 소프트 드롭 칸 수
+    private long hardDropCells;         // 하드 드롭 칸 수
     private long score = INITIAL_SCORE;
     private long dropInterval = INITIAL_DROP_INTERVAL;
     private long totalClearedLines;
 
-    public Game(Board board, TetrominoGenerator generator, Difficulty difficulty) {
-        if (board == null || generator == null) {
-            String nullObject = board == null ? "board" : "generator";
+    public Game(Board board, TetrominoGenerator generator, Difficulty difficulty, GameMode mode) {
+        if (board == null || generator == null || mode == null) {
+            String nullObject = board == null ? "board" : (mode == null ? "mode" : "generator");
             throw new NullPointerException("param : " + nullObject + " is null");
         }
         if (difficulty == null) {
@@ -42,8 +49,9 @@ public class Game {
         this.generator = generator;
         this.difficulty = difficulty;
         this.status = GameStatus.READY;
+        this.mode = mode;
     }
-    
+
     /**
      * 초기 낙하 간격을 반환한다.
      * TetrisApplication에서 timer 생성시 사용한다.
@@ -98,7 +106,7 @@ public class Game {
             return;
         }
         status = GameStatus.PLAYING;
-        nextPiece = generator.generateNext();
+        nextPieceType = generator.generateNext();
         spawnNextPiece();
     }
 
@@ -134,8 +142,16 @@ public class Game {
         switch (command) {
             case MOVE_LEFT -> tryReplace(currentPiece.move(0, -1));
             case MOVE_RIGHT -> tryReplace(currentPiece.move(0, 1));
-            case ROTATE_CLOCKWISE -> tryReplace(currentPiece.rotateClockwise());
-            case ROTATE_COUNTERCLOCKWISE -> tryReplace(currentPiece.rotateCounterClockwise());
+            case ROTATE_CLOCKWISE -> {
+                if (currentPiece.canRotate()) {
+                    tryReplace(currentPiece.rotateClockwise());
+                }
+            }
+            case ROTATE_COUNTERCLOCKWISE -> {
+                if (currentPiece.canRotate()) {
+                    tryReplace(currentPiece.rotateCounterClockwise());
+                }
+            }
             case SOFT_DROP -> {
                 if (softDrop()) {
                     softDropCells++;
@@ -144,7 +160,7 @@ public class Game {
             case HARD_DROP -> hardDrop();
             case HOLD -> hold();
             case PAUSE, QUIT_GAME, NONE -> {
-            } 
+            }
         }
 
         updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
@@ -198,23 +214,23 @@ public class Game {
         } else {
             cells = board.copyCellsWith(currentPiece);
         }
-        List<TetrominoType> list;
-        if (nextPiece != null) {
-            list = List.of(nextPiece);
+        List<PieceType> list;
+        if (nextPieceType != null) {
+            list = List.of(nextPieceType);
         } else {
             list = List.of();
         }
         return new GameSnapshot(
                 cells,
                 list,
-                heldPiece,
+                heldPieceType,
                 score,
                 status,
                 dropInterval);
     }
 
     // 후보가 놓일 수 있으면 현재 블록을 교체하고 true, 아니면 그대로 두고 false
-    private boolean tryReplace(Tetromino candidate) {
+    private boolean tryReplace(Piece candidate) {
         if (!board.canPlace(candidate)) {
             return false;
         } else {
@@ -244,31 +260,41 @@ public class Game {
     // 현재 블록을 고정하고, 줄을 지우고, 다음 블록을 내보냄
     private void lockAndSpawnNext() {
         lockedPieceCount++;
+
         board.lock(currentPiece);
         lastClearedLines = board.clearFullLines();
         holdUsed = false;
+        if (mode == GameMode.ITEM) {
+            itemLineCounter += lastClearedLines;
+            if (itemLineCounter >= LINES_PER_ITEM_SPAWN) {
+                itemLineCounter = 0;
+                itemReserved = true;
+            }
+        }
         spawnNextPiece();
     }
 
-    // nextPiece를 꺼내 스폰하고, nextPiece를 새로 채움
+    // nextPieceType를 꺼내 스폰하고, nextPieceType를 새로 채움
     private void spawnNextPiece() {
-        TetrominoType localNextPiece = nextPiece;
-        nextPiece = generator.generateNext();
-        spawn(localNextPiece);
-
+        spawn(nextPieceType, nextItem);
         if (!isGameOver()) {
             spawnedPieceCount++;
+        }
+        nextPieceType = generator.generateNext();
+        nextItem = null;
+        if (itemReserved) {
+            // Todo : nextItem 채우기
+            itemReserved = false;
         }
     }
 
     // 주어진 종류를 스폰 위치에 놓음. 놓을 수 없으면 게임오버
-    private void spawn(TetrominoType type) {
-        Tetromino candidate = Tetromino.spawn(type, board.getWidth());
+    private void spawn(PieceType type, Item item) {
+        Piece candidate = Piece.spawn(type, item, board.getWidth());
         if (!board.canPlace(candidate)) {
             status = GameStatus.GAMEOVER;
             return;
         }
-
         currentPiece = candidate;
     }
 
@@ -278,14 +304,18 @@ public class Game {
             return;
         }
 
-        TetrominoType currentType = currentPiece.type();
-        if (heldPiece == null) {
-            heldPiece = currentType;
+        PieceType currentType = currentPiece.type();
+        Item currentItem = currentPiece.item();
+        if (heldPieceType == null) {
+            heldPieceType = currentType;
+            heldItem = currentItem;
             spawnNextPiece();
         } else {
-            TetrominoType spawnType = heldPiece;
-            heldPiece = currentType;
-            spawn(spawnType);
+            PieceType spawnType = heldPieceType;
+            Item spawnItem = heldItem;
+            heldPieceType = currentType;
+            heldItem = currentItem;
+            spawn(spawnType, spawnItem);
         }
         holdUsed = true;
     }
@@ -298,8 +328,8 @@ public class Game {
      * 이번 명령 또는 자동 낙하의 결과만 점수에 반영한다
      * 줄 삭제 보너스는 블록이 새로 고정된 경우에만 반영한다
      *
-     * @param previousDropCells 실행 전 누적 낙하 칸 수
-     * @param previousLockedPieceCount 실행 전 누적 블록 고정 횟수
+     * @param previousDropCells         실행 전 누적 낙하 칸 수
+     * @param previousLockedPieceCount  실행 전 누적 블록 고정 횟수
      * @param previousSpawnedPieceCount 실행 전 누적 블록 생성 수
      */
     private void updateProgress(long previousDropCells, long previousLockedPieceCount, long previousSpawnedPieceCount) {

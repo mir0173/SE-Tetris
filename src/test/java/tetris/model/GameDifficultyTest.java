@@ -24,7 +24,7 @@ class GameDifficultyTest {
             long expectedInterval,
             long expectedDropScore) {
         Game game = startedGame(
-                4, 100, TetrominoType.I, difficulty);
+                4, 100, PieceType.I, difficulty);
 
         for (int index = 0; index < 5; index++) {
             game.handleCommand(GameCommand.HARD_DROP);
@@ -47,7 +47,7 @@ class GameDifficultyTest {
     void keepPieceSpeedRuleAcrossDifficulties(
             Difficulty difficulty) {
         Game game = startedGame(
-                10, 100, TetrominoType.O, difficulty);
+                10, 100, PieceType.O, difficulty);
 
         for (int index = 0; index < 8; index++) {
             game.handleCommand(GameCommand.HARD_DROP);
@@ -77,16 +77,16 @@ class GameDifficultyTest {
             private int generated;
 
             @Override
-            public TetrominoType generateNext() {
+            public PieceType generateNext() {
                 int index = generated++;
                 return index < 4 || index >= 8
-                        ? TetrominoType.I
-                        : TetrominoType.O;
+                        ? PieceType.I
+                        : PieceType.O;
             }
         };
 
         Game game = new Game(
-                new Board(4, 100), generator, difficulty);
+                new Board(4, 100), generator, difficulty, GameMode.NORMAL);
         game.start();
 
         for (int index = 0; index < 9; index++) {
@@ -102,7 +102,7 @@ class GameDifficultyTest {
     @EnumSource(Difficulty.class)
     void keepMinimumInterval(Difficulty difficulty) {
         Game game = startedGame(
-                4, 100, TetrominoType.I, difficulty);
+                4, 100, PieceType.I, difficulty);
 
         for (int index = 0; index < 100; index++) {
             game.handleCommand(GameCommand.HARD_DROP);
@@ -120,22 +120,23 @@ class GameDifficultyTest {
                 () -> new Game(
                         new Board(10, 20),
                         new TetrominoGenerator(new Random(0L)),
-                        null));
+                        null, 
+                        GameMode.NORMAL));
     }
 
     private Game startedGame(
             int width, int height,
-            TetrominoType type, Difficulty difficulty) {
+            PieceType type, Difficulty difficulty) {
         TetrominoGenerator generator =
                 new TetrominoGenerator(new Random(0L)) {
             @Override
-            public TetrominoType generateNext() {
+            public PieceType generateNext() {
                 return type;
             }
         };
 
         Game game = new Game(
-                new Board(width, height), generator, difficulty);
+                new Board(width, height), generator, difficulty, GameMode.NORMAL);
         game.start();
         return game;
     }

@@ -3,10 +3,11 @@ package tetris.model;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.Arrays;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
-class TetrominoTypeTest {
+class PieceTypeTest {
 
     // AI-assisted code start
     private static final int FIRST_ROTATION = 0;
@@ -14,8 +15,8 @@ class TetrominoTypeTest {
     private static final int CELL_COUNT = 4;
 
     @Test
-    void returnFourCellsForEveryTypeAndRotation() {
-        for (TetrominoType type : TetrominoType.values()) {
+    void returnFourCellsForEveryBasicTypeAndRotation() {
+        for (PieceType type : basicTypes()) {
             for (int rotation = FIRST_ROTATION; rotation <= LAST_ROTATION; rotation++) {
                 assertEquals(
                     CELL_COUNT,
@@ -28,7 +29,7 @@ class TetrominoTypeTest {
 
     @Test
     void returnCellsInsideBoxForEveryTypeAndRotation() {
-        for (TetrominoType type : TetrominoType.values()) {
+        for (PieceType type : PieceType.values()) {
             for (int rotation = FIRST_ROTATION; rotation <= LAST_ROTATION; rotation++) {
                 for (Position position : type.getCellsAt(rotation)) {
                         assertTrue(
@@ -52,7 +53,7 @@ class TetrominoTypeTest {
         );
 
         for (int rotation = FIRST_ROTATION; rotation <= LAST_ROTATION; rotation++) {
-            assertEquals(expected, Set.copyOf(TetrominoType.O.getCellsAt(rotation)), "O rotation " + rotation);
+            assertEquals(expected, Set.copyOf(PieceType.O.getCellsAt(rotation)), "O rotation " + rotation);
         }
     }
 
@@ -63,7 +64,7 @@ class TetrominoTypeTest {
                 new Position(0, 2), new Position(1, 1)
         );
 
-        assertEquals(expected, Set.copyOf(TetrominoType.T.getCellsAt(0)));
+        assertEquals(expected, Set.copyOf(PieceType.T.getCellsAt(0)));
     }
 
     @Test
@@ -73,7 +74,7 @@ class TetrominoTypeTest {
                 new Position(2, 2), new Position(1, 1)
         );
 
-        assertEquals(expected, Set.copyOf(TetrominoType.T.getCellsAt(1)));
+        assertEquals(expected, Set.copyOf(PieceType.T.getCellsAt(1)));
     }
 
     @Test
@@ -83,7 +84,7 @@ class TetrominoTypeTest {
                 new Position(1, 2), new Position(1, 3)
         );
 
-        assertEquals(expected, Set.copyOf(TetrominoType.I.getCellsAt(0)));
+        assertEquals(expected, Set.copyOf(PieceType.I.getCellsAt(0)));
     }
 
     @Test
@@ -93,7 +94,7 @@ class TetrominoTypeTest {
                 new Position(2, 2), new Position(3, 2)
         );
 
-        assertEquals(expected, Set.copyOf(TetrominoType.I.getCellsAt(1)));
+        assertEquals(expected, Set.copyOf(PieceType.I.getCellsAt(1)));
     }
 
     @Test
@@ -103,7 +104,7 @@ class TetrominoTypeTest {
                 new Position(1, 0), new Position(1, 1)
         );
 
-        assertEquals(expected, Set.copyOf(TetrominoType.S.getCellsAt(0)));
+        assertEquals(expected, Set.copyOf(PieceType.S.getCellsAt(0)));
     }
 
     @Test
@@ -113,7 +114,7 @@ class TetrominoTypeTest {
                 new Position(1, 1), new Position(1, 2)
         );
 
-        assertEquals(expected, Set.copyOf(TetrominoType.Z.getCellsAt(0)));
+        assertEquals(expected, Set.copyOf(PieceType.Z.getCellsAt(0)));
     }
 
     @Test
@@ -123,7 +124,7 @@ class TetrominoTypeTest {
                 new Position(1, 1), new Position(1, 2)
         );
 
-        assertEquals(expected, Set.copyOf(TetrominoType.J.getCellsAt(0)));
+        assertEquals(expected, Set.copyOf(PieceType.J.getCellsAt(0)));
     }
 
     @Test
@@ -133,25 +134,25 @@ class TetrominoTypeTest {
                 new Position(1, 1), new Position(1, 2)
         );
 
-        assertEquals(expected, Set.copyOf(TetrominoType.L.getCellsAt(0)));
+        assertEquals(expected, Set.copyOf(PieceType.L.getCellsAt(0)));
     }
 
     @Test
     void returnExpectedCellIdForEachType() {
-        assertEquals(1, TetrominoType.I.getCellId());
-        assertEquals(2, TetrominoType.O.getCellId());
-        assertEquals(3, TetrominoType.T.getCellId());
-        assertEquals(4, TetrominoType.S.getCellId());
-        assertEquals(5, TetrominoType.Z.getCellId());
-        assertEquals(6, TetrominoType.J.getCellId());
-        assertEquals(7, TetrominoType.L.getCellId());
+        assertEquals(1, PieceType.I.getCellId());
+        assertEquals(2, PieceType.O.getCellId());
+        assertEquals(3, PieceType.T.getCellId());
+        assertEquals(4, PieceType.S.getCellId());
+        assertEquals(5, PieceType.Z.getCellId());
+        assertEquals(6, PieceType.J.getCellId());
+        assertEquals(7, PieceType.L.getCellId());
     }
 
     @Test
     void returnDistinctNonEmptyCellIdsForEveryType() {
         Set<Integer> cellIds = new java.util.HashSet<>();
 
-        for (TetrominoType type : TetrominoType.values()) {
+        for (PieceType type : PieceType.values()) {
             assertTrue(cellIds.add(type.getCellId()), type + " cellId " + type.getCellId());
             assertTrue(type.getCellId() != Board.EMPTY_CELL, type + " uses EMPTY_CELL");
         }
@@ -159,12 +160,12 @@ class TetrominoTypeTest {
 
     @Test
     void returnExpectedBoxSizeForEachType() {
-        assertEquals(4, TetrominoType.I.getBoxSize());
-        assertEquals(2, TetrominoType.O.getBoxSize());
+        assertEquals(4, PieceType.I.getBoxSize());
+        assertEquals(2, PieceType.O.getBoxSize());
 
-        for (TetrominoType type : new TetrominoType[] {
-                TetrominoType.T, TetrominoType.S, TetrominoType.Z,
-                TetrominoType.J, TetrominoType.L
+        for (PieceType type : new PieceType[] {
+                PieceType.T, PieceType.S, PieceType.Z,
+                PieceType.J, PieceType.L
         }) {
             assertEquals(3, type.getBoxSize(), type + " box size");
         }
@@ -172,20 +173,26 @@ class TetrominoTypeTest {
 
     @Test
     void throwWhenRotationIsBelowRange() {
-        assertThrows(IllegalArgumentException.class, () -> TetrominoType.T.getCellsAt(-1));
+        assertThrows(IllegalArgumentException.class, () -> PieceType.T.getCellsAt(-1));
     }
 
     @Test
     void throwWhenRotationIsAboveRange() {
-        assertThrows(IllegalArgumentException.class, () -> TetrominoType.T.getCellsAt(4));
+        assertThrows(IllegalArgumentException.class, () -> PieceType.T.getCellsAt(4));
     }
 
     @Test
     void rejectModificationOfReturnedCells() {
         assertThrows(
                 UnsupportedOperationException.class,
-                () -> TetrominoType.T.getCellsAt(0).clear()
+                () -> PieceType.T.getCellsAt(0).clear()
         );
+    }
+
+    private PieceType[] basicTypes() {
+        return Arrays.stream(PieceType.values())
+                .filter(PieceType::isBasic)
+                .toArray(PieceType[]::new);
     }
     // AI-assisted code end (테스트 코드)
 }

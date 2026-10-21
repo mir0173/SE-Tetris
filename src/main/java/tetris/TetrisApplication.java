@@ -17,6 +17,7 @@ import tetris.controller.GameController;
 import tetris.model.Board;
 import tetris.model.Game;
 import tetris.model.GameConfig;
+import tetris.model.GameMode;
 import tetris.model.Difficulty;
 import tetris.model.TetrominoGenerator;
 import tetris.controller.GameTimer;
@@ -90,7 +91,7 @@ public class TetrisApplication extends Application {
         stage.setTitle("Tetris");
 
         JavaFxStartMenuView menu = new JavaFxStartMenuView(
-            () -> startNewGame(stage),
+            () -> startNewGame(stage, GameMode.NORMAL), // 임시로 넘길 Normal 모드 설정
             () -> showSettings(stage),
             () -> showScoreboard(stage),
             stage::close);
@@ -106,13 +107,13 @@ public class TetrisApplication extends Application {
      *
      * @param stage 게임 화면을 표시할 창
      */
-    private void startNewGame(Stage stage) {
+    private void startNewGame(Stage stage, GameMode mode ) {
         
         GameConfig config = new GameConfig(BOARD_WIDTH, BOARD_HEIGHT);
         Board board = new Board(config.getBoardWidth(), config.getBoardHeight());
         Difficulty difficulty = currentSettings.getDifficulty();
         TetrominoGenerator generator = new TetrominoGenerator(new Random(), difficulty.createWeights());
-        Game game = new Game(board, generator, difficulty);
+        Game game = new Game(board, generator, difficulty, mode);
         GameView view = new JavaFxGameView(stage, currentSettings);
         GameTimer timer = new JavaFxGameTimer(Game.getInitialDropInterval());
         GameController controller = new GameController(game, view, timer, () -> showStartMenu(stage), score -> Platform.runLater(() -> handleGameOver(stage, score)));
