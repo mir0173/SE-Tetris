@@ -91,7 +91,8 @@ public class TetrisApplication extends Application {
         stage.setTitle("Tetris");
 
         JavaFxStartMenuView menu = new JavaFxStartMenuView(
-            () -> startNewGame(stage, GameMode.NORMAL), // 임시로 넘길 Normal 모드 설정
+            () -> startNewGame(stage, GameMode.NORMAL), 
+            () -> startNewGame(stage, GameMode.ITEM),
             () -> showSettings(stage),
             () -> showScoreboard(stage),
             stage::close);
