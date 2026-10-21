@@ -41,4 +41,8 @@ public class ScoreEntry {
     public Difficulty getDifficulty() {
         return difficulty;
     }
+
+    public ScoreCategory getCategory() {
+        return new ScoreCategory(mode, difficulty);
+    }
 }

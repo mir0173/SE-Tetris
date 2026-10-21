@@ -46,6 +46,18 @@ class ScoreEntryTest {
     }
 
     @Test
+    void provideCategoryOfModeAndDifficulty() {
+        // given
+        ScoreEntry entry = new ScoreEntry(UUID.randomUUID(), NAME, SCORE, GameMode.ITEM, Difficulty.HARD);
+
+        // when
+        ScoreCategory category = entry.getCategory();
+
+        // then: 기록이 자기 조합을 스스로 알려 준다
+        assertEquals(new ScoreCategory(GameMode.ITEM, Difficulty.HARD), category);
+    }
+
+    @Test
     void rejectNullMode() {
         // given & when & then
         assertThrows(NullPointerException.class,
