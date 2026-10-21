@@ -4,6 +4,7 @@ import tetris.model.effect.LineClearEffect;
 import tetris.model.effect.HeavyWeightEffect;
 import tetris.model.effect.SpecialIEffect;
 import tetris.model.effect.SlowEffect;
+import tetris.model.effect.BlockGenerateEffect;
 
 public enum ItemType {
     LINE_CLEAR(
@@ -19,8 +20,7 @@ public enum ItemType {
             ItemType.DEFAULT_WEIGHT,
             true,
             null,
-            new ItemEffect() {
-            }),
+            new BlockGenerateEffect()),
     SLOW(
             3,
             'S',

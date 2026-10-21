@@ -35,6 +35,7 @@ public class Game {
     private boolean itemReserved; // spawnNextPiece 에서 아이템을 스폰하도록 예약하는 필드
     private boolean drilling; // 아이템 HEAVY WEIGHT(무게추)이 고정되지 않고 아래 칸을 부수는 상태인가
     private boolean doubleScoreReserved; // 점수를 두배로 계산하는 것을 예약하는 변수
+    private boolean specialBlockReserved; // 특별 블럭을 스폰하는 것을 예약하는 변수
     private int lastClearedLines; // 마지막 고정 때 지운 줄 수 (T6 점수 계산용)
     private int itemLineCounter; // 아이템 생성까지 지운 줄 수 카운터, 초과분은 이월됨.
     private int itemClearedLines; // 아이템 효과로 지운 줄 수
@@ -326,6 +327,9 @@ public class Game {
                 nextPieceType = dedicatedPieceType;
             }
             itemReserved = false;
+        } else if (specialBlockReserved) {
+            nextPieceType = PieceType.SPECIAL_BLOCK;
+            specialBlockReserved = false;
         }
     }
 
@@ -481,6 +485,11 @@ public class Game {
         @Override
         public void startSlowDown() {
             slowTimeLeft = SLOW_DURATION;
+        }
+
+        @Override
+        public void reserveSpecialPiece() {
+            specialBlockReserved = true;
         }
     }
 }

@@ -25,4 +25,9 @@ public interface ItemContext {
      * 일정 기간 동안 낙하 간격을 늘려달라고 요청한다. 다시 요청하면 시간이 초기화된다.
      */
     void startSlowDown();
+
+    /**
+     * 특수 블록 생성을 요청한다.
+     */
+    void reserveSpecialPiece();
 }
