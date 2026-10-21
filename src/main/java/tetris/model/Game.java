@@ -20,31 +20,34 @@ public class Game {
     private final ItemGenerator itemGenerator;
     private final GameMode mode;
     private final Difficulty difficulty;
+    private final ItemContext context = new GameItemContext();
     private GameStatus status;
 
-    private Piece currentPiece;         // 현재 드랍중인 블록
-    private PieceType nextPieceType;    // 다음에 드랍될 블록 타입
-    private Item nextItem;              // 다음에 생성될 아이템
-    private PieceType heldPieceType;    // 홀드된 블록 종류
-    private Item heldItem;              // 홀드된 블록의 아이템 종류
-    private boolean holdUsed;           // 이번 블록에서 홀드를 이미 썼는지
-    private boolean itemReserved;       // spawnNextPiece 에서 아이템을 스폰하도록 예약하는 필드
-    private int lastClearedLines;       // 마지막 고정 때 지운 줄 수 (T6 점수 계산용)
-    private int itemLineCounter;        // 아이템 생성까지 지운 줄 수 카운터
-    private long lockedPieceCount;      // 고정된 블록 수
-    private long spawnedPieceCount;     // 실제 생성된 블록 수
-    private long gravityDropCells;      // 자동 낙하 칸 수
-    private long softDropCells;         // 소프트 드롭 칸 수
-    private long hardDropCells;         // 하드 드롭 칸 수
+    private Piece currentPiece; // 현재 드랍중인 블록
+    private PieceType nextPieceType; // 다음에 드랍될 블록 타입
+    private Item nextItem; // 다음에 생성될 아이템
+    private PieceType heldPieceType; // 홀드된 블록 종류
+    private Item heldItem; // 홀드된 블록의 아이템 종류
+    private boolean holdUsed; // 이번 블록에서 홀드를 이미 썼는지
+    private boolean itemReserved; // spawnNextPiece 에서 아이템을 스폰하도록 예약하는 필드
+    private int lastClearedLines; // 마지막 고정 때 지운 줄 수 (T6 점수 계산용)
+    private int itemLineCounter; // 아이템 생성까지 지운 줄 수 카운터
+    private int itemClearedLines; // 아이템 효과로 지운 줄 수
+    private long lockedPieceCount; // 고정된 블록 수
+    private long spawnedPieceCount; // 실제 생성된 블록 수
+    private long gravityDropCells; // 자동 낙하 칸 수
+    private long softDropCells; // 소프트 드롭 칸 수
+    private long hardDropCells; // 하드 드롭 칸 수
     private long score = INITIAL_SCORE;
     private long dropInterval = INITIAL_DROP_INTERVAL;
     private long totalClearedLines;
 
     public Game(Board board, TetrominoGenerator generator, Difficulty difficulty, GameMode mode) {
-        this(board,generator,new ItemGenerator(new Random()),difficulty,mode);
+        this(board, generator, new ItemGenerator(new Random()), difficulty, mode);
     }
 
-    public Game(Board board, TetrominoGenerator generator, ItemGenerator itemGenerator, Difficulty difficulty, GameMode mode) {
+    public Game(Board board, TetrominoGenerator generator, ItemGenerator itemGenerator, Difficulty difficulty,
+            GameMode mode) {
         requireNonNull(board, "board");
         requireNonNull(generator, "generator");
         requireNonNull(itemGenerator, "itemGenerator");
@@ -266,10 +269,15 @@ public class Game {
 
     // 현재 블록을 고정하고, 줄을 지우고, 다음 블록을 내보냄
     private void lockAndSpawnNext() {
+        itemClearedLines = 0;
         lockedPieceCount++;
-
         board.lock(currentPiece);
-        lastClearedLines = board.clearFullLines();
+        if (currentPiece.item() != null && currentPiece.item().isEmbedded()) {
+            int cellIndex = currentPiece.item().cellIndex();
+            Position position = currentPiece.getAbsolutePositions().get(cellIndex);
+            currentPiece.item().type().getItemEffect().handleLock(context, position);
+        }
+        lastClearedLines = board.clearFullLines() + itemClearedLines;
         holdUsed = false;
         if (mode == GameMode.ITEM) {
             itemLineCounter += lastClearedLines;
@@ -347,7 +355,7 @@ public class Game {
 
         long previousClearedLines = totalClearedLines;
         long speedReduction = INITIAL_DROP_INTERVAL - dropInterval;
-        long level =  (speedReduction + DROP_INTERVAL_STEP - 1) / DROP_INTERVAL_STEP + 1;
+        long level = (speedReduction + DROP_INTERVAL_STEP - 1) / DROP_INTERVAL_STEP + 1;
         long droppedCells = getTotalDropCells() - previousDropCells;
 
         score += droppedCells * level;
@@ -361,9 +369,17 @@ public class Game {
 
         long lineIncreases = totalClearedLines / LINES_PER_LEVEL - previousClearedLines / LINES_PER_LEVEL;
         long pieceIncreases = spawnedPieceCount / PIECES_PER_LEVEL - previousSpawnedPieceCount / PIECES_PER_LEVEL;
-        long intervalReduction =
-        lineIncreases * difficulty.getLineDropIntervalStep() + pieceIncreases * DROP_INTERVAL_STEP;
+        long intervalReduction = lineIncreases * difficulty.getLineDropIntervalStep()
+                + pieceIncreases * DROP_INTERVAL_STEP;
 
         dropInterval = Math.max(MIN_DROP_INTERVAL, dropInterval - intervalReduction);
+    }
+
+    private class GameItemContext implements ItemContext {
+        @Override
+        public void clearLine(int rowIndex) {
+            board.clearLine(rowIndex);
+            itemClearedLines++;
+        }
     }
 }

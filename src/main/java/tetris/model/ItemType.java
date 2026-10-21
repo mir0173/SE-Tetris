@@ -1,36 +1,47 @@
 package tetris.model;
 
+import tetris.model.effect.LineClearEffect;
+
 public enum ItemType {
     LINE_CLEAR(
             1,
             'L',
             ItemType.DEFAULT_WEIGHT,
             true,
-            null),
+            null,
+            new LineClearEffect()),
     BLOCK_GENERATE(
             2,
             'B',
             ItemType.DEFAULT_WEIGHT,
             true,
-            null),
+            null,
+            new ItemEffect() {
+            }),
     SLOW(
             3,
             'S',
             ItemType.DEFAULT_WEIGHT,
             false,
-            PieceType.SLOW),
+            PieceType.SLOW,
+            new ItemEffect() {
+            }),
     HEAVY_WEIGHT(
             4,
             'O',
             ItemType.DEFAULT_WEIGHT,
             false,
-            PieceType.HEAVY_WEIGHT),
+            PieceType.HEAVY_WEIGHT,
+            new ItemEffect() {
+            }),
     SPECIAL_I(
             5,
             '@',
             ItemType.DEFAULT_WEIGHT,
             false,
-            PieceType.SPECIAL_I);
+            PieceType.SPECIAL_I,
+            new ItemEffect() {
+            });
 
     private static final int DEFAULT_WEIGHT = 10;
     /** 보드 인코딩에 쓰는 아이템 코드 */
@@ -41,15 +52,18 @@ public enum ItemType {
     private final boolean embedded;
     /** 생성 시 가중치 */
     private final int weight;
-    /** 아이템이 담길 블록 타입 변수 */
+    /** 단독 아이템의 전용 모양, 박히는 아이템이면 null */
     private final PieceType pieceType;
+    /** 고정, 파괴 등에 반응하는 이 아이템의 효과*/
+    private final ItemEffect effect;
 
-    ItemType(int itemCode, char symbol, int weight, boolean embedded, PieceType pieceType) {
+    ItemType(int itemCode, char symbol, int weight, boolean embedded, PieceType pieceType, ItemEffect effect) {
         this.itemCode = itemCode;
         this.symbol = symbol;
         this.weight = weight;
         this.embedded = embedded;
         this.pieceType = pieceType;
+        this.effect = effect;
     }
 
     public int getItemCode() {
@@ -68,7 +82,11 @@ public enum ItemType {
         return weight;
     }
 
-    public PieceType getDedicatedPieceType(){
+    public PieceType getDedicatedPieceType() {
         return pieceType;
+    }
+
+    public ItemEffect getItemEffect() {
+        return effect;
     }
 }

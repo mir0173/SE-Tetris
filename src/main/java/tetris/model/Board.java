@@ -189,6 +189,22 @@ public class Board {
         return offset;
     }
 
+    /**
+     * 특정 rowIndex의 줄을 지우고, 그 위의 줄들을 아래로 내린다.
+     * 비게 된 맨 위 한줄은 빈 줄로 채운다.
+     * 
+     * @param rowIndex 지워야 하는 줄의 행 번호, 맨 위가 0
+     */
+    public void clearLine(int rowIndex) {
+        if (rowIndex >= height || rowIndex < 0) {
+            throw new IllegalArgumentException("rowIndex is out of height");
+        }
+        for (int row = rowIndex; row > 0; row--) {
+            cells[row] = cells[row - 1];
+        }
+        cells[0] = new int[width];
+    }
+
     // param으로 주어진 배열이 전부 차 있는지 확인하는 함수
     private boolean isFullLine(int[] row) {
         for (int cell : row) {
