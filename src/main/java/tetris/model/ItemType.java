@@ -1,6 +1,7 @@
 package tetris.model;
 
 import tetris.model.effect.LineClearEffect;
+import tetris.model.effect.HeavyWeightEffect;
 
 public enum ItemType {
     LINE_CLEAR(
@@ -32,8 +33,7 @@ public enum ItemType {
             ItemType.DEFAULT_WEIGHT,
             false,
             PieceType.HEAVY_WEIGHT,
-            new ItemEffect() {
-            }),
+            new HeavyWeightEffect()),
     SPECIAL_I(
             5,
             '@',
@@ -55,15 +55,15 @@ public enum ItemType {
     /** 단독 아이템의 전용 모양, 박히는 아이템이면 null */
     private final PieceType pieceType;
     /** 고정, 파괴 등에 반응하는 이 아이템의 효과*/
-    private final ItemEffect effect;
+    private final ItemEffect itemEffect;
 
-    ItemType(int itemCode, char symbol, int weight, boolean embedded, PieceType pieceType, ItemEffect effect) {
+    ItemType(int itemCode, char symbol, int weight, boolean embedded, PieceType pieceType, ItemEffect itemEffect) {
         this.itemCode = itemCode;
         this.symbol = symbol;
         this.weight = weight;
         this.embedded = embedded;
         this.pieceType = pieceType;
-        this.effect = effect;
+        this.itemEffect = itemEffect;
     }
 
     public int getItemCode() {
@@ -87,6 +87,6 @@ public enum ItemType {
     }
 
     public ItemEffect getItemEffect() {
-        return effect;
+        return itemEffect;
     }
 }

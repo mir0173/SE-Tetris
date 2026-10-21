@@ -205,6 +205,23 @@ public class Board {
         cells[0] = new int[width];
     }
 
+    /**
+     * 특정 셀을 비우고, 그 셀 값을 반환한다.
+     * 
+     * @param row    지워야 하는 셀의 행 번호
+     * @param column 지워야 하는 셀의 열 번호
+     * 
+     * @return 셀에 저장되어있던 값. itemCode * ITEM_CODE_MULTIPLIER + cellId로 구성되어있다.
+     */
+    public int clearCell(int row, int column) {
+        if (!isInside(row, column)) {
+            throw new IllegalArgumentException("row, column이 범위 벗어남");
+        }
+        int cellValue = cells[row][column];
+        cells[row][column] = EMPTY_CELL;
+        return cellValue;
+    }
+
     // param으로 주어진 배열이 전부 차 있는지 확인하는 함수
     private boolean isFullLine(int[] row) {
         for (int cell : row) {

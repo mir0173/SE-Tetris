@@ -11,6 +11,7 @@ public class Game {
     private static final int LINES_PER_LEVEL = 5;
     private static final int LINES_PER_ITEM_SPAWN = 10;
     private static final int PIECES_PER_LEVEL = 10;
+    private static final long DRILL_INTERVAL = 50L;
     private static final long DROP_INTERVAL_STEP = 100L;
     private static final long MIN_DROP_INTERVAL = 100L;
     private static final long LINE_CLEAR_BONUS = 100L;
@@ -30,8 +31,9 @@ public class Game {
     private Item heldItem; // 홀드된 블록의 아이템 종류
     private boolean holdUsed; // 이번 블록에서 홀드를 이미 썼는지
     private boolean itemReserved; // spawnNextPiece 에서 아이템을 스폰하도록 예약하는 필드
+    private boolean drilling; // 아이템 HEAVY WEIGHT(무게추)이 고정되지 않고 아래 칸을 부수는 상태인가
     private int lastClearedLines; // 마지막 고정 때 지운 줄 수 (T6 점수 계산용)
-    private int itemLineCounter; // 아이템 생성까지 지운 줄 수 카운터
+    private int itemLineCounter; // 아이템 생성까지 지운 줄 수 카운터, 초과분은 이월됨.
     private int itemClearedLines; // 아이템 효과로 지운 줄 수
     private long lockedPieceCount; // 고정된 블록 수
     private long spawnedPieceCount; // 실제 생성된 블록 수
@@ -145,6 +147,10 @@ public class Game {
             return;
         }
 
+        if (drilling) {
+            return;
+        }
+
         long previousDropCells = getTotalDropCells();
         long previousLockedPieceCount = lockedPieceCount;
         long previousSpawnedPieceCount = spawnedPieceCount;
@@ -189,10 +195,11 @@ public class Game {
         long previousLockedPieceCount = lockedPieceCount;
         long previousSpawnedPieceCount = spawnedPieceCount;
 
-        if (softDrop()) {
+        if (drilling) {
+            drillDown();
+        } else if(softDrop()){
             gravityDropCells++;
         }
-
         updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
     }
 
@@ -236,7 +243,7 @@ public class Game {
                 heldPieceType,
                 score,
                 status,
-                dropInterval);
+                (drilling ? DRILL_INTERVAL : dropInterval));
     }
 
     // 후보가 놓일 수 있으면 현재 블록을 교체하고 true, 아니면 그대로 두고 false
@@ -254,7 +261,7 @@ public class Game {
         if (tryReplace(currentPiece.move(1, 0))) {
             return true;
         } else {
-            lockAndSpawnNext();
+            land();
             return false;
         }
     }
@@ -264,7 +271,7 @@ public class Game {
         while (tryReplace(currentPiece.move(1, 0))) {
             hardDropCells++;
         }
-        lockAndSpawnNext();
+        land();
     }
 
     // 현재 블록을 고정하고, 줄을 지우고, 다음 블록을 내보냄
@@ -282,7 +289,7 @@ public class Game {
         if (mode == GameMode.ITEM) {
             itemLineCounter += lastClearedLines;
             if (itemLineCounter >= LINES_PER_ITEM_SPAWN) {
-                itemLineCounter = 0;
+                itemLineCounter -= LINES_PER_ITEM_SPAWN;
                 itemReserved = true;
             }
         }
@@ -375,11 +382,45 @@ public class Game {
         dropInterval = Math.max(MIN_DROP_INTERVAL, dropInterval - intervalReduction);
     }
 
+    // 드릴 중 한 칸 아래를 부수며 내려가고, 바닥이면 고정한다.
+    private void drillDown() {
+        Piece candidate = currentPiece.move(1, 0);
+        List<Position> positions = candidate.getAbsolutePositions();
+        for (Position pos : positions) {
+            if (!board.isInside(pos.row(), pos.column())) {
+                drilling = false;
+                lockAndSpawnNext();
+                return;
+            }
+        }
+        for (Position pos : positions) {
+            if (!board.isEmpty(pos.row(), pos.column())) {
+                board.clearCell(pos.row(), pos.column());
+            }
+        }
+        currentPiece = candidate;
+    }
+
+    // 블록이 더 내려갈 수 없을 때 아이템 효과에 첫 착지를 알리고, 드릴이 시작되지 않았으면 고정한다.
+    private void land() {
+        if (currentPiece.item() != null && !drilling) {
+            currentPiece.item().type().getItemEffect().handleFirstLanding(context);
+        }
+        if (!drilling) {
+            lockAndSpawnNext();
+        }
+    }
+
     private class GameItemContext implements ItemContext {
         @Override
         public void clearLine(int rowIndex) {
             board.clearLine(rowIndex);
             itemClearedLines++;
+        }
+
+        @Override
+        public void startDrilling() {
+            drilling = true;
         }
     }
 }

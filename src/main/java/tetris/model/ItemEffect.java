@@ -40,9 +40,8 @@ public interface ItemEffect {
      * 아이템이 포함된 블록이 처음으로 아래가 막힌 순간, 고정되기 전에 호출된다.
      * 
      * @param context  게임에 동작을 요청할 때 쓰는 컨텍스트
-     * @param position 착지한 블록의 기준 좌표
      */
-    default void handleFirstLanding(ItemContext context, Position position) {
+    default void handleFirstLanding(ItemContext context) {
 
     }
 }
