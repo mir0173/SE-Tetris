@@ -20,4 +20,9 @@ public interface ItemContext {
      * 이번에 고정된 블록이 얻은 점수 전체를 두배로 만들어 달라고 요청한다.
      */
     void doubleScore();
+
+    /**
+     * 일정 기간 동안 낙하 간격을 늘려달라고 요청한다. 다시 요청하면 시간이 초기화된다.
+     */
+    void startSlowDown();
 }

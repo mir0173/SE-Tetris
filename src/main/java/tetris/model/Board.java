@@ -1,6 +1,7 @@
 package tetris.model;
 
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  * 떨어지는 블록이 고정된 게임 보드를 관리한다.
@@ -12,12 +13,16 @@ public class Board {
     public static final int EMPTY_CELL = 0;
     /** 칸 값 = 아이템 코드 * 이 값 + cellID */
     public static final int ITEM_CODE_MULTIPLIER = 100;
+    /** 아이템 없음 상태를 표시하는 상수 */
+    private static final int NO_ITEM_CODE = 0;
     /** 보드의 가로 칸 수. */
     private final int width;
     /** 보드의 세로 칸 수. */
     private final int height;
     /** 행과 열 순서로 저장된 고정 블록 셀. 빈 칸은 EMPTY_CELL, 채워진 칸은 PieceType의 cellId */
     private final int[][] cells;
+    /** 부숴진 아이템 코드를 담는 리스트 */
+    private final List<Integer> destroyedItemCodes = new ArrayList<>();
 
     /**
      * 지정한 크기의 빈 보드를 생성한다.
@@ -178,6 +183,9 @@ public class Board {
         int offset = 0;
         for (int row = height - 1; row >= 0; row--) {
             if (isFullLine(cells[row])) {
+                for (int cellValue : cells[row]) {
+                    collectItemCode(cellValue);
+                }
                 offset++;
             } else {
                 cells[row + offset] = cells[row];
@@ -199,6 +207,9 @@ public class Board {
         if (rowIndex >= height || rowIndex < 0) {
             throw new IllegalArgumentException("rowIndex is out of height");
         }
+        for(int cellValue : cells[rowIndex]){
+            collectItemCode(cellValue);
+        }
         for (int row = rowIndex; row > 0; row--) {
             cells[row] = cells[row - 1];
         }
@@ -218,8 +229,20 @@ public class Board {
             throw new IllegalArgumentException("row, column이 범위 벗어남");
         }
         int cellValue = cells[row][column];
+        collectItemCode(cellValue);
         cells[row][column] = EMPTY_CELL;
         return cellValue;
+    }
+
+    /**
+     * destroyedItemCodes의 사본을 반환하고 비운다.
+     * 
+     * @return destroyedItemCodes(부서진 아이템 셀의 코드 리스트)
+     */
+    public List<Integer> takeDestroyedItemCodes() {
+        List<Integer> copiedList = List.copyOf(destroyedItemCodes);
+        destroyedItemCodes.clear();
+        return copiedList;
     }
 
     // param으로 주어진 배열이 전부 차 있는지 확인하는 함수
@@ -246,6 +269,14 @@ public class Board {
             return piece.item().type().getItemCode() * ITEM_CODE_MULTIPLIER + piece.type().getCellId();
         } else {
             return piece.type().getCellId();
+        }
+    }
+
+    // cellValue에서 itemCode를 추출해 destroyedItemCodes에 추가한다.
+    private void collectItemCode(int cellValue) {
+        int itemCode = extractItemCode(cellValue);
+        if (itemCode != NO_ITEM_CODE) {
+            destroyedItemCodes.add(itemCode);
         }
     }
 }

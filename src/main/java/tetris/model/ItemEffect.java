@@ -20,9 +20,8 @@ public interface ItemEffect {
      * 보드에 고정된 아이템 칸이 줄 삭제나 다른 아이템 효과로 부서졌을 때 호출된다.
      * 
      * @param context  게임에 동작을 요청할때 쓰는 컨텍스트
-     * @param position 부서진 아이템 칸의 보드 좌표
      */
-    default void handleDestroyed(ItemContext context, Position position) {
+    default void handleDestroyed(ItemContext context) {
 
     }
 

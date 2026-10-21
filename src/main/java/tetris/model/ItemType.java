@@ -3,6 +3,7 @@ package tetris.model;
 import tetris.model.effect.LineClearEffect;
 import tetris.model.effect.HeavyWeightEffect;
 import tetris.model.effect.SpecialIEffect;
+import tetris.model.effect.SlowEffect;
 
 public enum ItemType {
     LINE_CLEAR(
@@ -26,8 +27,7 @@ public enum ItemType {
             ItemType.DEFAULT_WEIGHT,
             false,
             PieceType.SLOW,
-            new ItemEffect() {
-            }),
+            new SlowEffect()),
     HEAVY_WEIGHT(
             4,
             'O',
@@ -54,7 +54,7 @@ public enum ItemType {
     private final int weight;
     /** 단독 아이템의 전용 모양, 박히는 아이템이면 null */
     private final PieceType pieceType;
-    /** 고정, 파괴 등에 반응하는 이 아이템의 효과*/
+    /** 고정, 파괴 등에 반응하는 이 아이템의 효과 */
     private final ItemEffect itemEffect;
 
     ItemType(int itemCode, char symbol, int weight, boolean embedded, PieceType pieceType, ItemEffect itemEffect) {
@@ -88,5 +88,20 @@ public enum ItemType {
 
     public ItemEffect getItemEffect() {
         return itemEffect;
+    }
+
+    /**
+     * itemCode에 해당하는 itemType을 반환하는 메서드. itemCode에 해당하는 Type이 없을 시 null을 반환한다.
+     * 
+     * @param itemCode itemType의 식별 코드
+     * @return itemCode에 해당하는 itemType, 없을 시 null
+     */
+    public static ItemType findTypeByCode(int itemCode) {
+        for (ItemType type : ItemType.values()) {
+            if (type.getItemCode() == itemCode) {
+                return type;
+            }
+        }
+        return null;
     }
 }

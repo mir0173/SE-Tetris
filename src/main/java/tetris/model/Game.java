@@ -15,6 +15,8 @@ public class Game {
     private static final long DROP_INTERVAL_STEP = 100L;
     private static final long MIN_DROP_INTERVAL = 100L;
     private static final long LINE_CLEAR_BONUS = 100L;
+    private static final long SLOW_DURATION = 10_000L;
+    private static final long SLOW_MULTIPLIER = 2L;
 
     private final Board board;
     private final TetrominoGenerator generator;
@@ -45,6 +47,7 @@ public class Game {
     private long dropInterval = INITIAL_DROP_INTERVAL;
     private long totalClearedLines;
     private long currentPieceScore; // 지금 블록이 스폰된 뒤 얻은 점수 합계
+    private long slowTimeLeft; // 남은 속도 저하 시간
 
     public Game(Board board, TetrominoGenerator generator, Difficulty difficulty, GameMode mode) {
         this(board, generator, new ItemGenerator(new Random()), difficulty, mode);
@@ -193,6 +196,10 @@ public class Game {
             return;
         }
 
+        if (slowTimeLeft > 0) {
+            slowTimeLeft -= selectTimeInterval();
+            slowTimeLeft = Math.max(0, slowTimeLeft);
+        }
         long previousDropCells = getTotalDropCells();
         long previousLockedPieceCount = lockedPieceCount;
         long previousSpawnedPieceCount = spawnedPieceCount;
@@ -245,7 +252,7 @@ public class Game {
                 heldPieceType,
                 score,
                 status,
-                (drilling ? DRILL_INTERVAL : dropInterval));
+                selectTimeInterval());
     }
 
     // 후보가 놓일 수 있으면 현재 블록을 교체하고 true, 아니면 그대로 두고 false
@@ -300,6 +307,7 @@ public class Game {
                 itemReserved = true;
             }
         }
+        notifyDestroyedItems();
         spawnNextPiece();
     }
 
@@ -418,6 +426,7 @@ public class Game {
                 board.clearCell(pos.row(), pos.column());
             }
         }
+        notifyDestroyedItems();
         currentPiece = candidate;
     }
 
@@ -428,6 +437,27 @@ public class Game {
         }
         if (!drilling) {
             lockAndSpawnNext();
+        }
+    }
+
+    // 부서진 아이템 효과를 발동시킨다.
+    private void notifyDestroyedItems() {
+        for (int itemCode : board.takeDestroyedItemCodes()) {
+            ItemType type = ItemType.findTypeByCode(itemCode);
+            if (type != null) {
+                type.getItemEffect().handleDestroyed(context);
+            }
+        }
+    }
+
+    // 드릴, 속도 저하를 반영한 실제 낙하 간격을 반환한다.
+    private long selectTimeInterval() {
+        if (drilling) {
+            return DRILL_INTERVAL;
+        } else if (slowTimeLeft > 0) {
+            return dropInterval * SLOW_MULTIPLIER;
+        } else {
+            return dropInterval;
         }
     }
 
@@ -446,6 +476,11 @@ public class Game {
         @Override
         public void doubleScore() {
             doubleScoreReserved = true;
+        }
+
+        @Override
+        public void startSlowDown() {
+            slowTimeLeft = SLOW_DURATION;
         }
     }
 }
