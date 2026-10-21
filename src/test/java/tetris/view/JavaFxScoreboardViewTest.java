@@ -28,6 +28,8 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.GridPane;
 
+import tetris.model.Difficulty;
+import tetris.model.GameMode;
 import tetris.scoreboard.ScoreEntry;
 import tetris.scoreboard.Scoreboard;
 
@@ -266,7 +268,7 @@ class JavaFxScoreboardViewTest {
     }
 
     private ScoreEntry createEntry(String name, long score) {
-        return new ScoreEntry(UUID.randomUUID(), name, score);
+        return new ScoreEntry(UUID.randomUUID(), name, score, GameMode.NORMAL, Difficulty.NORMAL);
     }
 
     private Optional<GridPane> findGrid(JavaFxScoreboardView view) {

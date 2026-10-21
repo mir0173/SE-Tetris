@@ -207,7 +207,9 @@ public class TetrisApplication extends Application {
             Optional<String> name = requestPlayerName(stage, score);
 
             if (name.isPresent()) {
-                ScoreEntry entry = new ScoreEntry(UUID.randomUUID(), name.get(), score);
+                ScoreEntry entry = new ScoreEntry(UUID.randomUUID(), name.get(), score,
+                    GameMode.NORMAL, Difficulty.NORMAL); // TODO: 14-5에서 실제 모드와 난이도로 교체
+
                 Scoreboard updatedScoreboard = scoreboard.addEntry(entry);
 
                 try {
