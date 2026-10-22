@@ -26,6 +26,7 @@ import tetris.persistence.FileSettingsRepository;
 import tetris.persistence.ScoreRepository;
 import tetris.persistence.SettingsRepository;
 import tetris.scoreboard.Scoreboard;
+import tetris.scoreboard.ScoreCategory;
 import tetris.scoreboard.ScoreEntry;
 import tetris.settings.GameSettings;
 import tetris.settings.KeyBindingValidator;
@@ -35,6 +36,8 @@ import tetris.view.JavaFxGameView;
 import tetris.view.JavaFxStartMenuView;
 import tetris.view.JavaFxScoreboardView;
 import tetris.view.JavaFxSettingsView;
+import tetris.scoreboard.ScoreboardGroup;
+import tetris.scoreboard.ScoreCategory;
 
 
 /**
@@ -163,11 +166,11 @@ public class TetrisApplication extends Application {
     private void showScoreboard(Stage stage, Scoreboard scoreboard, UUID highlightEntryId) {
 
         JavaFxScoreboardView scoreboardView = new JavaFxScoreboardView(
-            scoreboard,
+            new ScoreboardGroup(scoreboard.getEntries()),
+            new ScoreCategory(GameMode.NORMAL, Difficulty.NORMAL), // TODO: 14-5에서 실제 모드와 난이도로 교체
             highlightEntryId,
             () -> showStartMenu(stage),
             stage::close);
-            
         stage.setTitle("스코어보드");
         stage.setScene(scoreboardView.getScene());
         stage.sizeToScene();
