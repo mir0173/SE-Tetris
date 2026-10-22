@@ -27,9 +27,12 @@ import tetris.model.Board;
 import tetris.model.GameCommand;
 import tetris.model.GameSnapshot;
 import tetris.model.GameStatus;
+import tetris.model.Item;
+import tetris.model.ItemType;
 import tetris.model.Position;
 import tetris.model.PieceType;
 import tetris.settings.GameSettings;
+
 public class JavaFxGameView implements GameView {
 
     private static final double VIEW_WIDTH = 500;
@@ -49,25 +52,31 @@ public class JavaFxGameView implements GameView {
     private static final String BORDER_SYMBOL = "X";
     private static final String BLOCK_SYMBOL = "O";
 
-    private static final Map<PieceType, Color> NORMAL_COLORS = Map.of(
-        PieceType.I, Color.web("#22D3EE"),
-        PieceType.O, Color.web("#FACC15"),
-        PieceType.T, Color.web("#A855F7"),
-        PieceType.S, Color.web("#22C55E"),
-        PieceType.Z, Color.web("#EF4444"),
-        PieceType.J, Color.web("#3B82F6"),
-        PieceType.L, Color.web("#F97316")
-    );
+    private static final Map<PieceType, Color> NORMAL_COLORS = Map.ofEntries(
+            Map.entry(PieceType.I, Color.web("#22D3EE")),
+            Map.entry(PieceType.O, Color.web("#FACC15")),
+            Map.entry(PieceType.T, Color.web("#A855F7")),
+            Map.entry(PieceType.S, Color.web("#22C55E")),
+            Map.entry(PieceType.Z, Color.web("#EF4444")),
+            Map.entry(PieceType.J, Color.web("#3B82F6")),
+            Map.entry(PieceType.L, Color.web("#F97316")),
+            Map.entry(PieceType.SLOW, Color.web("#F472B6")),
+            Map.entry(PieceType.HEAVY_WEIGHT, Color.web("#9CA3AF")),
+            Map.entry(PieceType.SPECIAL_I, Color.web("#FFFFFF")),
+            Map.entry(PieceType.SPECIAL_BLOCK, Color.web("#A3E635")));
 
-    private static final Map<PieceType, Color> COLOR_BLIND_COLORS = Map.of(
-        PieceType.I, Color.web("#56B4E9"),
-        PieceType.O, Color.web("#F0E442"),
-        PieceType.T, Color.web("#CC79A7"),
-        PieceType.S, Color.web("#009E73"),
-        PieceType.Z, Color.web("#D55E00"),
-        PieceType.J, Color.web("#0072B2"),
-        PieceType.L, Color.web("#E69F00")
-    );
+    private static final Map<PieceType, Color> COLOR_BLIND_COLORS = Map.ofEntries(
+            Map.entry(PieceType.I, Color.web("#56B4E9")),
+            Map.entry(PieceType.O, Color.web("#F0E442")),
+            Map.entry(PieceType.T, Color.web("#CC79A7")),
+            Map.entry(PieceType.S, Color.web("#009E73")),
+            Map.entry(PieceType.Z, Color.web("#D55E00")),
+            Map.entry(PieceType.J, Color.web("#0072B2")),
+            Map.entry(PieceType.L, Color.web("#E69F00")),
+            Map.entry(PieceType.SLOW, Color.web("#F5C8E1")), // 색약 친화 팔레트 7색을 다 썼으므로
+            Map.entry(PieceType.HEAVY_WEIGHT, Color.web("#8C8C8C")), // 밝기 찿이로 구분되도록 색 선택
+            Map.entry(PieceType.SPECIAL_I, Color.web("#FFFFFF")), // 기호가 구분을 도와줌
+            Map.entry(PieceType.SPECIAL_BLOCK, Color.web("#B8A6FF")));
 
     private final double scale;
     private final Font blockFont;
@@ -98,7 +107,7 @@ public class JavaFxGameView implements GameView {
         this.blockFont = Font.font("Monospaced", FontWeight.BOLD, BLOCK_FONT_SIZE * scale);
         this.nextCanvas = new Canvas(PREVIEW_SIZE * scale, PREVIEW_SIZE * scale);
         this.holdCanvas = new Canvas(PREVIEW_SIZE * scale, PREVIEW_SIZE * scale);
-        
+
         Text measure = new Text(BLOCK_SYMBOL);
         measure.setFont(blockFont);
         Text visibleMeasure = new Text(BORDER_SYMBOL + BLOCK_SYMBOL);
@@ -124,9 +133,8 @@ public class JavaFxGameView implements GameView {
         drawBoard(snapshot.getCells());
 
         PieceType nextPiece = snapshot.getNextPieces().isEmpty() ? null : snapshot.getNextPieces().get(0);
-        
-        drawPreview(nextCanvas, nextPiece);
-        drawPreview(holdCanvas, snapshot.getHeldPiece());
+        drawPreview(nextCanvas, nextPiece,snapshot.getNextPieceItem());
+        drawPreview(holdCanvas, snapshot.getHeldPiece(),snapshot.getHeldPieceItem());
 
         scoreLabel.setText("점수: " + snapshot.getScore());
         intervalLabel.setText("낙하 간격: " + snapshot.getDropInterval() + "ms");
@@ -136,7 +144,7 @@ public class JavaFxGameView implements GameView {
     @Override
     public void show() {
         stage.show();
-        stage.getScene().getRoot().requestFocus();  
+        stage.getScene().getRoot().requestFocus();
     }
 
     @Override
@@ -154,24 +162,26 @@ public class JavaFxGameView implements GameView {
         scoreLabel.setFont(Font.font(SCORE_FONT_SIZE * scale));
         intervalLabel.setFont(Font.font(Font.getDefault().getSize() * scale));
 
-        pauseLabel.setText("일시정지\n" + keyBindings.get(GameCommand.PAUSE) + ": 재개\n" + keyBindings.get(GameCommand.QUIT_GAME) + ": 메뉴");
+        pauseLabel.setText("일시정지\n" + keyBindings.get(GameCommand.PAUSE) + ": 재개\n"
+                + keyBindings.get(GameCommand.QUIT_GAME) + ": 메뉴");
         pauseLabel.setAlignment(Pos.CENTER);
         pauseLabel.setTextFill(Color.WHITE);
         pauseLabel.setFont(Font.font(PAUSE_FONT_SIZE * scale));
-        pauseLabel.setStyle("-fx-background-color: rgba(0, 0, 0, 0.85);" + "-fx-padding: " + (PAUSE_PADDING * scale) + ";");
+        pauseLabel.setStyle(
+                "-fx-background-color: rgba(0, 0, 0, 0.85);" + "-fx-padding: " + (PAUSE_PADDING * scale) + ";");
         pauseLabel.setVisible(false);
         pauseLabel.setMouseTransparent(true);
 
         StackPane boardArea = new StackPane(boardCanvas, pauseLabel);
         VBox sidebar = new VBox(
-            SIDEBAR_SPACING * scale,
-            scoreLabel,
-            intervalLabel,
-            createInformationLabel("다음 블록"),
-            nextCanvas,
-            createInformationLabel("홀드"),
-            holdCanvas,
-            createKeyHelp());
+                SIDEBAR_SPACING * scale,
+                scoreLabel,
+                intervalLabel,
+                createInformationLabel("다음 블록"),
+                nextCanvas,
+                createInformationLabel("홀드"),
+                holdCanvas,
+                createKeyHelp());
 
         sidebar.setPrefWidth(SIDEBAR_WIDTH * scale);
         sidebar.setMinWidth(SIDEBAR_WIDTH * scale);
@@ -202,7 +212,9 @@ public class JavaFxGameView implements GameView {
     }
 
     private Label createKeyHelp() {
-        Label help = createInformationLabel(keyBindings.get(GameCommand.HOLD) + ": 홀드\n" + keyBindings.get(GameCommand.PAUSE) + ": 일시정지 / 재개\n" + keyBindings.get(GameCommand.QUIT_GAME) + ": 메뉴");
+        Label help = createInformationLabel(
+                keyBindings.get(GameCommand.HOLD) + ": 홀드\n" + keyBindings.get(GameCommand.PAUSE) + ": 일시정지 / 재개\n"
+                        + keyBindings.get(GameCommand.QUIT_GAME) + ": 메뉴");
         help.setWrapText(true);
         return help;
     }
@@ -234,13 +246,14 @@ public class JavaFxGameView implements GameView {
             drawSymbol(graphics, BORDER_SYMBOL, Color.WHITE, (cols + 1) * cellWidth, (row + 1) * cellHeight);
 
             for (int col = 0; col < cols; col++) {
+                String symbol = findSymbol(cells[row][col]);
                 PieceType type = findType(Board.extractCellId(cells[row][col]));
-                drawCell(graphics, (col + 1) * cellWidth, (row + 1) * cellHeight, type);
+                drawCell(graphics, (col + 1) * cellWidth, (row + 1) * cellHeight, symbol, type);
             }
         }
     }
 
-    private void drawPreview(Canvas canvas, PieceType type) {
+    private void drawPreview(Canvas canvas, PieceType type, Item item) {
         GraphicsContext graphics = canvas.getGraphicsContext2D();
 
         graphics.setFill(EMPTY_COLOR);
@@ -262,20 +275,20 @@ public class JavaFxGameView implements GameView {
         double offsetX = (canvas.getWidth() - pieceWidth) / 2;
         double offsetY = (canvas.getHeight() - pieceHeight) / 2;
 
-        for (Position position : positions) {
-            double x = offsetX + (position.column() - minColumn) * cellWidth;
-            double y = offsetY + (position.row() - minRow) * cellHeight;
-
-            drawCell(graphics, x, y, type);
+        for (int i = 0; i < positions.size(); i++) {
+            double x = offsetX + (positions.get(i).column() - minColumn) * cellWidth;
+            double y = offsetY + (positions.get(i).row() - minRow) * cellHeight;
+            int cellValue = Board.calculateCellValue(type,item,i);
+            String symbol = findSymbol(cellValue);
+            drawCell(graphics, x, y, symbol, type);
         }
     }
 
-    private void drawCell(GraphicsContext graphics, double x, double y, PieceType type) {
+    private void drawCell(GraphicsContext graphics, double x, double y, String Symbol, PieceType type) {
         if (type == null) {
             return;
         }
-
-        drawSymbol(graphics, BLOCK_SYMBOL, getPieceColor(type), x, y);
+        drawSymbol(graphics, Symbol, getPieceColor(type), x, y);
     }
 
     private void drawSymbol(GraphicsContext graphics, String symbol, Color color, double x, double y) {
@@ -311,7 +324,6 @@ public class JavaFxGameView implements GameView {
             return;
         }
 
-
         if (command == GameCommand.PAUSE) {
             if (pauseKeyHeld) {
                 return;
@@ -330,5 +342,17 @@ public class JavaFxGameView implements GameView {
         }
 
         return GameCommand.NONE;
+    }
+
+    private String findSymbol(int cellValue) {
+        int ItemCode = Board.extractItemCode(cellValue);
+        if (ItemCode != 0) {
+            String symbol = ItemType.findSymbolByCode(ItemCode);
+            if (symbol != null) {
+                return symbol;
+            }
+        }
+
+        return BLOCK_SYMBOL;
     }
 }

@@ -104,4 +104,19 @@ public enum ItemType {
         }
         return null;
     }
+
+    /**
+     * itemCode에 해당하는 Symbol을 반환하는 메서드. itemCode에 해당하는 Symbol이 없을 시 null을 반환한다.
+     * 
+     * @param itemCode itemType의 식별 코드
+     * @return itemCode에 해당하는 itemType, 없을 시 null
+     */
+    public static String findSymbolByCode(int itemCode) {
+        for (ItemType type : ItemType.values()) {
+            if (type.getItemCode() == itemCode) {
+                return String.valueOf(type.getSymbol());
+            }
+        }
+        return null;
+    }
 }

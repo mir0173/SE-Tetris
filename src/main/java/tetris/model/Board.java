@@ -115,7 +115,7 @@ public class Board {
 
         int index = 0;
         for (Position pos : positions) {
-            copy[pos.row()][pos.column()] = calculateCellValue(piece, index);
+            copy[pos.row()][pos.column()] = calculateCellValue(piece.type(),piece.item(), index);
             index++;
         }
         return copy;
@@ -168,7 +168,7 @@ public class Board {
         List<Position> positions = piece.getAbsolutePositions();
         int index = 0;
         for (Position pos : positions) {
-            cells[pos.row()][pos.column()] = calculateCellValue(piece, index);
+            cells[pos.row()][pos.column()] = calculateCellValue(piece.type(),piece.item(), index);
             index++;
         }
     }
@@ -255,20 +255,20 @@ public class Board {
         return true;
     }
 
-    // Piece의 index번째 칸에 적을 값을 반환
-    private int calculateCellValue(Piece piece, int index) {
-        if (piece.item() == null) {
-            return piece.type().getCellId();
+    // PieceType과 Item을 입력하고, index번째 칸에 적을 값을 반환
+    public static int calculateCellValue(PieceType pieceType, Item item, int index) {
+        if (item == null) {
+            return pieceType.getCellId();
         }
 
-        if (!piece.item().isEmbedded()) {
-            return piece.item().type().getItemCode() * ITEM_CODE_MULTIPLIER + piece.type().getCellId();
+        if (!item.isEmbedded()) {
+            return item.type().getItemCode() * ITEM_CODE_MULTIPLIER + pieceType.getCellId();
         }
 
-        if (index == piece.item().cellIndex()) {
-            return piece.item().type().getItemCode() * ITEM_CODE_MULTIPLIER + piece.type().getCellId();
+        if (index == item.cellIndex()) {
+            return item.type().getItemCode() * ITEM_CODE_MULTIPLIER + pieceType.getCellId();
         } else {
-            return piece.type().getCellId();
+            return pieceType.getCellId();
         }
     }
 
