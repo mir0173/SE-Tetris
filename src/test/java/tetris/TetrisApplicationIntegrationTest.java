@@ -107,7 +107,7 @@ class TetrisApplicationIntegrationTest {
             stage.close();
             stage = new Stage();
             new TetrisApplication().start(stage);
-            clickButton("게임 시작");
+            clickButton("일반 모드 시작");
             assertEquals(600, stage.getScene().getWidth(), 1.0);
             assertEquals(720, stage.getScene().getHeight(), 1.0);
             pressKey(KeyCode.ESCAPE);
@@ -120,7 +120,7 @@ class TetrisApplicationIntegrationTest {
 
     @Test
     void runGravityPauseResumeAndReturnToMenu() throws Exception {
-        onFx(() -> { clickButton("게임 시작"); return null; });
+        onFx(() -> { clickButton("일반 모드 시작"); return null; });
         awaitScoreGreaterThan(0);
 
         long pausedScore = onFx(() -> {
@@ -152,7 +152,7 @@ class TetrisApplicationIntegrationTest {
         CompletableFuture<Void> nameEntered = new CompletableFuture<>();
 
         onFx(() -> {
-            clickButton("게임 시작");
+            clickButton("일반 모드 시작");
             for (int index = 0; index < 100; index++) {
                 pressKey(KeyCode.SPACE);
             }

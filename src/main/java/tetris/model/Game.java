@@ -1,6 +1,8 @@
 package tetris.model;
 
 import java.util.List;
+import java.util.Random;
+import static java.util.Objects.requireNonNull;
 
 public class Game {
 
@@ -9,47 +11,63 @@ public class Game {
     private static final int LINES_PER_LEVEL = 5;
     private static final int LINES_PER_ITEM_SPAWN = 10;
     private static final int PIECES_PER_LEVEL = 10;
+    private static final long DRILL_INTERVAL = 50L;
     private static final long DROP_INTERVAL_STEP = 100L;
     private static final long MIN_DROP_INTERVAL = 100L;
     private static final long LINE_CLEAR_BONUS = 100L;
+    private static final long SLOW_DURATION = 10_000L;
+    private static final long SLOW_MULTIPLIER = 2L;
 
     private final Board board;
     private final TetrominoGenerator generator;
+    private final ItemGenerator itemGenerator;
     private final GameMode mode;
     private final Difficulty difficulty;
+    private final ItemContext context = new GameItemContext();
     private GameStatus status;
 
-    private Piece currentPiece;         // 현재 드랍중인 블록
-    private PieceType nextPieceType;    // 다음에 드랍될 블록 타입
-    private Item nextItem;              // 다음에 생성될 아이템
-    private PieceType heldPieceType;    // 홀드된 블록 종류
-    private Item heldItem;              // 홀드된 블록의 아이템 종류
-    private boolean holdUsed;           // 이번 블록에서 홀드를 이미 썼는지
-    private boolean itemReserved;       // spawnNextPiece 에서 아이템을 스폰하도록 예약하는 필드
-    private int lastClearedLines;       // 마지막 고정 때 지운 줄 수 (T6 점수 계산용)
-    private int itemLineCounter;        // 아이템 생성까지 지운 줄 수 카운터
-    private long lockedPieceCount;      // 고정된 블록 수
-    private long spawnedPieceCount;     // 실제 생성된 블록 수
-    private long gravityDropCells;      // 자동 낙하 칸 수
-    private long softDropCells;         // 소프트 드롭 칸 수
-    private long hardDropCells;         // 하드 드롭 칸 수
+    private Piece currentPiece; // 현재 드랍중인 블록
+    private PieceType nextPieceType; // 다음에 드랍될 블록 타입
+    private Item nextItem; // 다음에 생성될 아이템
+    private PieceType heldPieceType; // 홀드된 블록 종류
+    private Item heldItem; // 홀드된 블록의 아이템 종류
+    private boolean holdUsed; // 이번 블록에서 홀드를 이미 썼는지
+    private boolean itemReserved; // spawnNextPiece 에서 아이템을 스폰하도록 예약하는 필드
+    private boolean drilling; // 아이템 HEAVY WEIGHT(무게추)이 고정되지 않고 아래 칸을 부수는 상태인가
+    private boolean doubleScoreReserved; // 점수를 두배로 계산하는 것을 예약하는 변수
+    private boolean specialBlockReserved; // 특별 블럭을 스폰하는 것을 예약하는 변수
+    private int lastClearedLines; // 마지막 고정 때 지운 줄 수 (T6 점수 계산용)
+    private int itemLineCounter; // 아이템 생성까지 지운 줄 수 카운터, 초과분은 이월됨.
+    private int itemClearedLines; // 아이템 효과로 지운 줄 수
+    private long lockedPieceCount; // 고정된 블록 수
+    private long spawnedPieceCount; // 실제 생성된 블록 수
+    private long gravityDropCells; // 자동 낙하 칸 수
+    private long softDropCells; // 소프트 드롭 칸 수
+    private long hardDropCells; // 하드 드롭 칸 수
     private long score = INITIAL_SCORE;
     private long dropInterval = INITIAL_DROP_INTERVAL;
     private long totalClearedLines;
+    private long currentPieceScore; // 지금 블록이 스폰된 뒤 얻은 점수 합계
+    private long slowTimeLeft; // 남은 속도 저하 시간
 
     public Game(Board board, TetrominoGenerator generator, Difficulty difficulty, GameMode mode) {
-        if (board == null || generator == null || mode == null) {
-            String nullObject = board == null ? "board" : (mode == null ? "mode" : "generator");
-            throw new NullPointerException("param : " + nullObject + " is null");
-        }
-        if (difficulty == null) {
-            throw new NullPointerException("null difficulty");
-        }
+        this(board, generator, new ItemGenerator(new Random()), difficulty, mode);
+    }
+
+    public Game(Board board, TetrominoGenerator generator, ItemGenerator itemGenerator, Difficulty difficulty,
+            GameMode mode) {
+        requireNonNull(board, "board");
+        requireNonNull(generator, "generator");
+        requireNonNull(itemGenerator, "itemGenerator");
+        requireNonNull(difficulty, "difficulty");
+        requireNonNull(mode, "mode");
+
         this.board = board;
         this.generator = generator;
+        this.itemGenerator = itemGenerator;
         this.difficulty = difficulty;
-        this.status = GameStatus.READY;
         this.mode = mode;
+        this.status = GameStatus.READY;
     }
 
     /**
@@ -135,6 +153,10 @@ public class Game {
             return;
         }
 
+        if (drilling) {
+            return;
+        }
+
         long previousDropCells = getTotalDropCells();
         long previousLockedPieceCount = lockedPieceCount;
         long previousSpawnedPieceCount = spawnedPieceCount;
@@ -175,14 +197,19 @@ public class Game {
             return;
         }
 
+        if (slowTimeLeft > 0) {
+            slowTimeLeft -= selectTimeInterval();
+            slowTimeLeft = Math.max(0, slowTimeLeft);
+        }
         long previousDropCells = getTotalDropCells();
         long previousLockedPieceCount = lockedPieceCount;
         long previousSpawnedPieceCount = spawnedPieceCount;
 
-        if (softDrop()) {
+        if (drilling) {
+            drillDown();
+        } else if (softDrop()) {
             gravityDropCells++;
         }
-
         updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
     }
 
@@ -226,7 +253,9 @@ public class Game {
                 heldPieceType,
                 score,
                 status,
-                dropInterval);
+                selectTimeInterval(),
+                nextItem,
+                heldItem);
     }
 
     // 후보가 놓일 수 있으면 현재 블록을 교체하고 true, 아니면 그대로 두고 false
@@ -244,7 +273,7 @@ public class Game {
         if (tryReplace(currentPiece.move(1, 0))) {
             return true;
         } else {
-            lockAndSpawnNext();
+            land();
             return false;
         }
     }
@@ -254,23 +283,34 @@ public class Game {
         while (tryReplace(currentPiece.move(1, 0))) {
             hardDropCells++;
         }
-        lockAndSpawnNext();
+        land();
     }
 
     // 현재 블록을 고정하고, 줄을 지우고, 다음 블록을 내보냄
     private void lockAndSpawnNext() {
+        itemClearedLines = 0;
         lockedPieceCount++;
-
         board.lock(currentPiece);
-        lastClearedLines = board.clearFullLines();
+        if (currentPiece.item() != null && currentPiece.item().isEmbedded()) {
+            int cellIndex = currentPiece.item().cellIndex();
+            Position position = currentPiece.getAbsolutePositions().get(cellIndex);
+            currentPiece.item().type().getItemEffect().handleLock(context, position);
+        }
+
+        lastClearedLines = board.clearFullLines() + itemClearedLines;
+        if (currentPiece.item() != null) {
+            currentPiece.item().type().getItemEffect().handleLinesCleared(context, lastClearedLines);
+        }
         holdUsed = false;
+
         if (mode == GameMode.ITEM) {
             itemLineCounter += lastClearedLines;
             if (itemLineCounter >= LINES_PER_ITEM_SPAWN) {
-                itemLineCounter = 0;
+                itemLineCounter -= LINES_PER_ITEM_SPAWN;
                 itemReserved = true;
             }
         }
+        notifyDestroyedItems();
         spawnNextPiece();
     }
 
@@ -283,8 +323,15 @@ public class Game {
         nextPieceType = generator.generateNext();
         nextItem = null;
         if (itemReserved) {
-            // Todo : nextItem 채우기
+            nextItem = itemGenerator.generateNext();
+            PieceType dedicatedPieceType = nextItem.type().getDedicatedPieceType();
+            if (dedicatedPieceType != null) {
+                nextPieceType = dedicatedPieceType;
+            }
             itemReserved = false;
+        } else if (specialBlockReserved) {
+            nextPieceType = PieceType.SPECIAL_BLOCK;
+            specialBlockReserved = false;
         }
     }
 
@@ -317,6 +364,7 @@ public class Game {
             heldItem = currentItem;
             spawn(spawnType, spawnItem);
         }
+        currentPieceScore = 0;
         holdUsed = true;
     }
 
@@ -334,25 +382,116 @@ public class Game {
      */
     private void updateProgress(long previousDropCells, long previousLockedPieceCount, long previousSpawnedPieceCount) {
 
+        long previousScore = score;
         long previousClearedLines = totalClearedLines;
         long speedReduction = INITIAL_DROP_INTERVAL - dropInterval;
-        long level =  (speedReduction + DROP_INTERVAL_STEP - 1) / DROP_INTERVAL_STEP + 1;
+        long level = (speedReduction + DROP_INTERVAL_STEP - 1) / DROP_INTERVAL_STEP + 1;
         long droppedCells = getTotalDropCells() - previousDropCells;
+        boolean pieceLocked = lockedPieceCount > previousLockedPieceCount;
 
         score += droppedCells * level;
 
-        if (lockedPieceCount > previousLockedPieceCount) {
+        if (pieceLocked) {
             long clearedLines = lastClearedLines;
 
             score += LINE_CLEAR_BONUS * clearedLines * clearedLines * level;
             totalClearedLines += clearedLines;
         }
 
+        currentPieceScore += score - previousScore;
+
+        if (pieceLocked) {
+            if (doubleScoreReserved) {
+                score += currentPieceScore;
+                doubleScoreReserved = false;
+            }
+            currentPieceScore = 0;
+        }
+
         long lineIncreases = totalClearedLines / LINES_PER_LEVEL - previousClearedLines / LINES_PER_LEVEL;
         long pieceIncreases = spawnedPieceCount / PIECES_PER_LEVEL - previousSpawnedPieceCount / PIECES_PER_LEVEL;
-        long intervalReduction =
-        lineIncreases * difficulty.getLineDropIntervalStep() + pieceIncreases * DROP_INTERVAL_STEP;
+        long intervalReduction = lineIncreases * difficulty.getLineDropIntervalStep()
+                + pieceIncreases * DROP_INTERVAL_STEP;
 
         dropInterval = Math.max(MIN_DROP_INTERVAL, dropInterval - intervalReduction);
+    }
+
+    // 드릴 중 한 칸 아래를 부수며 내려가고, 바닥이면 고정한다.
+    private void drillDown() {
+        Piece candidate = currentPiece.move(1, 0);
+        List<Position> positions = candidate.getAbsolutePositions();
+        for (Position pos : positions) {
+            if (!board.isInside(pos.row(), pos.column())) {
+                drilling = false;
+                lockAndSpawnNext();
+                return;
+            }
+        }
+        for (Position pos : positions) {
+            if (!board.isEmpty(pos.row(), pos.column())) {
+                board.clearCell(pos.row(), pos.column());
+            }
+        }
+        notifyDestroyedItems();
+        currentPiece = candidate;
+    }
+
+    // 블록이 더 내려갈 수 없을 때 아이템 효과에 첫 착지를 알리고, 드릴이 시작되지 않았으면 고정한다.
+    private void land() {
+        if (currentPiece.item() != null && !drilling) {
+            currentPiece.item().type().getItemEffect().handleFirstLanding(context);
+        }
+        if (!drilling) {
+            lockAndSpawnNext();
+        }
+    }
+
+    // 부서진 아이템 효과를 발동시킨다.
+    private void notifyDestroyedItems() {
+        for (int itemCode : board.takeDestroyedItemCodes()) {
+            ItemType type = ItemType.findTypeByCode(itemCode);
+            if (type != null) {
+                type.getItemEffect().handleDestroyed(context);
+            }
+        }
+    }
+
+    // 드릴, 속도 저하를 반영한 실제 낙하 간격을 반환한다.
+    private long selectTimeInterval() {
+        if (drilling) {
+            return DRILL_INTERVAL;
+        } else if (slowTimeLeft > 0) {
+            return dropInterval * SLOW_MULTIPLIER;
+        } else {
+            return dropInterval;
+        }
+    }
+
+    private class GameItemContext implements ItemContext {
+        @Override
+        public void clearLine(int rowIndex) {
+            board.clearLine(rowIndex);
+            itemClearedLines++;
+        }
+
+        @Override
+        public void startDrilling() {
+            drilling = true;
+        }
+
+        @Override
+        public void doubleScore() {
+            doubleScoreReserved = true;
+        }
+
+        @Override
+        public void startSlowDown() {
+            slowTimeLeft = SLOW_DURATION;
+        }
+
+        @Override
+        public void reserveSpecialPiece() {
+            specialBlockReserved = true;
+        }
     }
 }

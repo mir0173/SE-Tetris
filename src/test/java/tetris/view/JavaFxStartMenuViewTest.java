@@ -41,13 +41,14 @@ class JavaFxStartMenuViewTest {
     @BeforeEach
     void setUp() throws Exception {
         runOnFxThread(() -> {
-            actionCalls = new int[4];
+            actionCalls = new int[5];
 
             menu = new JavaFxStartMenuView(
                     () -> actionCalls[0]++,
                     () -> actionCalls[1]++,
                     () -> actionCalls[2]++,
-                    () -> actionCalls[3]++
+                    () -> actionCalls[3]++,
+                    () -> actionCalls[4]++
             );
         });
     }
@@ -58,7 +59,7 @@ class JavaFxStartMenuViewTest {
             menu.focusFirstButton();
 
             assertSame(
-                    findButton("게임 시작"),
+                    findButton("일반 모드 시작"),
                     menu.getScene().getFocusOwner()
             );
         });
@@ -66,10 +67,11 @@ class JavaFxStartMenuViewTest {
 
     @ParameterizedTest
     @CsvSource({
-            "게임 시작, 0",
-            "설정, 1",
-            "스코어보드, 2",
-            "종료, 3"
+            "일반 모드 시작, 0",
+            "아이템 모드 시작, 1",
+            "설정, 2",
+            "스코어보드, 3",
+            "종료, 4"
     })
     void buttonRunsOnlyItsOwnAction(
             String buttonText,
@@ -78,7 +80,7 @@ class JavaFxStartMenuViewTest {
         runOnFxThread(() -> {
             findButton(buttonText).fire();
 
-            int[] expectedCalls = new int[4];
+            int[] expectedCalls = new int[5];
             expectedCalls[expectedAction] = 1;
 
             assertArrayEquals(expectedCalls, actionCalls);
@@ -87,10 +89,10 @@ class JavaFxStartMenuViewTest {
 
     @ParameterizedTest
     @CsvSource({
-            "게임 시작, DOWN, 설정",
-            "설정, UP, 게임 시작",
-            "게임 시작, UP, 종료",
-            "종료, DOWN, 게임 시작"
+            "일반 모드 시작, DOWN, 아이템 모드 시작",
+            "아이템 모드 시작, UP, 일반 모드 시작",
+            "일반 모드 시작, UP, 종료",
+            "종료, DOWN, 일반 모드 시작"
     })
     void arrowKeyMovesFocus(
             String currentButton,
@@ -108,16 +110,17 @@ class JavaFxStartMenuViewTest {
             );
 
             // 이동만 했으므로 메뉴 동작은 실행되지 않아야 한다.
-            assertArrayEquals(new int[4], actionCalls);
+            assertArrayEquals(new int[5], actionCalls);
         });
     }
 
     @ParameterizedTest
     @CsvSource({
-            "게임 시작, 0",
-            "설정, 1",
-            "스코어보드, 2",
-            "종료, 3"
+            "일반 모드 시작, 0",
+            "아이템 모드 시작, 1",
+            "설정, 2",
+            "스코어보드, 3",
+            "종료, 4"
     })
     void enterRunsOnlySelectedAction(
             String buttonText,
@@ -128,7 +131,7 @@ class JavaFxStartMenuViewTest {
 
             pressKey(KeyCode.ENTER);
 
-            int[] expectedCalls = new int[4];
+            int[] expectedCalls = new int[5];
             expectedCalls[expectedAction] = 1;
 
             assertArrayEquals(expectedCalls, actionCalls);

@@ -3,7 +3,7 @@ package tetris.model;
 public record Item(ItemType type, int cellIndex) {
 
     public static final int NOT_EMBEDDED = -1;
-    private static final int MAX_CELL_INDEX = 3;
+    public static final int MAX_CELL_INDEX = 3;
 
     public Item {
         if (type == null) {
