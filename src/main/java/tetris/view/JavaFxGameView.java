@@ -284,11 +284,11 @@ public class JavaFxGameView implements GameView {
         }
     }
 
-    private void drawCell(GraphicsContext graphics, double x, double y, String Symbol, PieceType type) {
+    private void drawCell(GraphicsContext graphics, double x, double y, String symbol, PieceType type) {
         if (type == null) {
             return;
         }
-        drawSymbol(graphics, Symbol, getPieceColor(type), x, y);
+        drawSymbol(graphics, symbol, getPieceColor(type), x, y);
     }
 
     private void drawSymbol(GraphicsContext graphics, String symbol, Color color, double x, double y) {
@@ -345,9 +345,9 @@ public class JavaFxGameView implements GameView {
     }
 
     private String findSymbol(int cellValue) {
-        int ItemCode = Board.extractItemCode(cellValue);
-        if (ItemCode != 0) {
-            String symbol = ItemType.findSymbolByCode(ItemCode);
+        int itemCode = Board.extractItemCode(cellValue);
+        if (itemCode != Board.NO_ITEM_CODE) {
+            String symbol = ItemType.findSymbolByCode(itemCode);
             if (symbol != null) {
                 return symbol;
             }

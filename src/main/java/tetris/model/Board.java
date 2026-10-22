@@ -14,7 +14,7 @@ public class Board {
     /** 칸 값 = 아이템 코드 * 이 값 + cellID */
     public static final int ITEM_CODE_MULTIPLIER = 100;
     /** 아이템 없음 상태를 표시하는 상수 */
-    private static final int NO_ITEM_CODE = 0;
+    public static final int NO_ITEM_CODE = 0;
     /** 보드의 가로 칸 수. */
     private final int width;
     /** 보드의 세로 칸 수. */

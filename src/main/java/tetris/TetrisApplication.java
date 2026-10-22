@@ -36,7 +36,6 @@ import tetris.view.JavaFxStartMenuView;
 import tetris.view.JavaFxScoreboardView;
 import tetris.view.JavaFxSettingsView;
 
-
 /**
  * JavaFX 애플리케이션 진입점
  */
@@ -76,8 +75,9 @@ public class TetrisApplication extends Application {
             KeyBindingValidator validator = new KeyBindingValidator();
 
             if (validator.hasDuplicate(loadedSettings.getKeyBindings())) {
-                showError(stage, "중복된 키 설정이 있습니다. 기본 키 설정을 사용합니다." );
-                return new GameSettings(loadedSettings.getWindowSize(), GameSettings.getDefaultKeyBindings(), loadedSettings.isColorBlindMode(), loadedSettings.getDifficulty());
+                showError(stage, "중복된 키 설정이 있습니다. 기본 키 설정을 사용합니다.");
+                return new GameSettings(loadedSettings.getWindowSize(), GameSettings.getDefaultKeyBindings(),
+                        loadedSettings.isColorBlindMode(), loadedSettings.getDifficulty());
             }
             return loadedSettings;
         } catch (IOException exception) {
@@ -91,11 +91,11 @@ public class TetrisApplication extends Application {
         stage.setTitle("Tetris");
 
         JavaFxStartMenuView menu = new JavaFxStartMenuView(
-            () -> startNewGame(stage, GameMode.NORMAL), 
-            () -> startNewGame(stage, GameMode.ITEM),
-            () -> showSettings(stage),
-            () -> showScoreboard(stage),
-            stage::close);
+                () -> startNewGame(stage, GameMode.NORMAL),
+                () -> startNewGame(stage, GameMode.ITEM),
+                () -> showSettings(stage),
+                () -> showScoreboard(stage),
+                stage::close);
         stage.setScene(menu.getScene());
         stage.sizeToScene();
         stage.show();
@@ -108,8 +108,8 @@ public class TetrisApplication extends Application {
      *
      * @param stage 게임 화면을 표시할 창
      */
-    private void startNewGame(Stage stage, GameMode mode ) {
-        
+    private void startNewGame(Stage stage, GameMode mode) {
+
         GameConfig config = new GameConfig(BOARD_WIDTH, BOARD_HEIGHT);
         Board board = new Board(config.getBoardWidth(), config.getBoardHeight());
         Difficulty difficulty = currentSettings.getDifficulty();
@@ -117,17 +117,18 @@ public class TetrisApplication extends Application {
         Game game = new Game(board, generator, difficulty, mode);
         GameView view = new JavaFxGameView(stage, currentSettings);
         GameTimer timer = new JavaFxGameTimer(Game.getInitialDropInterval());
-        GameController controller = new GameController(game, view, timer, () -> showStartMenu(stage), score -> Platform.runLater(() -> handleGameOver(stage, score)));
+        GameController controller = new GameController(game, view, timer, () -> showStartMenu(stage),
+                score -> Platform.runLater(() -> handleGameOver(stage, score)));
         controller.start();
     }
 
     private void showSettings(Stage stage) {
 
         JavaFxSettingsView settingsView = new JavaFxSettingsView(
-            currentSettings,
-            newSettings -> saveSettings(stage, newSettings),
-            () -> resetScoreboard(stage),
-            () -> showStartMenu(stage));
+                currentSettings,
+                newSettings -> saveSettings(stage, newSettings),
+                () -> resetScoreboard(stage),
+                () -> showStartMenu(stage));
         stage.setTitle("설정");
         stage.setScene(settingsView.getScene());
         stage.sizeToScene();
@@ -136,7 +137,7 @@ public class TetrisApplication extends Application {
     }
 
     private void saveSettings(Stage stage, GameSettings newSettings) {
-        
+
         try {
             settingsRepository.save(newSettings);
             currentSettings = newSettings;
@@ -164,11 +165,11 @@ public class TetrisApplication extends Application {
     private void showScoreboard(Stage stage, Scoreboard scoreboard, UUID highlightEntryId) {
 
         JavaFxScoreboardView scoreboardView = new JavaFxScoreboardView(
-            scoreboard,
-            highlightEntryId,
-            () -> showStartMenu(stage),
-            stage::close);
-            
+                scoreboard,
+                highlightEntryId,
+                () -> showStartMenu(stage),
+                stage::close);
+
         stage.setTitle("스코어보드");
         stage.setScene(scoreboardView.getScene());
         stage.sizeToScene();
@@ -187,10 +188,10 @@ public class TetrisApplication extends Application {
     }
 
     /**
-    * 게임오버 점수를 확인하고 순위에 들면 이름과 기록을 저장한다
-    * 스코어보드 화면을 표시한다
-    *
-    */
+     * 게임오버 점수를 확인하고 순위에 들면 이름과 기록을 저장한다
+     * 스코어보드 화면을 표시한다
+     *
+     */
     private void handleGameOver(Stage stage, long score) {
         Scoreboard scoreboard;
 
@@ -257,7 +258,7 @@ public class TetrisApplication extends Application {
      *
      */
     private void showError(Stage stage, String message) {
-        
+
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.initOwner(stage);
         alert.setTitle("오류");

@@ -8,8 +8,8 @@ public class Game {
 
     private static final long INITIAL_SCORE = 0L;
     private static final long INITIAL_DROP_INTERVAL = 1_000L;
-    private static final int LINES_PER_LEVEL = 10;
-    private static final int LINES_PER_ITEM_SPAWN = 4;
+    private static final int LINES_PER_LEVEL = 5;
+    private static final int LINES_PER_ITEM_SPAWN = 10;
     private static final int PIECES_PER_LEVEL = 10;
     private static final long DRILL_INTERVAL = 50L;
     private static final long DROP_INTERVAL_STEP = 100L;
