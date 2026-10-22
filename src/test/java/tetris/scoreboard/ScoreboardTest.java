@@ -13,6 +13,9 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import tetris.model.Difficulty;
+import tetris.model.GameMode;
+
 class ScoreboardTest {
 
     // AI-assisted code start
@@ -319,7 +322,7 @@ class ScoreboardTest {
     }
 
     private ScoreEntry createEntry(String name, long score) {
-        return new ScoreEntry(UUID.randomUUID(), name, score);
+        return new ScoreEntry(UUID.randomUUID(), name, score, GameMode.NORMAL, Difficulty.NORMAL);
     }
 
     /**

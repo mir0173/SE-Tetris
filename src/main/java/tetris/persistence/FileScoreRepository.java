@@ -6,6 +6,7 @@ import java.io.Writer;
 import java.nio.file.Path;
 import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.google.gson.Gson;
@@ -14,6 +15,8 @@ import com.google.gson.JsonIOException;
 import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 
+import tetris.model.Difficulty;
+import tetris.model.GameMode;
 import tetris.scoreboard.ScoreEntry;
 
 // AI-assisted code start
@@ -23,6 +26,8 @@ public class FileScoreRepository implements ScoreRepository {
             .setPrettyPrinting()
             .create();
 
+    private static final GameMode DEFAULT_MODE = GameMode.NORMAL;
+    private static final Difficulty DEFAULT_DIFFICULTY = Difficulty.NORMAL;
     private static final String WRITE_ERROR_MESSAGE = "점수 기록을 저장할 수 없습니다.";
 
     private final Path path;
@@ -55,7 +60,7 @@ public class FileScoreRepository implements ScoreRepository {
             }
 
             validateEntries(entries);
-            return List.copyOf(entries);
+            return List.copyOf(fillMissingValues(entries));
         } catch (JsonParseException exception) {
             throw new IOException("점수 기록 JSON을 읽을 수 없습니다.", exception);
         }
@@ -80,6 +85,30 @@ public class FileScoreRepository implements ScoreRepository {
         } catch (JsonIOException exception) {
             throw new IOException(WRITE_ERROR_MESSAGE, exception);
         }
+    }
+
+    /**
+     * 누락된 게임 모드와 난이도에 기본값을 채운 새 목록을 만든다.
+     *
+     * @param entries 보정할 점수 기록 목록
+     * @return 기본값이 채워진 점수 기록 목록
+     */
+    private List<ScoreEntry> fillMissingValues(List<ScoreEntry> entries) {
+        List<ScoreEntry> filledEntries = new ArrayList<>(entries.size());
+        for (ScoreEntry entry : entries) {
+            GameMode mode = entry.getMode() == null ? DEFAULT_MODE : entry.getMode();
+            Difficulty difficulty = entry.getDifficulty() == null
+                    ? DEFAULT_DIFFICULTY
+                    : entry.getDifficulty();
+            filledEntries.add(new ScoreEntry(
+                    entry.getId(),
+                    entry.getName(),
+                    entry.getScore(),
+                    mode,
+                    difficulty
+            ));
+        }
+        return filledEntries;
     }
 
     /**
