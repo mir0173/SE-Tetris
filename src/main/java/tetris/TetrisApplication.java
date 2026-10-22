@@ -25,7 +25,6 @@ import tetris.persistence.FileScoreRepository;
 import tetris.persistence.FileSettingsRepository;
 import tetris.persistence.ScoreRepository;
 import tetris.persistence.SettingsRepository;
-import tetris.scoreboard.Scoreboard;
 import tetris.scoreboard.ScoreCategory;
 import tetris.scoreboard.ScoreEntry;
 import tetris.settings.GameSettings;
@@ -37,7 +36,6 @@ import tetris.view.JavaFxStartMenuView;
 import tetris.view.JavaFxScoreboardView;
 import tetris.view.JavaFxSettingsView;
 import tetris.scoreboard.ScoreboardGroup;
-import tetris.scoreboard.ScoreCategory;
 
 /**
  * JavaFX 애플리케이션 진입점
@@ -121,7 +119,7 @@ public class TetrisApplication extends Application {
         GameView view = new JavaFxGameView(stage, currentSettings);
         GameTimer timer = new JavaFxGameTimer(Game.getInitialDropInterval());
         GameController controller = new GameController(game, view, timer, () -> showStartMenu(stage),
-                score -> Platform.runLater(() -> handleGameOver(stage, score)));
+                score -> Platform.runLater(() -> handleGameOver(stage, score, mode, difficulty)));
         controller.start();
     }
 
@@ -158,18 +156,19 @@ public class TetrisApplication extends Application {
     private void showScoreboard(Stage stage) {
 
         try {
-            Scoreboard scoreboard = new Scoreboard(scoreRepository.load());
-            showScoreboard(stage, scoreboard, null);
+            ScoreboardGroup group = new ScoreboardGroup(scoreRepository.load());
+            ScoreCategory category = new ScoreCategory(GameMode.NORMAL, currentSettings.getDifficulty());
+            showScoreboard(stage, group, category, null);
         } catch (IOException exception) {
             showError(stage, "스코어보드를 불러오지 못했습니다.");
         }
     }
 
-    private void showScoreboard(Stage stage, Scoreboard scoreboard, UUID highlightEntryId) {
+    private void showScoreboard(Stage stage, ScoreboardGroup group, ScoreCategory category, UUID highlightEntryId) {
 
         JavaFxScoreboardView scoreboardView = new JavaFxScoreboardView(
-                new ScoreboardGroup(scoreboard.getEntries()),
-                new ScoreCategory(GameMode.NORMAL, Difficulty.NORMAL), // TODO: 14-5에서 실제 모드와 난이도로 교체
+                group,
+                category,
                 highlightEntryId,
                 () -> showStartMenu(stage),
                 stage::close);
@@ -196,38 +195,39 @@ public class TetrisApplication extends Application {
      * 스코어보드 화면을 표시한다
      *
      */
-    private void handleGameOver(Stage stage, long score) {
-        Scoreboard scoreboard;
+    private void handleGameOver(Stage stage, long score, GameMode mode, Difficulty difficulty) {
+        ScoreboardGroup group;
 
         try {
-            scoreboard = new Scoreboard(scoreRepository.load());
+            group = new ScoreboardGroup(scoreRepository.load());
         } catch (IOException exception) {
             showError(stage, "점수 기록을 불러오지 못했습니다.");
             showStartMenu(stage);
             return;
         }
 
+        ScoreCategory category = new ScoreCategory(mode, difficulty);
         UUID highlightEntryId = null;
 
-        if (scoreboard.isRankIn(score)) {
+        if (group.isRankIn(category, score)) {
             Optional<String> name = requestPlayerName(stage, score);
 
             if (name.isPresent()) {
                 ScoreEntry entry = new ScoreEntry(UUID.randomUUID(), name.get(), score,
-                    GameMode.NORMAL, Difficulty.NORMAL); // TODO: 14-5에서 실제 모드와 난이도로 교체
+                        mode, difficulty);
 
-                Scoreboard updatedScoreboard = scoreboard.addEntry(entry);
+                ScoreboardGroup updatedGroup = group.addEntry(entry);
 
                 try {
-                    scoreRepository.save(updatedScoreboard.getEntries());
-                    scoreboard = updatedScoreboard;
+                    scoreRepository.save(updatedGroup.getAllEntries());
+                    group = updatedGroup;
                     highlightEntryId = entry.getId();
                 } catch (IOException exception) {
                     showError(stage, "새 점수 기록을 저장하지 못했습니다.");
                 }
             }
         }
-        showScoreboard(stage, scoreboard, highlightEntryId);
+        showScoreboard(stage, group, category, highlightEntryId);
     }
 
     /**
