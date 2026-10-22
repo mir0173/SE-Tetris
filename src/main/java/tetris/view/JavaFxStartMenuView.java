@@ -11,35 +11,38 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.VBox;
 
 public class JavaFxStartMenuView {
-    
+
     private static final double MENU_WIDTH = 500;
     private static final double MENU_HEIGHT = 600;
     private static final double BUTTON_WIDTH = 200;
 
     private final Scene scene;
-    private final List<Button> menuButtons; 
+    private final List<Button> menuButtons;
 
     /**
      * 시작 메뉴 화면을 구성하고 각 버튼에 실행할 동작을 연결한다
      *
-     * @param onStartGame 게임 시작 버튼을 선택했을 때 실행할 동작
-     * @param onSettings 설정 버튼을 선택했을 때 실행할 동작
-     * @param onScoreboard 스코어보드 버튼을 선택했을 때 실행할 동작
-     * @param onExit 종료 버튼을 선택했을 때 실행할 동작
+     * @param onStartGame     게임 시작 버튼을 선택했을 때 실행할 동작
+     * @param onStartItemGame 아이템 모드 버튼을 선택했을 때 실행할 동작
+     * @param onSettings      설정 버튼을 선택했을 때 실행할 동작
+     * @param onScoreboard    스코어보드 버튼을 선택했을 때 실행할 동작
+     * @param onExit          종료 버튼을 선택했을 때 실행할 동작
      */
-    public JavaFxStartMenuView(Runnable onStartGame, Runnable onSettings, Runnable onScoreboard, Runnable onExit) {
+    public JavaFxStartMenuView(Runnable onStartGame, Runnable onStartItemGame, Runnable onSettings,
+            Runnable onScoreboard, Runnable onExit) {
         Label title = new Label("Tetris");
 
-        Button startButton = createButton("게임 시작", onStartGame);
+        Button startButton = createButton("일반 모드 시작", onStartGame);
+        Button itemModeButton = createButton("아이템 모드 시작", onStartItemGame);
         Button settingsButton = createButton("설정", onSettings);
         Button scoreboardButton = createButton("스코어보드", onScoreboard);
         Button exitButton = createButton("종료", onExit);
 
-        menuButtons = List.of(startButton, settingsButton, scoreboardButton, exitButton);
+        menuButtons = List.of(startButton, itemModeButton, settingsButton, scoreboardButton, exitButton);
 
         VBox root = new VBox(20);
         root.setAlignment(Pos.CENTER);
-        root.setPadding(new Insets(25));    
+        root.setPadding(new Insets(25));
 
         root.getChildren().add(title);
         root.getChildren().addAll(menuButtons);
@@ -62,7 +65,7 @@ public class JavaFxStartMenuView {
     /**
      * 실행할 동작을 연결한 메뉴 버튼을 생성한다
      *
-     * @param text 버튼에 표시할 문구
+     * @param text   버튼에 표시할 문구
      * @param action 버튼을 선택했을 때 실행할 동작
      * @return 생성된 메뉴 버튼
      */
@@ -94,7 +97,7 @@ public class JavaFxStartMenuView {
                 event.consume();
                 activateFocusedButton();
             }
-            default-> {
+            default -> {
 
             }
         }
