@@ -2,6 +2,7 @@ package tetris.view;
 
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.List;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -49,6 +50,8 @@ public class JavaFxGameView implements GameView {
     private static final int SPAWN_ROTATION = 0;
 
     private static final Color EMPTY_COLOR = Color.BLACK;
+    private static final Color CLEARING_BACKGROUND_COLOR = Color.WHITE;
+    private static final Color CLEARING_SYMBOL_COLOR = Color.BLACK;
     private static final String BORDER_SYMBOL = "X";
     private static final String BLOCK_SYMBOL = "O";
 
@@ -130,7 +133,7 @@ public class JavaFxGameView implements GameView {
 
     @Override
     public void render(GameSnapshot snapshot) {
-        drawBoard(snapshot.getCells());
+        drawBoard(snapshot.getCells(), snapshot.getClearingRows());
 
         PieceType nextPiece = snapshot.getNextPieces().isEmpty() ? null : snapshot.getNextPieces().get(0);
         drawPreview(nextCanvas, nextPiece,snapshot.getNextPieceItem());
@@ -225,7 +228,7 @@ public class JavaFxGameView implements GameView {
         return label;
     }
 
-    private void drawBoard(int[][] cells) {
+    private void drawBoard(int[][] cells, List<Integer> clearingRows) {
         int rows = cells.length;
         int cols = rows == 0 ? 0 : cells[0].length;
 
@@ -248,7 +251,14 @@ public class JavaFxGameView implements GameView {
             for (int col = 0; col < cols; col++) {
                 String symbol = findSymbol(cells[row][col]);
                 PieceType type = findType(Board.extractCellId(cells[row][col]));
-                drawCell(graphics, (col + 1) * cellWidth, (row + 1) * cellHeight, symbol, type);
+                double x = (col + 1) * cellWidth;
+                double y = (row + 1) * cellHeight;
+
+                if (type != null && clearingRows.contains(row)) {
+                    drawClearingCell(graphics, x, y, symbol);
+                } else {
+                    drawCell(graphics, x, y, symbol, type);
+                }
             }
         }
     }
@@ -289,6 +299,12 @@ public class JavaFxGameView implements GameView {
             return;
         }
         drawSymbol(graphics, symbol, getPieceColor(type), x, y);
+    }
+
+    private void drawClearingCell(GraphicsContext graphics, double x, double y, String symbol) {
+        graphics.setFill(CLEARING_BACKGROUND_COLOR);
+        graphics.fillRect(x, y, cellWidth, cellHeight);
+        drawSymbol(graphics, symbol, CLEARING_SYMBOL_COLOR, x, y);
     }
 
     private void drawSymbol(GraphicsContext graphics, String symbol, Color color, double x, double y) {
