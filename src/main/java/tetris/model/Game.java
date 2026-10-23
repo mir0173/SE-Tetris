@@ -2,6 +2,8 @@ package tetris.model;
 
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
+import java.util.TreeSet;
 import static java.util.Objects.requireNonNull;
 
 public class Game {
@@ -38,7 +40,7 @@ public class Game {
     private boolean specialBlockReserved; // 특별 블럭을 스폰하는 것을 예약하는 변수
     private int lastClearedLines; // 마지막 고정 때 지운 줄 수 (T6 점수 계산용)
     private int itemLineCounter; // 아이템 생성까지 지운 줄 수 카운터, 초과분은 이월됨.
-    private int itemClearedLines; // 아이템 효과로 지운 줄 수
+    private final Set<Integer> reservedItemRows = new TreeSet<>(); // L 아이템이 지우려고 예약한 줄 번호
     private long lockedPieceCount; // 고정된 블록 수
     private long spawnedPieceCount; // 실제 생성된 블록 수
     private long gravityDropCells; // 자동 낙하 칸 수
@@ -273,9 +275,10 @@ public class Game {
         long previousLockedPieceCount = lockedPieceCount;
         long previousSpawnedPieceCount = spawnedPieceCount;
 
+        List<Integer> rowsToClear = pendingClearRows;
         pendingClearRows = List.of();
         status = GameStatus.PLAYING;
-        completeLock();
+        completeLock(rowsToClear);
         updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
     }
 
@@ -309,7 +312,7 @@ public class Game {
 
     // 현재 블록을 고정. 꽉 찬 줄이 있으면 삭제 대기로 멈추고, 없으면 마무리
     private void lockAndSpawnNext() {
-        itemClearedLines = 0;
+        reservedItemRows.clear();
         board.lock(currentPiece);
         if (currentPiece.item() != null && currentPiece.item().isEmbedded()) {
             int cellIndex = currentPiece.item().cellIndex();
@@ -317,19 +320,20 @@ public class Game {
             currentPiece.item().type().getItemEffect().handleLock(context, position);
         }
 
-        List<Integer> fullLines = board.findFullLines();
-        if (!fullLines.isEmpty()) {
-            pendingClearRows = fullLines;
+        Set<Integer> rowsToClear = new TreeSet<>(reservedItemRows);
+        rowsToClear.addAll(board.findFullLines());
+        if (!rowsToClear.isEmpty()) {
+            pendingClearRows = List.copyOf(rowsToClear);
             status = GameStatus.CLEARING;
             return;
         }
-        completeLock();
+        completeLock(List.of());
     }
 
     // 줄을 지우고, 아이템 효과와 카운터 반영, 다음 블록을 내보냄
-    private void completeLock() {
+    private void completeLock(List<Integer> rowsToClear) {
         lockedPieceCount++;
-        lastClearedLines = board.clearFullLines() + itemClearedLines;
+        lastClearedLines = board.clearRows(rowsToClear);
         if (currentPiece.item() != null) {
             currentPiece.item().type().getItemEffect().handleLinesCleared(context, lastClearedLines);
         }
@@ -502,8 +506,7 @@ public class Game {
     private class GameItemContext implements ItemContext {
         @Override
         public void clearLine(int rowIndex) {
-            board.clearLine(rowIndex);
-            itemClearedLines++;
+            reservedItemRows.add(rowIndex);
         }
 
         @Override

@@ -691,6 +691,214 @@ class BoardTest {
     }
     // AI-assisted code end
 
+    // AI-assisted code start
+    @Test
+    void clearRowsRemoveGivenFullRowAndDropRowsAbove() {
+        // given
+        Board board = new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT);
+        lockIPiece(board, FULL_LINE_ROW, 0);
+        lockIPiece(board, FULL_LINE_ROW, 4);
+        lockIPiece(board, PATTERN_ROW, 0);
+
+        // when
+        int clearedRows = board.clearRows(List.of(FULL_LINE_ROW));
+
+        // then
+        assertEquals(1, clearedRows);
+        assertPatternA(board, FULL_LINE_ROW);
+        assertRowsEmpty(board, 0, FULL_LINE_ROW - 1);
+    }
+
+    @Test
+    void clearRowsRemoveRowThatIsNotFull() {
+        // given: 4행은 왼쪽 절반만, 2행은 오른쪽 절반만 채워져 있다
+        Board board = new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT);
+        lockIPiece(board, PATTERN_A_ROW, 0);
+        lockIPiece(board, PATTERN_B_ROW, 4);
+
+        // when: 꽉 차지 않은 4행을 지운다
+        int clearedRows = board.clearRows(List.of(PATTERN_A_ROW));
+
+        // then: 위 줄이 한 칸 내려오고 지운 줄은 사라진다
+        assertEquals(1, clearedRows);
+        assertPatternB(board, PATTERN_B_ROW + 1);
+        assertRowsEmpty(board, 0, PATTERN_B_ROW);
+        assertRowsEmpty(board, PATTERN_B_ROW + 2, SMALL_BOARD_HEIGHT - 1);
+    }
+
+    @Test
+    void clearRowsRemoveSeparatedRowsAtOnce() {
+        // given: 5행(A), 4행(A), 3행(B), 2행(B) 중 5행과 3행을 지운다
+        Board board = new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT);
+        lockIPiece(board, FULL_LINE_ROW, 0);
+        lockIPiece(board, SECOND_FULL_LINE_ROW, 0);
+        lockIPiece(board, THIRD_FULL_LINE_ROW, 4);
+        lockIPiece(board, FOURTH_FULL_LINE_ROW, 4);
+
+        // when
+        int clearedRows = board.clearRows(List.of(FULL_LINE_ROW, THIRD_FULL_LINE_ROW));
+
+        // then: 남은 4행(A)은 5행으로, 2행(B)은 4행으로 내려온다
+        assertEquals(2, clearedRows);
+        assertPatternA(board, FULL_LINE_ROW);
+        assertPatternB(board, SECOND_FULL_LINE_ROW);
+        assertRowsEmpty(board, 0, THIRD_FULL_LINE_ROW);
+    }
+
+    @Test
+    void clearRowsRemoveAdjacentRowsAtOnce() {
+        // given
+        Board board = new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT);
+        lockIPiece(board, FULL_LINE_ROW, 0);
+        lockIPiece(board, SECOND_FULL_LINE_ROW, 4);
+        lockIPiece(board, THIRD_FULL_LINE_ROW, 0);
+
+        // when
+        int clearedRows = board.clearRows(List.of(SECOND_FULL_LINE_ROW, FULL_LINE_ROW));
+
+        // then: 3행의 A가 5행으로 내려온다
+        assertEquals(2, clearedRows);
+        assertPatternA(board, FULL_LINE_ROW);
+        assertRowsEmpty(board, 0, SECOND_FULL_LINE_ROW);
+    }
+
+    @Test
+    void clearRowsIgnoreOrderOfGivenRows() {
+        // given
+        Board ascending = boardWithFourPatternRows();
+        Board descending = boardWithFourPatternRows();
+
+        // when
+        ascending.clearRows(List.of(THIRD_FULL_LINE_ROW, FULL_LINE_ROW));
+        descending.clearRows(List.of(FULL_LINE_ROW, THIRD_FULL_LINE_ROW));
+
+        // then
+        assertCellsEqual(ascending.copyCells(), descending.copyCells());
+    }
+
+    @Test
+    void clearRowsCountDuplicateRowOnlyOnce() {
+        // given
+        Board board = boardWithFourPatternRows();
+
+        // when
+        int clearedRows = board.clearRows(List.of(FULL_LINE_ROW, FULL_LINE_ROW, THIRD_FULL_LINE_ROW));
+
+        // then
+        assertEquals(2, clearedRows);
+        assertPatternA(board, FULL_LINE_ROW);
+        assertPatternB(board, SECOND_FULL_LINE_ROW);
+    }
+
+    @Test
+    void clearRowsDoNothingForEmptyList() {
+        // given
+        Board board = boardWithFourPatternRows();
+        int[][] before = board.copyCells();
+
+        // when
+        int clearedRows = board.clearRows(List.of());
+
+        // then
+        assertEquals(0, clearedRows);
+        assertCellsEqual(before, board.copyCells());
+    }
+
+    @Test
+    void clearRowsRejectRowOutsideBoardWithoutChangingBoard() {
+        // given
+        Board board = boardWithFourPatternRows();
+        int[][] before = board.copyCells();
+
+        // when & then
+        assertThrows(IllegalArgumentException.class,
+                () -> board.clearRows(List.of(FULL_LINE_ROW, SMALL_BOARD_HEIGHT)));
+        assertThrows(IllegalArgumentException.class, () -> board.clearRows(List.of(INVALID_ROW)));
+        assertCellsEqual(before, board.copyCells());
+    }
+
+    @Test
+    void clearRowsCollectItemsOnlyFromClearedRows() {
+        // given: 아이템이 든 2행과 다른 아이템이 든 1행
+        Board board = new Board(SINGLE_CELL_BOARD_SIZE, SINGLE_CELL_BOARD_SIZE);
+        lockSingleCellRow(board, CLEAR_TARGET_ROW, 0, ItemType.LINE_CLEAR);
+        lockSingleCellRow(board, CLEAR_TARGET_ROW - 1, 0, ItemType.BLOCK_GENERATE);
+
+        // when
+        board.clearRows(List.of(CLEAR_TARGET_ROW));
+
+        // then
+        assertEquals(List.of(ItemType.LINE_CLEAR.getItemCode()), board.takeDestroyedItemCodes());
+    }
+
+    @Test
+    void clearRowsCollectItemsFromEveryClearedRow() {
+        // given
+        Board board = new Board(SINGLE_CELL_BOARD_SIZE, SINGLE_CELL_BOARD_SIZE);
+        lockSingleCellRow(board, CLEAR_TARGET_ROW, 0, ItemType.LINE_CLEAR);
+        lockSingleCellRow(board, CLEAR_TARGET_ROW - 1, 0, ItemType.BLOCK_GENERATE);
+
+        // when
+        board.clearRows(List.of(CLEAR_TARGET_ROW - 1, CLEAR_TARGET_ROW));
+
+        // then
+        assertEquals(2, board.takeDestroyedItemCodes().size());
+    }
+
+    @Test
+    void clearRowsGiveSameResultAsClearFullLinesForFullRows() {
+        // given
+        Board byClearFullLines = boardWithFullRowsAndPatterns();
+        Board byClearRows = boardWithFullRowsAndPatterns();
+
+        // when
+        int expected = byClearFullLines.clearFullLines();
+        int actual = byClearRows.clearRows(byClearRows.findFullLines());
+
+        // then
+        assertEquals(expected, actual);
+        assertCellsEqual(byClearFullLines.copyCells(), byClearRows.copyCells());
+    }
+
+    @Test
+    void clearFullLinesStillCollectItemsOfFullRows() {
+        // given
+        Board board = new Board(SINGLE_CELL_BOARD_SIZE, SINGLE_CELL_BOARD_SIZE);
+        lockSingleCellRow(board, SINGLE_CELL_BOARD_SIZE - 1, 0, ItemType.LINE_CLEAR);
+        for (int column = 1; column < SINGLE_CELL_BOARD_SIZE; column++) {
+            lockSingleCellRow(board, SINGLE_CELL_BOARD_SIZE - 1, column, null);
+        }
+
+        // when
+        board.clearFullLines();
+
+        // then
+        assertEquals(List.of(ItemType.LINE_CLEAR.getItemCode()), board.takeDestroyedItemCodes());
+    }
+
+    // 5행(A), 4행(A), 3행(B), 2행(B)이 채워진 보드
+    private Board boardWithFourPatternRows() {
+        Board board = new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT);
+        lockIPiece(board, FULL_LINE_ROW, 0);
+        lockIPiece(board, SECOND_FULL_LINE_ROW, 0);
+        lockIPiece(board, THIRD_FULL_LINE_ROW, 4);
+        lockIPiece(board, FOURTH_FULL_LINE_ROW, 4);
+        return board;
+    }
+
+    // 5행과 3행이 꽉 차 있고, 4행과 2행에는 일부만 채워진 보드
+    private Board boardWithFullRowsAndPatterns() {
+        Board board = new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT);
+        lockIPiece(board, FULL_LINE_ROW, 0);
+        lockIPiece(board, FULL_LINE_ROW, 4);
+        lockIPiece(board, PATTERN_A_ROW, 0);
+        lockIPiece(board, THIRD_FULL_LINE_ROW, 0);
+        lockIPiece(board, THIRD_FULL_LINE_ROW, 4);
+        lockIPiece(board, PATTERN_B_ROW, 4);
+        return board;
+    }
+    // AI-assisted code end
+
     @Test
     void preserveBoardWhenCopyIsModified() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);

@@ -254,8 +254,8 @@ public class JavaFxGameView implements GameView {
                 double x = (col + 1) * cellWidth;
                 double y = (row + 1) * cellHeight;
 
-                if (type != null && clearingRows.contains(row)) {
-                    drawClearingCell(graphics, x, y, symbol);
+                if (clearingRows.contains(row)) {
+                    drawClearingCell(graphics, x, y, symbol, type);
                 } else {
                     drawCell(graphics, x, y, symbol, type);
                 }
@@ -301,10 +301,12 @@ public class JavaFxGameView implements GameView {
         drawSymbol(graphics, symbol, getPieceColor(type), x, y);
     }
 
-    private void drawClearingCell(GraphicsContext graphics, double x, double y, String symbol) {
+    private void drawClearingCell(GraphicsContext graphics, double x, double y, String symbol, PieceType type) {
         graphics.setFill(CLEARING_BACKGROUND_COLOR);
         graphics.fillRect(x, y, cellWidth, cellHeight);
-        drawSymbol(graphics, symbol, CLEARING_SYMBOL_COLOR, x, y);
+        if (type != null) {
+            drawSymbol(graphics, symbol, CLEARING_SYMBOL_COLOR, x, y);
+        }
     }
 
     private void drawSymbol(GraphicsContext graphics, String symbol, Color color, double x, double y) {

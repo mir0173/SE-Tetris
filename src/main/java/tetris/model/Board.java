@@ -2,6 +2,9 @@ package tetris.model;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * 떨어지는 블록이 고정된 게임 보드를 관리한다.
@@ -177,7 +180,7 @@ public class Board {
      * 보드에 꽉 찬 줄의 행 번호를 찾아 반환한다.
      * 보드는 바꾸지 않는다
      *
-     * @return 꽉 찬 줄의 행 번호 목록
+     * @return 꽉 찬 줄의 행 번호 목록(수정 불가)
      */
     public List<Integer> findFullLines() {
         List<Integer> fullLines = new ArrayList<>();
@@ -196,9 +199,29 @@ public class Board {
      * @return 지운 줄 수
      */
     public int clearFullLines() {
+        return clearRows(findFullLines());
+    }
+
+    /**
+     * 지정한 줄들을 한꺼번에 지우고, 그 위의 줄들을 지워진 줄 수만큼 아래로 내린다.
+     * 꽉 차지 않은 줄도 지울 수 있다. 같은 번호가 여러 번 들어 있어도 한 번만 지운다.
+     * 범위 밖 번호가 하나라도 있으면 보드를 바꾸지 않고 예외를 던진다.
+     *
+     * @param rowIndexes 지울 줄의 행 번호 목록, 맨 위가 0
+     * @return 지운 줄 수
+     * @throws IllegalArgumentException 행 번호가 보드 범위를 벗어난 경우
+     */
+    public int clearRows(Collection<Integer> rowIndexes) {
+        for (int rowIndex : rowIndexes) {
+            if (rowIndex >= height || rowIndex < 0) {
+                throw new IllegalArgumentException("rowIndex is out of height");
+            }
+        }
+
+        Set<Integer> targetRows = new HashSet<>(rowIndexes);
         int offset = 0;
         for (int row = height - 1; row >= 0; row--) {
-            if (isFullLine(cells[row])) {
+            if (targetRows.contains(row)) {
                 for (int cellValue : cells[row]) {
                     collectItemCode(cellValue);
                 }

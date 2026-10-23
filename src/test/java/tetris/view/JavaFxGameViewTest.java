@@ -716,6 +716,71 @@ class JavaFxGameViewTest {
         });
     }
 
+    @Test
+    void drawEmptyCellsWhiteWhenClearingRowIsNotFull() throws Exception {
+        runOnFxThread(() -> {
+            // given: 19행은 왼쪽 5칸만 채워진 줄이다 (L 아이템으로 지워지는 줄처럼)
+            Stage stage = new Stage();
+
+            try {
+                JavaFxGameView view = new JavaFxGameView(stage, GameSettings.defaults());
+                Canvas board = (Canvas) stage.getScene().lookup("#game-board");
+
+                // when
+                view.render(snapshotWithHalfFilledRow(19, List.of(19)));
+
+                // then: 빈 칸 자리까지 흰색이라 줄 전체가 하나의 띠로 보인다
+                assertTrue(countWhitePixelsInCells(board, 19, 0, 5) > 0);
+                assertTrue(countWhitePixelsInCells(board, 19, 5, BOARD_COLUMNS) > 0);
+            } finally {
+                stage.close();
+            }
+        });
+    }
+
+    @Test
+    void keepEmptyCellsDarkWhenRowIsNotClearing() throws Exception {
+        runOnFxThread(() -> {
+            // given
+            Stage stage = new Stage();
+
+            try {
+                JavaFxGameView view = new JavaFxGameView(stage, GameSettings.defaults());
+                Canvas board = (Canvas) stage.getScene().lookup("#game-board");
+
+                // when
+                view.render(snapshotWithHalfFilledRow(19, List.of()));
+
+                // then
+                assertEquals(0, countWhitePixelsInCells(board, 19, 5, BOARD_COLUMNS));
+            } finally {
+                stage.close();
+            }
+        });
+    }
+
+    @Test
+    void drawEmptyRowWhiteWhenEmptyRowIsClearing() throws Exception {
+        runOnFxThread(() -> {
+            // given
+            Stage stage = new Stage();
+
+            try {
+                JavaFxGameView view = new JavaFxGameView(stage, GameSettings.defaults());
+                Canvas board = (Canvas) stage.getScene().lookup("#game-board");
+
+                // when: 지워질 줄 번호가 빈 줄을 가리켜도 그리기가 깨지지 않는다
+                view.render(snapshotWithHalfFilledRow(19, List.of(10)));
+
+                // then
+                assertTrue(countWhitePixelsInCells(board, 10, 0, BOARD_COLUMNS) > 0);
+                assertEquals(0, countWhitePixelsInCells(board, 11, 0, BOARD_COLUMNS));
+            } finally {
+                stage.close();
+            }
+        });
+    }
+
     private static void assertInsideScene(Node node, Scene scene) {
         Bounds bounds = node.localToScene(node.getBoundsInLocal());
 
@@ -812,13 +877,13 @@ class JavaFxGameViewTest {
         return new GameSnapshot(cells, List.of(PieceType.I), null, 0L, status, 1_000L, null, null, clearingRows);
     }
 
-    // 보드 칸 안쪽 영역(테두리 제외)에서 지정한 행의 순수한 흰색 픽셀 수를 센다
-    private static int countWhitePixelsInRow(Canvas canvas, int row) {
+    // firstColumn 이상 endColumn 미만 칸 영역(테두리 제외)에서 지정한 행의 순수한 흰색 픽셀 수를 센다
+    private static int countWhitePixelsInCells(Canvas canvas, int row, int firstColumn, int endColumn) {
         WritableImage image = canvas.snapshot(null, null);
         double cellWidth = canvas.getWidth() / (BOARD_COLUMNS + 2);
         double cellHeight = canvas.getHeight() / (BOARD_ROWS + 2);
-        int startX = (int) Math.ceil(cellWidth) + BORDER_MARGIN_PIXELS;
-        int endX = (int) Math.floor(cellWidth * (BOARD_COLUMNS + 1)) - BORDER_MARGIN_PIXELS;
+        int startX = (int) Math.ceil(cellWidth * (firstColumn + 1)) + BORDER_MARGIN_PIXELS;
+        int endX = (int) Math.floor(cellWidth * (endColumn + 1)) - BORDER_MARGIN_PIXELS;
         int startY = (int) Math.ceil(cellHeight * (row + 1));
         int endY = (int) Math.floor(cellHeight * (row + 2));
         int count = 0;
@@ -836,6 +901,23 @@ class JavaFxGameViewTest {
         }
 
         return count;
+    }
+
+    // 지정한 행의 순수한 흰색 픽셀 수를 센다
+    private static int countWhitePixelsInRow(Canvas canvas, int row) {
+        return countWhitePixelsInCells(canvas, row, 0, BOARD_COLUMNS);
+    }
+
+    // row 한 줄만 왼쪽 5칸이 I 블록으로 채워진 20x10 보드의 스냅샷
+    private static GameSnapshot snapshotWithHalfFilledRow(int row, List<Integer> clearingRows) {
+        int[][] cells = new int[BOARD_ROWS][BOARD_COLUMNS];
+
+        for (int column = 0; column < BOARD_COLUMNS / 2; column++) {
+            cells[row][column] = PieceType.I.getCellId();
+        }
+
+        GameStatus status = clearingRows.isEmpty() ? GameStatus.PLAYING : GameStatus.CLEARING;
+        return new GameSnapshot(cells, List.of(PieceType.I), null, 0L, status, 1_000L, null, null, clearingRows);
     }
 
     // AI-assisted code end
