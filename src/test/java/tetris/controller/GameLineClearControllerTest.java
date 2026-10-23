@@ -34,9 +34,10 @@ class GameLineClearControllerTest {
     private static final int SMALL_BOARD_HEIGHT = 6;
     private static final int NORMAL_BOARD_WIDTH = 10;
     private static final int NORMAL_BOARD_HEIGHT = 20;
+    private static final int LINES_TO_REACH_MINIMUM_INTERVAL = 100;
 
     @Test
-    void scheduleLineClearFinishWithConfiguredDelay() {
+    void scheduleLineClearFinishWithMaximumDelayAtInitialSpeed() {
         // given
         Fixture fixture = fixtureWithSmallBoard();
 
@@ -44,7 +45,7 @@ class GameLineClearControllerTest {
         dropTwoPiecesToFillTwoLines(fixture);
 
         // then
-        assertEquals(List.of(GameController.LINE_CLEAR_DELAY_MILLIS), fixture.scheduler.delays);
+        assertEquals(List.of(GameController.MAX_LINE_CLEAR_DELAY_MILLIS), fixture.scheduler.delays);
     }
 
     @Test
@@ -186,6 +187,84 @@ class GameLineClearControllerTest {
         assertEquals(List.of(), fixture.scheduler.delays);
     }
 
+    // ---------- 낙하 속도에 맞춘 지연 시간 ----------
+
+    @Test
+    void useMaximumDelayWhenDropIntervalIsLonger() {
+        // given & when
+        long delay = GameController.calculateLineClearDelay(GameController.MAX_LINE_CLEAR_DELAY_MILLIS * 5);
+
+        // then
+        assertEquals(GameController.MAX_LINE_CLEAR_DELAY_MILLIS, delay);
+    }
+
+    @Test
+    void useMaximumDelayWhenDropIntervalEqualsMaximum() {
+        // given & when
+        long delay = GameController.calculateLineClearDelay(GameController.MAX_LINE_CLEAR_DELAY_MILLIS);
+
+        // then
+        assertEquals(GameController.MAX_LINE_CLEAR_DELAY_MILLIS, delay);
+    }
+
+    @Test
+    void useDropIntervalAsDelayWhenBetweenMinimumAndMaximum() {
+        // given
+        long dropInterval = (GameController.MIN_LINE_CLEAR_DELAY_MILLIS + GameController.MAX_LINE_CLEAR_DELAY_MILLIS) / 2;
+
+        // when
+        long delay = GameController.calculateLineClearDelay(dropInterval);
+
+        // then
+        assertEquals(dropInterval, delay);
+    }
+
+    @Test
+    void useMinimumDelayWhenDropIntervalEqualsMinimum() {
+        // given & when
+        long delay = GameController.calculateLineClearDelay(GameController.MIN_LINE_CLEAR_DELAY_MILLIS);
+
+        // then
+        assertEquals(GameController.MIN_LINE_CLEAR_DELAY_MILLIS, delay);
+    }
+
+    @Test
+    void useMinimumDelayWhenDropIntervalIsShorter() {
+        // given & when
+        long delay = GameController.calculateLineClearDelay(1L);
+
+        // then
+        assertEquals(GameController.MIN_LINE_CLEAR_DELAY_MILLIS, delay);
+    }
+
+    @Test
+    void keepMinimumNotLongerThanMaximum() {
+        // given & when & then
+        assertTrue(GameController.MIN_LINE_CLEAR_DELAY_MILLIS > 0);
+        assertTrue(GameController.MIN_LINE_CLEAR_DELAY_MILLIS <= GameController.MAX_LINE_CLEAR_DELAY_MILLIS);
+    }
+
+    @Test
+    void shortenScheduledDelayAsGameGetsFaster() {
+        // given: 한 번 떨어뜨릴 때마다 한 줄이 지워지는 4칸 폭 보드
+        Fixture fixture = fixture(SMALL_BOARD_WIDTH, NORMAL_BOARD_HEIGHT, PieceType.I);
+
+        // when: 최소 낙하 속도에 이를 때까지 줄을 계속 지운다
+        for (int index = 0; index < LINES_TO_REACH_MINIMUM_INTERVAL; index++) {
+            fixture.view.commandHandler.accept(GameCommand.HARD_DROP);
+            fixture.scheduler.runNext();
+        }
+
+        // then: 처음에는 최대 지연이고, 갈수록 짧아지며, 마지막에는 최소 지연이다
+        List<Long> delays = fixture.scheduler.delays;
+        assertEquals(LINES_TO_REACH_MINIMUM_INTERVAL, delays.size());
+        assertEquals(GameController.MAX_LINE_CLEAR_DELAY_MILLIS, delays.get(0));
+        assertEquals(GameController.MIN_LINE_CLEAR_DELAY_MILLIS, delays.get(delays.size() - 1));
+        for (int index = 1; index < delays.size(); index++) {
+            assertTrue(delays.get(index) <= delays.get(index - 1), "index " + index);
+        }
+    }
+
     // ---------- 도우미 ----------
 
     private Fixture fixtureWithSmallBoard() {
@@ -193,7 +272,11 @@ class GameLineClearControllerTest {
     }
 
     private Fixture fixture(int width, int height) {
-        Game game = new Game(new Board(width, height), constantGenerator(PieceType.O), Difficulty.NORMAL,
+        return fixture(width, height, PieceType.O);
+    }
+
+    private Fixture fixture(int width, int height, PieceType type) {
+        Game game = new Game(new Board(width, height), constantGenerator(type), Difficulty.NORMAL,
                 GameMode.NORMAL);
         FakeView view = new FakeView();
         FakeTimer timer = new FakeTimer();

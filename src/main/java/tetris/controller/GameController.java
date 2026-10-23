@@ -13,7 +13,8 @@ import tetris.view.GameView;
  * 화면에서 들어온 명령과 자동 낙하를 게임에 전달하고, 바뀐 상태를 화면에 다시 그린다
  */
 public class GameController {
-    public static final long LINE_CLEAR_DELAY_MILLIS = 300L; // 줄 삭제 연출 후 마무리까지 기다릴 시간(밀리초)
+    public static final long MIN_LINE_CLEAR_DELAY_MILLIS = 100L; // 줄 삭제 연출 후 마무리까지 기다릴 최소 시간(밀리초)
+    public static final long MAX_LINE_CLEAR_DELAY_MILLIS = 200L; // 줄 삭제 연출 후 마무리까지 기다릴 최대 시간(밀리초)
 
     private final Game game;                // 게임 모델
     private final GameView view;            // 게임 화면
@@ -61,6 +62,17 @@ public class GameController {
         
         synchronizeState();
     }
+    
+    /**
+     * 줄 삭제 연출 후 마무리까지 기다릴 시간을 계산한다.
+     * 게임이 빨라질수록 짧아진다
+     * 
+     * @param dropInterval 블록 낙하 간격(밀리초)
+     * @return 줄 삭제 연출 후 마무리까지 기다릴 시간(밀리초)
+     */
+    public static long calculateLineClearDelay(long dropInterval) {
+        return Math.max(MIN_LINE_CLEAR_DELAY_MILLIS, Math.min(MAX_LINE_CLEAR_DELAY_MILLIS, dropInterval));
+    }
 
     // 타이머 간격마다 호출 : 블록을 한 칸 내리고 화면 갱신, 게임 오버가 되면 타이머를 멈춘다.
     private void handleTick() {
@@ -102,7 +114,7 @@ public class GameController {
             stopTimer();
             if (!lineClearScheduled) {
                 lineClearScheduled = true;
-                delayScheduler.runAfter(LINE_CLEAR_DELAY_MILLIS, this::finishLineClear);
+                delayScheduler.runAfter(calculateLineClearDelay(snapshot.getDropInterval()), this::finishLineClear);
             }
             return;
         }
