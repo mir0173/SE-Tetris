@@ -49,7 +49,7 @@ class ScoreCategoryTest {
 
     @Test
     void keepNormalModeFirstThenItemModeInDifficultyOrder() {
-        // given: 일반 EASY → NORMAL → HARD, 아이템 EASY → NORMAL → HARD 순서가 화면 순서다
+        // given: 일반 EASY → NORMAL → HARD, 아이템 EASY → NORMAL → HARD 순서가 조합 순서(저장 순서)다
         List<ScoreCategory> expected = List.of(
                 new ScoreCategory(GameMode.NORMAL, Difficulty.EASY),
                 new ScoreCategory(GameMode.NORMAL, Difficulty.NORMAL),
@@ -76,113 +76,186 @@ class ScoreCategoryTest {
     }
 
     @Test
-    void moveToNextCategory() {
+    void moveModeToNextModeAndKeepDifficulty() {
         // given
-        ScoreCategory first = firstCategory();
+        ScoreCategory category = new ScoreCategory(GameMode.NORMAL, Difficulty.HARD);
 
         // when
-        ScoreCategory moved = first.move(1);
+        ScoreCategory moved = category.moveMode(1);
+
+        // then: 모드만 바뀌고 난이도는 그대로
+        assertEquals(new ScoreCategory(GameMode.ITEM, Difficulty.HARD), moved);
+    }
+
+    @Test
+    void moveModeToPreviousModeAndKeepDifficulty() {
+        // given
+        ScoreCategory category = new ScoreCategory(GameMode.ITEM, Difficulty.EASY);
+
+        // when
+        ScoreCategory moved = category.moveMode(-1);
 
         // then
+        assertEquals(new ScoreCategory(GameMode.NORMAL, Difficulty.EASY), moved);
+    }
+
+    @Test
+    void wrapToFirstModeWhenMovingModeForwardFromLast() {
+        // given: 마지막 모드(아이템)
+        ScoreCategory category = new ScoreCategory(GameMode.ITEM, Difficulty.NORMAL);
+
+        // when
+        ScoreCategory moved = category.moveMode(1);
+
+        // then: 아이템에서 오른쪽으로 가면 일반
         assertEquals(new ScoreCategory(GameMode.NORMAL, Difficulty.NORMAL), moved);
     }
 
     @Test
-    void moveToPreviousCategory() {
-        // given
-        ScoreCategory second = ScoreCategory.getAllCategories().get(1);
+    void wrapToLastModeWhenMovingModeBackFromFirst() {
+        // given: 첫 번째 모드(일반)
+        ScoreCategory category = new ScoreCategory(GameMode.NORMAL, Difficulty.NORMAL);
 
         // when
-        ScoreCategory moved = second.move(-1);
+        ScoreCategory moved = category.moveMode(-1);
 
-        // then
-        assertEquals(firstCategory(), moved);
+        // then: 일반에서 왼쪽으로 가면 아이템
+        assertEquals(new ScoreCategory(GameMode.ITEM, Difficulty.NORMAL), moved);
     }
 
     @Test
-    void wrapToLastCategoryWhenMovingBackFromFirst() {
+    void moveDifficultyToNextAndPreviousAndKeepMode() {
         // given
-        ScoreCategory first = firstCategory();
+        ScoreCategory easy = new ScoreCategory(GameMode.ITEM, Difficulty.EASY);
+        ScoreCategory normal = new ScoreCategory(GameMode.ITEM, Difficulty.NORMAL);
+        ScoreCategory hard = new ScoreCategory(GameMode.ITEM, Difficulty.HARD);
 
-        // when
-        ScoreCategory moved = first.move(-1);
-
-        // then: 1번에서 왼쪽으로 가면 6번
-        assertEquals(lastCategory(), moved);
+        // when & then: EASY → NORMAL → HARD, 거꾸로 HARD → NORMAL, 모드는 항상 그대로
+        assertEquals(normal, easy.moveDifficulty(1));
+        assertEquals(hard, normal.moveDifficulty(1));
+        assertEquals(normal, hard.moveDifficulty(-1));
+        assertEquals(easy, normal.moveDifficulty(-1));
     }
 
     @Test
-    void wrapToFirstCategoryWhenMovingForwardFromLast() {
-        // given
-        ScoreCategory last = lastCategory();
+    void wrapToFirstDifficultyWhenMovingDifficultyForwardFromLast() {
+        // given: 마지막 난이도(HARD)
+        ScoreCategory category = new ScoreCategory(GameMode.NORMAL, Difficulty.HARD);
 
         // when
-        ScoreCategory moved = last.move(1);
+        ScoreCategory moved = category.moveDifficulty(1);
 
-        // then: 6번에서 오른쪽으로 가면 1번
-        assertEquals(firstCategory(), moved);
+        // then: HARD에서 오른쪽으로 가면 EASY, 모드는 그대로
+        assertEquals(new ScoreCategory(GameMode.NORMAL, Difficulty.EASY), moved);
+    }
+
+    @Test
+    void wrapToLastDifficultyWhenMovingDifficultyBackFromFirst() {
+        // given: 첫 번째 난이도(EASY)
+        ScoreCategory category = new ScoreCategory(GameMode.ITEM, Difficulty.EASY);
+
+        // when
+        ScoreCategory moved = category.moveDifficulty(-1);
+
+        // then: EASY에서 왼쪽으로 가면 HARD, 모드는 그대로
+        assertEquals(new ScoreCategory(GameMode.ITEM, Difficulty.HARD), moved);
+    }
+
+    @Test
+    void keepOtherAxisForEveryCategory() {
+        for (ScoreCategory category : ScoreCategory.getAllCategories()) {
+            // given & when
+            ScoreCategory modeMoved = category.moveMode(1);
+            ScoreCategory difficultyMoved = category.moveDifficulty(1);
+
+            // then: 모드를 바꾸면 난이도가, 난이도를 바꾸면 모드가 그대로다
+            assertNotEquals(category.mode(), modeMoved.mode());
+            assertEquals(category.difficulty(), modeMoved.difficulty());
+            assertNotEquals(category.difficulty(), difficultyMoved.difficulty());
+            assertEquals(category.mode(), difficultyMoved.mode());
+        }
     }
 
     @Test
     void stayWhenOffsetIsZero() {
         // given
-        ScoreCategory category = ScoreCategory.getAllCategories().get(2);
+        ScoreCategory category = new ScoreCategory(GameMode.ITEM, Difficulty.NORMAL);
+
+        // when & then
+        assertEquals(category, category.moveMode(0));
+        assertEquals(category, category.moveDifficulty(0));
+    }
+
+    @Test
+    void returnToSameCategoryAfterFullLapOfEachAxis() {
+        // given
+        ScoreCategory category = new ScoreCategory(GameMode.ITEM, Difficulty.NORMAL);
+        int modeCount = GameMode.values().length;
+        int difficultyCount = Difficulty.values().length;
+
+        // when & then: 한 바퀴를 돌면 제자리, 반대 방향도 같다
+        assertEquals(category, category.moveMode(modeCount));
+        assertEquals(category, category.moveMode(-modeCount));
+        assertEquals(category, category.moveDifficulty(difficultyCount));
+        assertEquals(category, category.moveDifficulty(-difficultyCount));
+    }
+
+    @Test
+    void wrapWhenOffsetIsLargerThanAxisSize() {
+        // given
+        ScoreCategory category = new ScoreCategory(GameMode.NORMAL, Difficulty.EASY);
+        int modeCount = GameMode.values().length;
+        int difficultyCount = Difficulty.values().length;
+
+        // when & then: 한 바퀴보다 큰 이동도 같은 결과로 접힌다
+        assertEquals(category.moveMode(1), category.moveMode(modeCount + 1));
+        assertEquals(category.moveMode(-1), category.moveMode(-(modeCount + 1)));
+        assertEquals(category.moveDifficulty(1), category.moveDifficulty(difficultyCount + 1));
+        assertEquals(category.moveDifficulty(-1), category.moveDifficulty(-(difficultyCount + 1)));
+    }
+
+    @Test
+    void visitEveryDifficultyWhenMovingDifficultyForwardRepeatedly() {
+        // given
+        ScoreCategory current = new ScoreCategory(GameMode.NORMAL, Difficulty.EASY);
+        Set<Difficulty> visited = new HashSet<>();
 
         // when
-        ScoreCategory moved = category.move(0);
-
-        // then
-        assertEquals(category, moved);
-    }
-
-    @Test
-    void returnToSameCategoryAfterFullLap() {
-        // given
-        ScoreCategory category = ScoreCategory.getAllCategories().get(2);
-
-        // when & then: 한 바퀴(6칸)를 돌면 제자리, 반대 방향도 같다
-        assertEquals(category, category.move(CATEGORY_COUNT));
-        assertEquals(category, category.move(-CATEGORY_COUNT));
-    }
-
-    @Test
-    void wrapWhenOffsetIsLargerThanCategoryCount() {
-        // given
-        ScoreCategory first = firstCategory();
-
-        // when & then: 한 바퀴보다 더 큰 이동도 같은 결과로 접힌다
-        assertEquals(first.move(1), first.move(CATEGORY_COUNT + 1));
-        assertEquals(first.move(-1), first.move(-(CATEGORY_COUNT + 1)));
-    }
-
-    @Test
-    void visitEveryCategoryWhenMovingForwardRepeatedly() {
-        // given
-        ScoreCategory current = firstCategory();
-        Set<ScoreCategory> visited = new HashSet<>();
-
-        // when
-        for (int i = 0; i < CATEGORY_COUNT; i++) {
-            visited.add(current);
-            current = current.move(1);
+        for (int i = 0; i < Difficulty.values().length; i++) {
+            visited.add(current.difficulty());
+            current = current.moveDifficulty(1);
         }
 
-        // then: 6번 이동하면 모든 카테고리를 한 번씩 지나 처음으로 돌아온다
-        assertEquals(CATEGORY_COUNT, visited.size());
-        assertEquals(firstCategory(), current);
+        // then: 난이도를 모두 한 번씩 지나 처음으로 돌아온다
+        assertEquals(Difficulty.values().length, visited.size());
+        assertEquals(Difficulty.EASY, current.difficulty());
     }
 
     @Test
-    void moveBackAndForthReturnsToOriginalCategory() {
-        // given
+    void moveBackAndForthReturnsToOriginalCategoryOnEachAxis() {
         for (ScoreCategory category : ScoreCategory.getAllCategories()) {
-
-            // when
-            ScoreCategory moved = category.move(1).move(-1);
+            // given & when
+            ScoreCategory modeRoundTrip = category.moveMode(1).moveMode(-1);
+            ScoreCategory difficultyRoundTrip = category.moveDifficulty(1).moveDifficulty(-1);
 
             // then
-            assertEquals(category, moved);
+            assertEquals(category, modeRoundTrip);
+            assertEquals(category, difficultyRoundTrip);
         }
+    }
+
+    @Test
+    void moveModeAndDifficultyIndependently() {
+        // given
+        ScoreCategory category = new ScoreCategory(GameMode.NORMAL, Difficulty.EASY);
+
+        // when: 이동 순서를 바꿔도
+        ScoreCategory modeFirst = category.moveMode(1).moveDifficulty(1);
+        ScoreCategory difficultyFirst = category.moveDifficulty(1).moveMode(1);
+
+        // then: 결과가 같다
+        assertEquals(new ScoreCategory(GameMode.ITEM, Difficulty.NORMAL), modeFirst);
+        assertEquals(modeFirst, difficultyFirst);
     }
 
     @Test
@@ -228,13 +301,5 @@ class ScoreCategoryTest {
         assertThrows(NullPointerException.class, () -> new ScoreCategory(GameMode.NORMAL, null));
     }
 
-    private ScoreCategory firstCategory() {
-        return ScoreCategory.getAllCategories().get(0);
-    }
-
-    private ScoreCategory lastCategory() {
-        List<ScoreCategory> categories = ScoreCategory.getAllCategories();
-        return categories.get(categories.size() - 1);
-    }
     // AI-assisted code end
 }

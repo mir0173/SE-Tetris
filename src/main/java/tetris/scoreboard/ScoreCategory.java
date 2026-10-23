@@ -30,16 +30,22 @@ public record ScoreCategory(GameMode mode, Difficulty difficulty) {
     }
 
     /**
-     * offset만큼 이동한 카테고리를 반환한다.
-     * 마지막에서 다음은 첫 번째 카테고리로, 첫 번째에서 이전은 마지막 카테고리로 이동한다.
-     * 
-     * @param offset 이동할 카테고리 수 (음수는 이전, 양수는 다음)
-     * @return 이동한 카테고리
+     * 난이도는 그대로 두고 모드만 offset만큼 이동한 조합을 반환한다.
+     * 양 끝은 이어진다. (마지막 모드에서 다음은 첫 모드, 첫 모드에서 이전은 마지막 모드)
+     *
+     * @param offset 이동할 칸 수 (음수는 이전, 양수는 다음)
+     * @return 모드만 바뀐 조합
      */
-    public ScoreCategory move(int offset) {
-        int index = ALL_CATEGORIES.indexOf(this);
-        int movedIndex = Math.floorMod(index + offset, ALL_CATEGORIES.size());
-        return ALL_CATEGORIES.get(movedIndex);
+    public ScoreCategory moveMode(int offset) {
+        GameMode[] modes = GameMode.values();
+        int movedIndex = Math.floorMod(mode.ordinal() + offset, modes.length);
+        return new ScoreCategory(modes[movedIndex], difficulty);
+    }
+
+    public ScoreCategory moveDifficulty(int offset) {
+        Difficulty[] difficulties = Difficulty.values();
+        int movedIndex = Math.floorMod(difficulty.ordinal() + offset, difficulties.length);
+        return new ScoreCategory(mode, difficulties[movedIndex]);
     }
     // AI-assisted code end
 }
