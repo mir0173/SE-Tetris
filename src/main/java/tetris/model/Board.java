@@ -174,6 +174,22 @@ public class Board {
     }
 
     /**
+     * 보드에 꽉 찬 줄의 행 번호를 찾아 반환한다.
+     * 보드는 바꾸지 않는다
+     *
+     * @return 꽉 찬 줄의 행 번호 목록
+     */
+    public List<Integer> findFullLines() {
+        List<Integer> fullLines = new ArrayList<>();
+        for (int row = 0; row < height; row++) {
+            if (isFullLine(cells[row])) {
+                fullLines.add(row);
+            }
+        }
+        return List.copyOf(fullLines);
+    }
+
+    /**
      * 보드에 꽉 찬 줄은 모두 지우고, 그 위의 줄들을 지워진 줄 수만큼 아래로 내린다.
      * 비게 된 맨 위 줄들은 빈 줄로 채운다.
      *

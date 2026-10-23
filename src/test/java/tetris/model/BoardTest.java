@@ -504,6 +504,193 @@ class BoardTest {
         assertRowsEmpty(board, 1, SMALL_BOARD_HEIGHT - 1);
     }
 
+    // AI-assisted code start
+    @Test
+    void findNoFullLinesOnEmptyBoard() {
+        // given
+        Board board = new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT);
+
+        // when
+        List<Integer> fullLines = board.findFullLines();
+
+        // then
+        assertEquals(List.of(), fullLines);
+    }
+
+    @Test
+    void findNoFullLinesWhenEveryRowHasEmptyCell() {
+        // given
+        Board board = new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT);
+        lockIPiece(board, FULL_LINE_ROW, 0);
+        lockIPiece(board, SECOND_FULL_LINE_ROW, 4);
+
+        // when
+        List<Integer> fullLines = board.findFullLines();
+
+        // then
+        assertEquals(List.of(), fullLines);
+    }
+
+    @Test
+    void findRowIndexOfSingleFullLine() {
+        // given
+        Board board = new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT);
+        lockIPiece(board, FULL_LINE_ROW, 0);
+        lockIPiece(board, FULL_LINE_ROW, 4);
+        lockIPiece(board, PATTERN_ROW, 0);
+
+        // when
+        List<Integer> fullLines = board.findFullLines();
+
+        // then
+        assertEquals(List.of(FULL_LINE_ROW), fullLines);
+    }
+
+    @Test
+    void findAdjacentFullLinesInAscendingRowOrder() {
+        // given
+        Board board = new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT);
+        lockIPiece(board, FULL_LINE_ROW, 0);
+        lockIPiece(board, FULL_LINE_ROW, 4);
+        lockIPiece(board, SECOND_FULL_LINE_ROW, 0);
+        lockIPiece(board, SECOND_FULL_LINE_ROW, 4);
+        lockIPiece(board, THIRD_FULL_LINE_ROW, 0);
+
+        // when
+        List<Integer> fullLines = board.findFullLines();
+
+        // then
+        assertEquals(List.of(SECOND_FULL_LINE_ROW, FULL_LINE_ROW), fullLines);
+    }
+
+    @Test
+    void findSeparatedFullLinesWithoutIncludingRowBetween() {
+        // given
+        Board board = new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT);
+        lockIPiece(board, FULL_LINE_ROW, 0);
+        lockIPiece(board, FULL_LINE_ROW, 4);
+        lockIPiece(board, PATTERN_A_ROW, 0);
+        lockIPiece(board, THIRD_FULL_LINE_ROW, 0);
+        lockIPiece(board, THIRD_FULL_LINE_ROW, 4);
+
+        // when
+        List<Integer> fullLines = board.findFullLines();
+
+        // then
+        assertEquals(List.of(THIRD_FULL_LINE_ROW, FULL_LINE_ROW), fullLines);
+    }
+
+    @Test
+    void findFourFullLines() {
+        // given
+        Board board = new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT);
+        for (int row = FOURTH_FULL_LINE_ROW; row <= FULL_LINE_ROW; row++) {
+            lockIPiece(board, row, 0);
+            lockIPiece(board, row, 4);
+        }
+
+        // when
+        List<Integer> fullLines = board.findFullLines();
+
+        // then
+        assertEquals(List.of(FOURTH_FULL_LINE_ROW, THIRD_FULL_LINE_ROW, SECOND_FULL_LINE_ROW, FULL_LINE_ROW),
+                fullLines);
+    }
+
+    @Test
+    void findFullLineOfTopRow() {
+        // given
+        Board board = new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT);
+        lockIPiece(board, 0, 0);
+        lockIPiece(board, 0, 4);
+
+        // when
+        List<Integer> fullLines = board.findFullLines();
+
+        // then
+        assertEquals(List.of(0), fullLines);
+    }
+
+    @Test
+    void preserveBoardCellsWhenFindingFullLines() {
+        // given
+        Board board = new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT);
+        lockIPiece(board, FULL_LINE_ROW, 0);
+        lockIPiece(board, FULL_LINE_ROW, 4);
+        lockIPiece(board, PATTERN_ROW, 0);
+        int[][] before = board.copyCells();
+
+        // when
+        board.findFullLines();
+
+        // then
+        assertCellsEqual(before, board.copyCells());
+    }
+
+    @Test
+    void findSameFullLinesWhenCalledRepeatedly() {
+        // given
+        Board board = new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT);
+        lockIPiece(board, FULL_LINE_ROW, 0);
+        lockIPiece(board, FULL_LINE_ROW, 4);
+
+        // when
+        List<Integer> first = board.findFullLines();
+        List<Integer> second = board.findFullLines();
+
+        // then
+        assertEquals(first, second);
+    }
+
+    @Test
+    void notCollectDestroyedItemCodesWhenFindingFullLines() {
+        // given: 아이템 칸이 포함된 한 줄이 가득 찬 보드
+        Board board = new Board(SINGLE_CELL_BOARD_SIZE, SINGLE_CELL_BOARD_SIZE);
+        lockSingleCellRow(board, SINGLE_CELL_BOARD_SIZE - 1, 0, ItemType.LINE_CLEAR);
+        for (int column = 1; column < SINGLE_CELL_BOARD_SIZE; column++) {
+            lockSingleCellRow(board, SINGLE_CELL_BOARD_SIZE - 1, column, null);
+        }
+        board.takeDestroyedItemCodes();
+
+        // when
+        List<Integer> fullLines = board.findFullLines();
+
+        // then: 줄이 실제로 지워질 때까지는 부서진 아이템으로 기록하지 않는다
+        assertEquals(List.of(SINGLE_CELL_BOARD_SIZE - 1), fullLines);
+        assertEquals(List.of(), board.takeDestroyedItemCodes());
+    }
+
+    @Test
+    void findFullLinesMatchingRowsRemovedByClearFullLines() {
+        // given
+        Board board = new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT);
+        lockIPiece(board, FULL_LINE_ROW, 0);
+        lockIPiece(board, FULL_LINE_ROW, 4);
+        lockIPiece(board, PATTERN_A_ROW, 0);
+        lockIPiece(board, THIRD_FULL_LINE_ROW, 0);
+        lockIPiece(board, THIRD_FULL_LINE_ROW, 4);
+
+        // when
+        List<Integer> fullLines = board.findFullLines();
+        int clearedLines = board.clearFullLines();
+
+        // then
+        assertEquals(clearedLines, fullLines.size());
+    }
+
+    @Test
+    void rejectModificationOfReturnedFullLines() {
+        // given
+        Board board = new Board(SMALL_BOARD_WIDTH, SMALL_BOARD_HEIGHT);
+        lockIPiece(board, FULL_LINE_ROW, 0);
+        lockIPiece(board, FULL_LINE_ROW, 4);
+        List<Integer> fullLines = board.findFullLines();
+
+        // when & then
+        assertThrows(UnsupportedOperationException.class, () -> fullLines.add(0));
+    }
+    // AI-assisted code end
+
     @Test
     void preserveBoardWhenCopyIsModified() {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
