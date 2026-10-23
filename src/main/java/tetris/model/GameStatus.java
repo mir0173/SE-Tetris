@@ -5,6 +5,7 @@ public enum GameStatus {
     READY,
     PLAYING,
     PAUSED,
+    CLEARING,
     GAMEOVER,
     QUIT
 }

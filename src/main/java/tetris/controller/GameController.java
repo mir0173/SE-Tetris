@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 import tetris.model.Game;
 import tetris.model.GameCommand;
 import tetris.model.GameSnapshot;
+import tetris.model.GameStatus;
 import tetris.view.GameView;
 
 /**
@@ -12,30 +13,36 @@ import tetris.view.GameView;
  * 화면에서 들어온 명령과 자동 낙하를 게임에 전달하고, 바뀐 상태를 화면에 다시 그린다
  */
 public class GameController {
+    public static final long MIN_LINE_CLEAR_DELAY_MILLIS = 100L; // 줄 삭제 연출 후 마무리까지 기다릴 최소 시간(밀리초)
+    public static final long MAX_LINE_CLEAR_DELAY_MILLIS = 200L; // 줄 삭제 연출 후 마무리까지 기다릴 최대 시간(밀리초)
 
     private final Game game;                // 게임 모델
     private final GameView view;            // 게임 화면
     private final GameTimer timer;          // 블록을 떨어트리는 게임 타이머
+    private final DelayScheduler delayScheduler; // 줄 삭제 연출 후 마무리를 예약하는 장치
     private final Runnable onReturnToMenu;  // 사용자가 게임을 종료했을 때 실행할 동작
     private final Consumer<Long> onGameOver;
 
     private long appliedDropInterval = Game.getInitialDropInterval(); 
     private boolean timerRunning;
     private boolean started;
-    private boolean terminalHandled;         
+    private boolean terminalHandled;
+    private boolean lineClearScheduled; // 삭제 마무리를 예약했는지 여부
     /**
      * 게임, 화면, 타이머를 연결하는 컨트롤러를 생성한다.
      * 
      * @param game              진행할 게임
      * @param view              게임을 표시할 화면
      * @param timer             자동 낙하에 사용할 타이머
+     * @param delayScheduler    줄 삭제 연출 후 마무리를 예약하는 장치
      * @param onReturnToMenu    게임 종료(QUIT) 시 실행할 동작
      * @param onGameOver        게임 오버 시 최종 점수를 받을 동작
      */
-    public GameController(Game game, GameView view, GameTimer timer, Runnable onReturnToMenu, Consumer<Long> onGameOver) {
+    public GameController(Game game, GameView view, GameTimer timer, DelayScheduler delayScheduler, Runnable onReturnToMenu, Consumer<Long> onGameOver) {
         this.game = game;
         this.view = view;
         this.timer = timer;
+        this.delayScheduler = delayScheduler;
         this.onReturnToMenu = onReturnToMenu;
         this.onGameOver = onGameOver;
     }
@@ -54,6 +61,17 @@ public class GameController {
         view.show();
         
         synchronizeState();
+    }
+    
+    /**
+     * 줄 삭제 연출 후 마무리까지 기다릴 시간을 계산한다.
+     * 게임이 빨라질수록 짧아진다
+     * 
+     * @param dropInterval 블록 낙하 간격(밀리초)
+     * @return 줄 삭제 연출 후 마무리까지 기다릴 시간(밀리초)
+     */
+    public static long calculateLineClearDelay(long dropInterval) {
+        return Math.max(MIN_LINE_CLEAR_DELAY_MILLIS, Math.min(MAX_LINE_CLEAR_DELAY_MILLIS, dropInterval));
     }
 
     // 타이머 간격마다 호출 : 블록을 한 칸 내리고 화면 갱신, 게임 오버가 되면 타이머를 멈춘다.
@@ -91,6 +109,15 @@ public class GameController {
             }
             return;
         } 
+
+        if (snapshot.getStatus() == GameStatus.CLEARING) {
+            stopTimer();
+            if (!lineClearScheduled) {
+                lineClearScheduled = true;
+                delayScheduler.runAfter(calculateLineClearDelay(snapshot.getDropInterval()), this::finishLineClear);
+            }
+            return;
+        }
         
         if (game.isPaused()) {
             stopTimer();
@@ -108,6 +135,15 @@ public class GameController {
             timer.start(this::handleTick);
             timerRunning = true;
         }
+    }
+
+    private void finishLineClear() {
+        lineClearScheduled = false;
+        if (terminalHandled) {
+            return;
+        }
+        game.finishLineClear();
+        synchronizeState();
     }
 
     private void stopTimer() {

@@ -273,6 +273,7 @@ class GameTest {
         game.handleCommand(GameCommand.HARD_DROP);
         game.handleCommand(GameCommand.MOVE_RIGHT);
         game.handleCommand(GameCommand.HARD_DROP);
+        game.finishLineClear();
 
         assertEquals(CLEARED_LINES, game.getLastClearedLines());
         assertEquals(2, game.getLockedPieceCount());
@@ -287,6 +288,7 @@ class GameTest {
         game.handleCommand(GameCommand.HARD_DROP);
         game.handleCommand(GameCommand.MOVE_RIGHT);
         game.handleCommand(GameCommand.HARD_DROP);
+        game.finishLineClear();
         game.handleCommand(GameCommand.HARD_DROP);
 
         assertEquals(0, game.getLastClearedLines());

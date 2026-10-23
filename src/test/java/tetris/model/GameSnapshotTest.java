@@ -60,5 +60,79 @@ class GameSnapshotTest {
                 () -> snapshot.getNextPieces().clear()
         );
     }
+
+    @Test
+    void provideEmptyClearingRowsByDefault() {
+        GameSnapshot snapshot = new GameSnapshot(
+                new int[20][10],
+                List.of(PieceType.I),
+                null,
+                0L,
+                GameStatus.PLAYING,
+                1_000L
+        );
+
+        assertEquals(List.of(), snapshot.getClearingRows());
+    }
+
+    @Test
+    void provideClearingRowsGivenAtCreation() {
+        GameSnapshot snapshot = new GameSnapshot(
+                new int[20][10],
+                List.of(PieceType.I),
+                null,
+                0L,
+                GameStatus.CLEARING,
+                1_000L,
+                null,
+                null,
+                List.of(18, 19)
+        );
+
+        assertEquals(List.of(18, 19), snapshot.getClearingRows());
+        assertEquals(GameStatus.CLEARING, snapshot.getStatus());
+    }
+
+    @Test
+    void preserveClearingRowsWhenExternalListChanges() {
+        List<Integer> clearingRows = new ArrayList<>();
+        clearingRows.add(19);
+
+        GameSnapshot snapshot = new GameSnapshot(
+                new int[20][10],
+                List.of(PieceType.I),
+                null,
+                0L,
+                GameStatus.CLEARING,
+                1_000L,
+                null,
+                null,
+                clearingRows
+        );
+
+        clearingRows.clear();
+
+        assertEquals(List.of(19), snapshot.getClearingRows());
+    }
+
+    @Test
+    void rejectModificationOfClearingRows() {
+        GameSnapshot snapshot = new GameSnapshot(
+                new int[20][10],
+                List.of(PieceType.I),
+                null,
+                0L,
+                GameStatus.CLEARING,
+                1_000L,
+                null,
+                null,
+                List.of(19)
+        );
+
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> snapshot.getClearingRows().add(18)
+        );
+    }
     // AI-assisted code end (테스트 코드)
 }

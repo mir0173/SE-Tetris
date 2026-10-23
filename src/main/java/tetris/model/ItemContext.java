@@ -5,7 +5,8 @@ package tetris.model;
 */
 public interface ItemContext {
     /**
-     * rowIndex 행을 지워달라고 요청하는 메서드
+     * rowIndex 행을 지울 줄로 예약해 달라고 요청하는 메서드
+     * 줄은 바로 지워지지 않고, 꽉 찬 줄과 함께 삭제 연출이 끝난 뒤 한꺼번에 지워진다
      * 
      * @param rowIndex 보드 기준행 번호, 맨 위가 0
      */

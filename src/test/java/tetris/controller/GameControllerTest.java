@@ -23,6 +23,8 @@ import tetris.view.GameView;
 class GameControllerTest {
 
     // AI-assisted code start
+    private static final DelayScheduler IMMEDIATE_SCHEDULER = (delayMillis, task) -> task.run();
+
     private static final int BOARD_WIDTH = 10;
     private static final int BOARD_HEIGHT = 20;
     private static final int GAME_OVER_BOARD_WIDTH = 4;
@@ -144,7 +146,7 @@ class GameControllerTest {
 
     private GameController newController(
             Game game, FakeGameView view, FakeGameTimer timer, Callback callback) {
-        return new GameController(game, view, timer, callback, score -> 
+        return new GameController(game, view, timer, IMMEDIATE_SCHEDULER, callback, score -> 
             {}
         );
     }

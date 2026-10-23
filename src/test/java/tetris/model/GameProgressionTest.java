@@ -34,7 +34,7 @@ class GameProgressionTest {
     void applyLineBonusOnlyOncePerLock() {
         Game game = startedGame(4, 20, PieceType.I);
 
-        game.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(game);
 
         long expectedScore = game.getHardDropCells() + 100L;
         assertEquals(1, game.getLastClearedLines());
@@ -53,12 +53,12 @@ class GameProgressionTest {
         Game game = startedGame(4, 20, PieceType.I);
 
         for (int index = 0; index < 4; index++) {
-            game.handleCommand(GameCommand.HARD_DROP);
+            hardDropAndFinishClearing(game);
         }
 
         assertEquals(1_000L, game.createSnapshot().getDropInterval());
 
-        game.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(game);
 
         assertEquals(900L, game.createSnapshot().getDropInterval());
 
@@ -90,7 +90,7 @@ class GameProgressionTest {
         Game game = startedGame(4, 20, PieceType.I);
 
         for (int index = 0; index < 100; index++) {
-            game.handleCommand(GameCommand.HARD_DROP);
+            hardDropAndFinishClearing(game);
         }
 
         assertEquals(100L, game.createSnapshot().getDropInterval());
@@ -153,6 +153,13 @@ class GameProgressionTest {
 
         assertTrue(game.isGameOver());
         assertEquals(finalScore, game.createSnapshot().getScore());
+    }
+
+    private void hardDropAndFinishClearing(Game game) {
+        game.handleCommand(GameCommand.HARD_DROP);
+        if (game.createSnapshot().getStatus() == GameStatus.CLEARING) {
+            game.finishLineClear();
+        }
     }
 
     private Game startedGame(

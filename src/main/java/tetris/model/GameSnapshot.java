@@ -12,25 +12,30 @@ public class GameSnapshot {
     private final long dropInterval;
     private final Item nextPieceItem; // 아이템이 없으면 null
     private final Item heldPieceItem; // 아이템이 없으면 null
+    private final List<Integer> clearingRows; // 삭제 대기 중인 줄 번호, 없으면 빈 목록
 
     public GameSnapshot(int[][] cells, List<PieceType> nextPieces, PieceType heldPiece, long score, GameStatus status,
             long dropInterval, Item nextPieceItem, Item heldPieceItem) {
+        this(cells, nextPieces, heldPiece, score, status, dropInterval, nextPieceItem, heldPieceItem, List.of());
+    }
+
+    public GameSnapshot(int[][] cells, List<PieceType> nextPieces, PieceType heldPiece, long score, GameStatus status,
+            long dropInterval, Item nextPieceItem, Item heldPieceItem, List<Integer> clearingRows) {
         this.cells = copyCells(cells);
         this.nextPieces = List.copyOf(nextPieces);
         this.heldPiece = heldPiece;
         this.score = score;
         this.status = status;
-        this.dropInterval = dropInterval;   
+        this.dropInterval = dropInterval;
         this.nextPieceItem = nextPieceItem;
-        this.heldPieceItem = heldPieceItem;             
+        this.heldPieceItem = heldPieceItem;
+        this.clearingRows = List.copyOf(clearingRows);
     }
 
     public GameSnapshot(int[][] cells, List<PieceType> nextPieces, PieceType heldPiece, long score, GameStatus status,
             long dropInterval) {
         this(cells, nextPieces, heldPiece, score, status, dropInterval, null, null);
     }
-
-
 
     public int[][] getCells() {
         return copyCells(cells);
@@ -58,6 +63,13 @@ public class GameSnapshot {
      */
     public Item getHeldPieceItem() {
         return heldPieceItem;
+    }
+
+    /**
+     * 삭제 대기 중인 줄 번호, 없으면 빈 목록 반환
+     */
+    public List<Integer> getClearingRows() {
+        return clearingRows;
     }
 
     public long getScore() {

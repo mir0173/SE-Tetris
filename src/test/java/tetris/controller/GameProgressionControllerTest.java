@@ -25,6 +25,8 @@ import tetris.view.GameView;
 
 class GameProgressionControllerTest {
 
+    private static final DelayScheduler IMMEDIATE_SCHEDULER = (delayMillis, task) -> task.run();
+
     @Test
     void stopAndRestartTimerOnPauseAndResume() {
         Game game = newGame(10, 20, PieceType.O);
@@ -32,7 +34,7 @@ class GameProgressionControllerTest {
         FakeTimer timer = new FakeTimer();
 
         GameController controller = new GameController(
-                game, view, timer, () -> {
+                game, view, timer, IMMEDIATE_SCHEDULER, () -> {
                 }, score -> {
                 });
 
@@ -58,7 +60,7 @@ class GameProgressionControllerTest {
         GameController controller = new GameController(
                 game,
                 view,
-                timer,
+                timer, IMMEDIATE_SCHEDULER,
                 () -> runningAtMenu.add(timer.running),
                 score -> {
                 });
@@ -82,7 +84,7 @@ class GameProgressionControllerTest {
         GameController controller = new GameController(
                 game,
                 view,
-                timer,
+                timer, IMMEDIATE_SCHEDULER,
                 () -> {
                 },
                 score -> {
@@ -109,7 +111,7 @@ class GameProgressionControllerTest {
         FakeTimer timer = new FakeTimer();
 
         GameController controller = new GameController(
-                game, view, timer, () -> {
+                game, view, timer, IMMEDIATE_SCHEDULER, () -> {
                 }, score -> {
                 });
 
