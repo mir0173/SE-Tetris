@@ -59,14 +59,14 @@ class GameItemTest {
 
         prepareVerticalTetris(fixture.board(), VERTICAL_COLUMN);
         game.handleCommand(GameCommand.ROTATE_CLOCKWISE);
-        game.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(game);
         assertEquals(List.of(PieceType.SLOW), game.createSnapshot().getNextPieces());
 
-        game.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(game);
         hardDropAndClearLines(game, 6);
         assertEquals(List.of(PieceType.I), game.createSnapshot().getNextPieces());
 
-        game.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(game);
         assertEquals(List.of(PieceType.SLOW), game.createSnapshot().getNextPieces());
     }
 
@@ -76,7 +76,7 @@ class GameItemTest {
         Game game = fixture.game();
         game.start();
         hardDropAndClearLines(game, ITEM_SPAWN_LINE_COUNT);
-        game.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(game);
         game.handleCommand(GameCommand.ROTATE_CLOCKWISE);
 
         GameSnapshot before = game.createSnapshot();
@@ -85,7 +85,7 @@ class GameItemTest {
         assertTrue(countNonEmptyCells(before, itemPosition.row()) < BOARD_WIDTH);
         int markerColumn = findEmptyColumn(before, itemPosition.row() - 1);
         fixture.board().lock(new Piece(PieceType.SLOW, 0, itemPosition.row() - 1, markerColumn));
-        game.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(game);
 
         assertEquals(1, game.getLastClearedLines());
         assertFalse(hasItemCode(game.createSnapshot(), ItemType.LINE_CLEAR));
@@ -98,14 +98,14 @@ class GameItemTest {
         Game game = fixture.game();
         game.start();
         hardDropAndClearLines(game, ITEM_SPAWN_LINE_COUNT);
-        game.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(game);
 
         Position itemPosition = findItemPosition(game.createSnapshot(), ItemType.HEAVY_WEIGHT);
         for (int row = BOTTOM_ROW - 2; row <= BOTTOM_ROW; row++) {
             fixture.board().lock(new Piece(PieceType.SLOW, 0, row, itemPosition.column()));
         }
         long normalInterval = game.createSnapshot().getDropInterval();
-        game.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(game);
         assertEquals(DRILL_DROP_INTERVAL, game.createSnapshot().getDropInterval());
         long scoreDuringDrill = game.createSnapshot().getScore();
         int[][] beforeInput = game.createSnapshot().getCells();
@@ -140,8 +140,8 @@ class GameItemTest {
         assertTrue(hasItemCode(specialGame.createSnapshot(), ItemType.SPECIAL_I));
         specialGame.handleCommand(GameCommand.ROTATE_CLOCKWISE);
         normalGame.handleCommand(GameCommand.ROTATE_CLOCKWISE);
-        specialGame.handleCommand(GameCommand.HARD_DROP);
-        normalGame.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(specialGame);
+        hardDropAndFinishClearing(normalGame);
 
         long specialIncrease = specialGame.createSnapshot().getScore() - specialBefore;
         long normalIncrease = normalGame.createSnapshot().getScore() - normalBefore;
@@ -162,8 +162,8 @@ class GameItemTest {
 
         long specialBefore = specialGame.createSnapshot().getScore();
         long normalBefore = normalGame.createSnapshot().getScore();
-        specialGame.handleCommand(GameCommand.HARD_DROP);
-        normalGame.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(specialGame);
+        hardDropAndFinishClearing(normalGame);
 
         long specialIncrease = specialGame.createSnapshot().getScore() - specialBefore;
         long normalIncrease = normalGame.createSnapshot().getScore() - normalBefore;
@@ -176,10 +176,10 @@ class GameItemTest {
         Game game = fixture.game();
         game.start();
         hardDropAndClearLines(game, ITEM_SPAWN_LINE_COUNT);
-        game.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(game);
         prepareFullBottomRowExcept(fixture.board(), 1);
         long normalInterval = game.createSnapshot().getDropInterval();
-        game.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(game);
 
         long slowedInterval = game.createSnapshot().getDropInterval();
         assertEquals(normalInterval * 2, slowedInterval);
@@ -190,7 +190,7 @@ class GameItemTest {
         game.handleCommand(GameCommand.PAUSE);
         repeatTick(game, expirationTicks - 1);
         assertEquals(slowedInterval, game.createSnapshot().getDropInterval());
-        game.tick();
+        tickAndFinishClearing(game);
         assertEquals(normalInterval, game.createSnapshot().getDropInterval());
     }
 
@@ -201,16 +201,16 @@ class GameItemTest {
         game.start();
         hardDropAndClearLines(game, ITEM_SPAWN_LINE_COUNT - 1);
 
-        game.handleCommand(GameCommand.HARD_DROP);
-        game.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(game);
+        hardDropAndFinishClearing(game);
         game.handleCommand(GameCommand.ROTATE_CLOCKWISE);
         GameSnapshot rotated = game.createSnapshot();
         int itemColumn = findItemPosition(rotated, ItemType.BLOCK_GENERATE).column();
         prepareVerticalTetris(fixture.board(), itemColumn);
-        game.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(game);
 
         assertEquals(List.of(PieceType.SPECIAL_BLOCK), game.createSnapshot().getNextPieces());
-        game.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(game);
         assertTrue(hasPieceCellId(game.createSnapshot(), PieceType.SPECIAL_BLOCK));
     }
 
@@ -221,7 +221,7 @@ class GameItemTest {
         Game game = fixture.game();
         game.start();
         hardDropAndClearLines(game, ITEM_SPAWN_LINE_COUNT);
-        game.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(game);
         prepareVerticalTetris(fixture.board(), VERTICAL_COLUMN);
         return fixture;
     }
@@ -233,7 +233,7 @@ class GameItemTest {
         Game game = fixture.game();
         game.start();
         hardDropAndClearLines(game, ITEM_SPAWN_LINE_COUNT);
-        game.handleCommand(GameCommand.HARD_DROP);
+        hardDropAndFinishClearing(game);
         return fixture;
     }
 
@@ -280,7 +280,7 @@ class GameItemTest {
 
     private void hardDropAndClearLines(Game game, int count) {
         for (int index = 0; index < count; index++) {
-            game.handleCommand(GameCommand.HARD_DROP);
+            hardDropAndFinishClearing(game);
         }
     }
 
@@ -387,9 +387,23 @@ class GameItemTest {
         }
     }
 
+    private void hardDropAndFinishClearing(Game game) {
+        game.handleCommand(GameCommand.HARD_DROP);
+        if (game.createSnapshot().getStatus() == GameStatus.CLEARING) {
+            game.finishLineClear();
+        }
+    }
+
+    private void tickAndFinishClearing(Game game) {
+        game.tick();
+        if (game.createSnapshot().getStatus() == GameStatus.CLEARING) {
+            game.finishLineClear();
+        }
+    }
+
     private void repeatTick(Game game, int count) {
         for (int index = 0; index < count; index++) {
-            game.tick();
+            tickAndFinishClearing(game);
         }
     }
 

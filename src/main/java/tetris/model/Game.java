@@ -49,6 +49,7 @@ public class Game {
     private long totalClearedLines;
     private long currentPieceScore; // 지금 블록이 스폰된 뒤 얻은 점수 합계
     private long slowTimeLeft; // 남은 속도 저하 시간
+    private List<Integer> pendingClearRows = List.of(); // 삭제 대기 중인 줄 번호, 없으면 빈 목록
 
     public Game(Board board, TetrominoGenerator generator, Difficulty difficulty, GameMode mode) {
         this(board, generator, new ItemGenerator(new Random()), difficulty, mode);
@@ -236,7 +237,7 @@ public class Game {
      */
     public GameSnapshot createSnapshot() {
         int[][] cells;
-        if (isGameOver() || currentPiece == null) {
+        if (isGameOver() || currentPiece == null || status == GameStatus.CLEARING) {
             cells = board.copyCells();
         } else {
             cells = board.copyCellsWith(currentPiece);
@@ -255,7 +256,27 @@ public class Game {
                 status,
                 selectTimeInterval(),
                 nextItem,
-                heldItem);
+                heldItem,
+                pendingClearRows);
+    }
+
+    /**
+     * 삭제 대기를 끝내고 꽉 찬 줄을 지운 뒤 점수와 속도 반영하고 다음 블록 내보냄
+     * 삭제 대기 중이 아니면 아무것도 하지 않음
+     */
+    public void finishLineClear() {
+        if (status != GameStatus.CLEARING) {
+            return;
+        }
+
+        long previousDropCells = getTotalDropCells();
+        long previousLockedPieceCount = lockedPieceCount;
+        long previousSpawnedPieceCount = spawnedPieceCount;
+
+        pendingClearRows = List.of();
+        status = GameStatus.PLAYING;
+        completeLock();
+        updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
     }
 
     // 후보가 놓일 수 있으면 현재 블록을 교체하고 true, 아니면 그대로 두고 false
@@ -286,10 +307,9 @@ public class Game {
         land();
     }
 
-    // 현재 블록을 고정하고, 줄을 지우고, 다음 블록을 내보냄
+    // 현재 블록을 고정. 꽉 찬 줄이 있으면 삭제 대기로 멈추고, 없으면 마무리
     private void lockAndSpawnNext() {
         itemClearedLines = 0;
-        lockedPieceCount++;
         board.lock(currentPiece);
         if (currentPiece.item() != null && currentPiece.item().isEmbedded()) {
             int cellIndex = currentPiece.item().cellIndex();
@@ -297,6 +317,18 @@ public class Game {
             currentPiece.item().type().getItemEffect().handleLock(context, position);
         }
 
+        List<Integer> fullLines = board.findFullLines();
+        if (!fullLines.isEmpty()) {
+            pendingClearRows = fullLines;
+            status = GameStatus.CLEARING;
+            return;
+        }
+        completeLock();
+    }
+
+    // 줄을 지우고, 아이템 효과와 카운터 반영, 다음 블록을 내보냄
+    private void completeLock() {
+        lockedPieceCount++;
         lastClearedLines = board.clearFullLines() + itemClearedLines;
         if (currentPiece.item() != null) {
             currentPiece.item().type().getItemEffect().handleLinesCleared(context, lastClearedLines);

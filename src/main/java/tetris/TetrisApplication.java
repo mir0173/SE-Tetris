@@ -27,15 +27,16 @@ import tetris.persistence.ScoreRepository;
 import tetris.persistence.SettingsRepository;
 import tetris.scoreboard.ScoreCategory;
 import tetris.scoreboard.ScoreEntry;
+import tetris.scoreboard.ScoreboardGroup;
 import tetris.settings.GameSettings;
 import tetris.settings.KeyBindingValidator;
 import tetris.view.GameView;
 import tetris.view.JavaFxGameTimer;
+import tetris.view.JavaFxDelayScheduler;
 import tetris.view.JavaFxGameView;
 import tetris.view.JavaFxStartMenuView;
 import tetris.view.JavaFxScoreboardView;
 import tetris.view.JavaFxSettingsView;
-import tetris.scoreboard.ScoreboardGroup;
 
 /**
  * JavaFX 애플리케이션 진입점
@@ -118,7 +119,8 @@ public class TetrisApplication extends Application {
         Game game = new Game(board, generator, difficulty, mode);
         GameView view = new JavaFxGameView(stage, currentSettings);
         GameTimer timer = new JavaFxGameTimer(Game.getInitialDropInterval());
-        GameController controller = new GameController(game, view, timer, () -> showStartMenu(stage),
+        GameController controller = new GameController(game, view, timer, new JavaFxDelayScheduler(),
+                () -> showStartMenu(stage),
                 score -> Platform.runLater(() -> handleGameOver(stage, score, mode, difficulty)));
         controller.start();
     }

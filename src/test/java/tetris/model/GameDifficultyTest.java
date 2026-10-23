@@ -27,7 +27,7 @@ class GameDifficultyTest {
                 4, 100, PieceType.I, difficulty);
 
         for (int index = 0; index < 5; index++) {
-            game.handleCommand(GameCommand.HARD_DROP);
+            hardDropAndFinishClearing(game);
         }
 
         assertEquals(
@@ -90,7 +90,7 @@ class GameDifficultyTest {
         game.start();
 
         for (int index = 0; index < 9; index++) {
-            game.handleCommand(GameCommand.HARD_DROP);
+            hardDropAndFinishClearing(game);
         }
 
         assertEquals(
@@ -105,7 +105,7 @@ class GameDifficultyTest {
                 4, 100, PieceType.I, difficulty);
 
         for (int index = 0; index < 100; index++) {
-            game.handleCommand(GameCommand.HARD_DROP);
+            hardDropAndFinishClearing(game);
         }
 
         assertEquals(
@@ -122,6 +122,13 @@ class GameDifficultyTest {
                         new TetrominoGenerator(new Random(0L)),
                         null, 
                         GameMode.NORMAL));
+    }
+
+    private void hardDropAndFinishClearing(Game game) {
+        game.handleCommand(GameCommand.HARD_DROP);
+        if (game.createSnapshot().getStatus() == GameStatus.CLEARING) {
+            game.finishLineClear();
+        }
     }
 
     private Game startedGame(
