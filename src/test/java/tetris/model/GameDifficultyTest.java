@@ -49,7 +49,7 @@ class GameDifficultyTest {
         Game game = startedGame(
                 10, 100, PieceType.O, difficulty);
 
-        for (int index = 0; index < 8; index++) {
+        for (int index = 0; index < 13; index++) {
             game.handleCommand(GameCommand.HARD_DROP);
         }
 
@@ -79,7 +79,7 @@ class GameDifficultyTest {
             @Override
             public PieceType generateNext() {
                 int index = generated++;
-                return index < 4 || index >= 8
+                return index < 4 || index >= 13
                         ? PieceType.I
                         : PieceType.O;
             }
@@ -89,7 +89,7 @@ class GameDifficultyTest {
                 new Board(4, 100), generator, difficulty, GameMode.NORMAL);
         game.start();
 
-        for (int index = 0; index < 9; index++) {
+        for (int index = 0; index < 14; index++) {
             hardDropAndFinishClearing(game);
         }
 
@@ -109,7 +109,7 @@ class GameDifficultyTest {
         }
 
         assertEquals(
-                100L,
+                200L,
                 game.createSnapshot().getDropInterval());
     }
 

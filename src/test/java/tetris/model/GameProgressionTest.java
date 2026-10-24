@@ -49,7 +49,7 @@ class GameProgressionTest {
     }
 
     @Test
-    void increaseSpeedAndDropScoreAfterTenClearedLines() {
+    void increaseSpeedAndDropScoreAfterFiveClearedLines() {
         Game game = startedGame(4, 20, PieceType.I);
 
         for (int index = 0; index < 4; index++) {
@@ -69,19 +69,20 @@ class GameProgressionTest {
     }
 
     @Test
-    void increaseSpeedAfterTenSpawnedPiecesWithoutClearingLines() {
+    void increaseSpeedAfterFifteenSpawnedPiecesWithoutClearingLines() {
         Game game = startedGame(10, 100, PieceType.O);
 
-        for (int index = 0; index < 8; index++) {
+        for (int index = 0; index < 13; index++) {
             game.handleCommand(GameCommand.HARD_DROP);
         }
 
         assertEquals(1_000L, game.createSnapshot().getDropInterval());
+        assertEquals(13L, game.getLockedPieceCount());
 
         game.handleCommand(GameCommand.HARD_DROP);
 
         assertEquals(0, game.getLastClearedLines());
-        assertEquals(9L, game.getLockedPieceCount());
+        assertEquals(14L, game.getLockedPieceCount());
         assertEquals(900L, game.createSnapshot().getDropInterval());
     }
 
@@ -93,7 +94,7 @@ class GameProgressionTest {
             hardDropAndFinishClearing(game);
         }
 
-        assertEquals(100L, game.createSnapshot().getDropInterval());
+        assertEquals(200L, game.createSnapshot().getDropInterval());
     }
 
     @Test

@@ -81,7 +81,6 @@ public class JavaFxScoreboardView {
     private static final int FOCUS_MODE = 0;
     private static final int FOCUS_DIFFICULTY = 1;
     private static final int FOCUS_BACK = 2;
-    private static final int FOCUS_EXIT = 3;
     private static final int FOCUS_ROW_COUNT = 4;
 
     private final ScoreboardGroup group;

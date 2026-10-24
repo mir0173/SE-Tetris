@@ -245,23 +245,22 @@ class GameLineClearControllerTest {
     }
 
     @Test
-    void shortenScheduledDelayAsGameGetsFaster() {
-        // given: 한 번 떨어뜨릴 때마다 한 줄이 지워지는 4칸 폭 보드
-        Fixture fixture = fixture(SMALL_BOARD_WIDTH, NORMAL_BOARD_HEIGHT, PieceType.I);
+    void keepScheduledDelayAtMaximumWhenMinimumDropIntervalIsTwoHundredMillis() {
+        Fixture fixture = fixture(
+                SMALL_BOARD_WIDTH, NORMAL_BOARD_HEIGHT, PieceType.I);
 
-        // when: 최소 낙하 속도에 이를 때까지 줄을 계속 지운다
         for (int index = 0; index < LINES_TO_REACH_MINIMUM_INTERVAL; index++) {
             fixture.view.commandHandler.accept(GameCommand.HARD_DROP);
             fixture.scheduler.runNext();
         }
 
-        // then: 처음에는 최대 지연이고, 갈수록 짧아지며, 마지막에는 최소 지연이다
         List<Long> delays = fixture.scheduler.delays;
+
         assertEquals(LINES_TO_REACH_MINIMUM_INTERVAL, delays.size());
-        assertEquals(GameController.MAX_LINE_CLEAR_DELAY_MILLIS, delays.get(0));
-        assertEquals(GameController.MIN_LINE_CLEAR_DELAY_MILLIS, delays.get(delays.size() - 1));
-        for (int index = 1; index < delays.size(); index++) {
-            assertTrue(delays.get(index) <= delays.get(index - 1), "index " + index);
+        assertEquals(200L, fixture.game.createSnapshot().getDropInterval());
+
+        for (long delay : delays) {
+            assertEquals(GameController.MAX_LINE_CLEAR_DELAY_MILLIS, delay);
         }
     }
 
