@@ -52,6 +52,7 @@ public class JavaFxGameView implements GameView {
     private static final Color EMPTY_COLOR = Color.BLACK;
     private static final Color CLEARING_BACKGROUND_COLOR = Color.WHITE;
     private static final Color CLEARING_SYMBOL_COLOR = Color.BLACK;
+    private static final Color GHOST_COLOR = Color.gray(0.7, 0.3);
     private static final String BORDER_SYMBOL = "X";
     private static final String BLOCK_SYMBOL = "O";
 
@@ -133,11 +134,11 @@ public class JavaFxGameView implements GameView {
 
     @Override
     public void render(GameSnapshot snapshot) {
-        drawBoard(snapshot.getCells(), snapshot.getClearingRows());
+        drawBoard(snapshot.getCells(), snapshot.getClearingRows(), snapshot.getGhostPieceCells());
 
         PieceType nextPiece = snapshot.getNextPieces().isEmpty() ? null : snapshot.getNextPieces().get(0);
-        drawPreview(nextCanvas, nextPiece,snapshot.getNextPieceItem());
-        drawPreview(holdCanvas, snapshot.getHeldPiece(),snapshot.getHeldPieceItem());
+        drawPreview(nextCanvas, nextPiece, snapshot.getNextPieceItem());
+        drawPreview(holdCanvas, snapshot.getHeldPiece(), snapshot.getHeldPieceItem());
 
         scoreLabel.setText("점수: " + snapshot.getScore());
         intervalLabel.setText("낙하 간격: " + snapshot.getDropInterval() + "ms");
@@ -228,7 +229,7 @@ public class JavaFxGameView implements GameView {
         return label;
     }
 
-    private void drawBoard(int[][] cells, List<Integer> clearingRows) {
+    private void drawBoard(int[][] cells, List<Integer> clearingRows, Map<Position, Integer> ghostPieceCells) {
         int rows = cells.length;
         int cols = rows == 0 ? 0 : cells[0].length;
 
@@ -253,12 +254,17 @@ public class JavaFxGameView implements GameView {
                 PieceType type = findType(Board.extractCellId(cells[row][col]));
                 double x = (col + 1) * cellWidth;
                 double y = (row + 1) * cellHeight;
+                Position pos = new Position(row, col);
 
                 if (clearingRows.contains(row)) {
                     drawClearingCell(graphics, x, y, symbol, type);
+                } else if (cells[row][col] == Board.EMPTY_CELL
+                        && ghostPieceCells.containsKey(pos)) {
+                    drawSymbol(graphics, findSymbol(ghostPieceCells.get(pos)), GHOST_COLOR, x, y);
                 } else {
                     drawCell(graphics, x, y, symbol, type);
                 }
+
             }
         }
     }
@@ -288,7 +294,7 @@ public class JavaFxGameView implements GameView {
         for (int i = 0; i < positions.size(); i++) {
             double x = offsetX + (positions.get(i).column() - minColumn) * cellWidth;
             double y = offsetY + (positions.get(i).row() - minRow) * cellHeight;
-            int cellValue = Board.calculateCellValue(type,item,i);
+            int cellValue = Board.calculateCellValue(type, item, i);
             String symbol = findSymbol(cellValue);
             drawCell(graphics, x, y, symbol, type);
         }

@@ -1,6 +1,7 @@
 package tetris.model;
 
 import java.util.List;
+import java.util.Map;
 
 public class GameSnapshot {
 
@@ -13,7 +14,7 @@ public class GameSnapshot {
     private final Item nextPieceItem; // 아이템이 없으면 null
     private final Item heldPieceItem; // 아이템이 없으면 null
     private final List<Integer> clearingRows; // 삭제 대기 중인 줄 번호, 없으면 빈 목록
-    private final List<Position> ghostPiecePositions;
+    private final Map<Position, Integer> ghostPieceCells;
 
     public GameSnapshot(
             int[][] cells,
@@ -25,7 +26,7 @@ public class GameSnapshot {
             Item nextPieceItem,
             Item heldPieceItem,
             List<Integer> clearingRows,
-            List<Position> ghostPiecePositions) {
+            Map<Position, Integer> ghostPieceCells) {
         this.cells = copyCells(cells);
         this.nextPieces = List.copyOf(nextPieces);
         this.heldPiece = heldPiece;
@@ -35,7 +36,7 @@ public class GameSnapshot {
         this.nextPieceItem = nextPieceItem;
         this.heldPieceItem = heldPieceItem;
         this.clearingRows = List.copyOf(clearingRows);
-        this.ghostPiecePositions = List.copyOf(ghostPiecePositions);
+        this.ghostPieceCells = Map.copyOf(ghostPieceCells);
     }
 
     public int[][] getCells() {
@@ -86,8 +87,8 @@ public class GameSnapshot {
         return dropInterval;
     }
 
-    public List<Position> getGhostPiecePositions() {
-        return ghostPiecePositions;
+    public Map<Position, Integer> getGhostPieceCells() {
+        return ghostPieceCells;
     }
 
     private int[][] copyCells(int[][] source) {
