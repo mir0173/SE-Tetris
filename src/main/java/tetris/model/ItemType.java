@@ -30,14 +30,14 @@ public enum ItemType {
             new SlowEffect()),
     HEAVY_WEIGHT(
             4,
-            'O',
+            '\u25A3', // ▣
             ItemType.DEFAULT_WEIGHT,
             false,
             PieceType.HEAVY_WEIGHT,
             new HeavyWeightEffect()),
     SPECIAL_I(
             5,
-            '@',
+            '\u2605', // ★
             ItemType.DEFAULT_WEIGHT,
             false,
             PieceType.SPECIAL_I,
