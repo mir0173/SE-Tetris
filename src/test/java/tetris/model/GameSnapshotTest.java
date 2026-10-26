@@ -20,7 +20,11 @@ class GameSnapshotTest {
                 null,
                 0L,
                 GameStatus.READY,
-                1_000L
+                1_000L,
+                null,
+                null,
+                List.of(),
+                List.of()
         );
 
         cells[0][0] = 0;
@@ -45,7 +49,11 @@ class GameSnapshotTest {
                 null,
                 0L,
                 GameStatus.READY,
-                1_000L
+                1_000L,
+                null,
+                null,
+                List.of(),
+                List.of()
         );
 
         nextPieces.clear();
@@ -69,7 +77,11 @@ class GameSnapshotTest {
                 null,
                 0L,
                 GameStatus.PLAYING,
-                1_000L
+                1_000L,
+                null,
+                null,
+                List.of(),
+                List.of()
         );
 
         assertEquals(List.of(), snapshot.getClearingRows());
@@ -86,7 +98,8 @@ class GameSnapshotTest {
                 1_000L,
                 null,
                 null,
-                List.of(18, 19)
+                List.of(18, 19),
+                List.of()
         );
 
         assertEquals(List.of(18, 19), snapshot.getClearingRows());
@@ -107,7 +120,8 @@ class GameSnapshotTest {
                 1_000L,
                 null,
                 null,
-                clearingRows
+                clearingRows,
+                List.of()
         );
 
         clearingRows.clear();
@@ -126,7 +140,8 @@ class GameSnapshotTest {
                 1_000L,
                 null,
                 null,
-                List.of(19)
+                List.of(19),
+                List.of()
         );
 
         assertThrows(

@@ -259,7 +259,8 @@ public class Game {
                 selectTimeInterval(),
                 nextItem,
                 heldItem,
-                pendingClearRows);
+                pendingClearRows,
+                findGhostPositions());
     }
 
     /**
@@ -502,6 +503,19 @@ public class Game {
             return dropInterval;
         }
     }
+
+    // 하드 드롭했을 때 놓일 위치를 구하여 반환한다.
+    private List<Position> findGhostPositions() {
+        if(currentPiece == null || isGameOver() || status == GameStatus.CLEARING || drilling) {
+            return List.of();
+        }
+        Piece candidate = currentPiece;
+        while (board.canPlace(candidate.move(1, 0))) {
+            candidate = candidate.move(1, 0);
+        }
+        return candidate.getAbsolutePositions();
+    }
+
 
     private class GameItemContext implements ItemContext {
         @Override
