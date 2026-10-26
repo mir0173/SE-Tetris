@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.Map;
+import java.util.HashMap;
 import static java.util.Objects.requireNonNull;
 
 public class Game {
@@ -259,7 +261,8 @@ public class Game {
                 selectTimeInterval(),
                 nextItem,
                 heldItem,
-                pendingClearRows);
+                pendingClearRows,
+                findGhostCells());
     }
 
     /**
@@ -501,6 +504,24 @@ public class Game {
         } else {
             return dropInterval;
         }
+    }
+
+    // 하드 드롭했을 때 놓일 위치를 구하여 반환한다.
+    private Map<Position, Integer> findGhostCells() {
+        if (currentPiece == null || isGameOver() || status == GameStatus.CLEARING || drilling) {
+            return Map.of();
+        }
+        Piece candidate = currentPiece;
+        while (board.canPlace(candidate.move(1, 0))) {
+            candidate = candidate.move(1, 0);
+        }
+        List<Position> list = candidate.getAbsolutePositions();
+        Map<Position, Integer> map = new HashMap<>();
+        for (int i = 0; i < list.size(); i++) {
+            Position p = list.get(i);
+            map.put(p, Board.calculateCellValue(currentPiece.type(), currentPiece.item(), i));
+        }
+        return map;
     }
 
     private class GameItemContext implements ItemContext {

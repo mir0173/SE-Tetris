@@ -69,14 +69,12 @@ class JavaFxGameViewTest {
             Stage stage = new Stage();
 
             try {
-                JavaFxGameView view =
-                        new JavaFxGameView(stage, GameSettings.defaults());
+                JavaFxGameView view = new JavaFxGameView(stage, GameSettings.defaults());
 
                 List<GameCommand> commands = new ArrayList<>();
                 view.setCommandHandler(commands::add);
 
-                for (Map.Entry<GameCommand, String> binding
-                        : GameSettings.getDefaultKeyBindings().entrySet()) {
+                for (Map.Entry<GameCommand, String> binding : GameSettings.getDefaultKeyBindings().entrySet()) {
                     commands.clear();
 
                     pressKey(stage, KeyCode.valueOf(binding.getValue()));
@@ -95,19 +93,16 @@ class JavaFxGameViewTest {
             Stage stage = new Stage();
 
             try {
-                Map<GameCommand, String> bindings =
-                        new HashMap<>(GameSettings.getDefaultKeyBindings());
+                Map<GameCommand, String> bindings = new HashMap<>(GameSettings.getDefaultKeyBindings());
                 bindings.put(GameCommand.MOVE_LEFT, "A");
 
                 GameSettings settings = new GameSettings(
                         GameSettings.getDefaultWindowSize(),
                         bindings,
-                        false, 
-                        Difficulty.NORMAL
-                );
+                        false,
+                        Difficulty.NORMAL);
 
-                JavaFxGameView view =
-                        new JavaFxGameView(stage, settings);
+                JavaFxGameView view = new JavaFxGameView(stage, settings);
 
                 List<GameCommand> commands = new ArrayList<>();
                 view.setCommandHandler(commands::add);
@@ -129,19 +124,16 @@ class JavaFxGameViewTest {
             Stage stage = new Stage();
 
             try {
-                Map<GameCommand, String> bindings =
-                        new HashMap<>(GameSettings.getDefaultKeyBindings());
+                Map<GameCommand, String> bindings = new HashMap<>(GameSettings.getDefaultKeyBindings());
                 bindings.put(GameCommand.QUIT_GAME, "Q");
 
                 GameSettings settings = new GameSettings(
                         GameSettings.getDefaultWindowSize(),
                         bindings,
-                        false, 
-                        Difficulty.NORMAL
-                );
+                        false,
+                        Difficulty.NORMAL);
 
-                JavaFxGameView view =
-                        new JavaFxGameView(stage, settings);
+                JavaFxGameView view = new JavaFxGameView(stage, settings);
 
                 List<GameCommand> commands = new ArrayList<>();
                 view.setCommandHandler(commands::add);
@@ -163,8 +155,7 @@ class JavaFxGameViewTest {
             Stage stage = new Stage();
 
             try {
-                JavaFxGameView view =
-                        new JavaFxGameView(stage, GameSettings.defaults());
+                JavaFxGameView view = new JavaFxGameView(stage, GameSettings.defaults());
 
                 view.render(new GameSnapshot(
                         new int[20][10],
@@ -172,7 +163,11 @@ class JavaFxGameViewTest {
                         null,
                         100L,
                         GameStatus.PLAYING,
-                        1_000L));
+                        1_000L,
+                        null,
+                        null,
+                        List.of(),
+                        Map.of()));
 
                 Label scoreLabel = (Label) stage.getScene()
                         .lookup("#score-label");
@@ -190,7 +185,11 @@ class JavaFxGameViewTest {
                         null,
                         250L,
                         GameStatus.PLAYING,
-                        900L));
+                        900L,
+                        null,
+                        null,
+                        List.of(),
+                        Map.of()));
 
                 assertEquals("점수: 250", scoreLabel.getText());
                 assertEquals(
@@ -208,8 +207,7 @@ class JavaFxGameViewTest {
             Stage stage = new Stage();
 
             try {
-                JavaFxGameView view =
-                        new JavaFxGameView(stage, GameSettings.defaults());
+                JavaFxGameView view = new JavaFxGameView(stage, GameSettings.defaults());
 
                 Canvas preview = (Canvas) stage.getScene()
                         .lookup("#next-preview");
@@ -220,7 +218,11 @@ class JavaFxGameViewTest {
                         null,
                         0L,
                         GameStatus.PLAYING,
-                        1_000L));
+                        1_000L,
+                        null,
+                        null,
+                        List.of(),
+                        Map.of()));
 
                 assertTrue(containsColor(
                         preview,
@@ -232,7 +234,11 @@ class JavaFxGameViewTest {
                         null,
                         0L,
                         GameStatus.PLAYING,
-                        1_000L));
+                        1_000L,
+                        null,
+                        null,
+                        List.of(),
+                        Map.of()));
 
                 assertTrue(containsColor(
                         preview,
@@ -247,7 +253,11 @@ class JavaFxGameViewTest {
                         null,
                         0L,
                         GameStatus.PLAYING,
-                        1_000L));
+                        1_000L,
+                        null,
+                        null,
+                        List.of(),
+                        Map.of()));
 
                 assertFalse(containsColor(
                         preview,
@@ -264,8 +274,7 @@ class JavaFxGameViewTest {
             Stage stage = new Stage();
 
             try {
-                JavaFxGameView view =
-                        new JavaFxGameView(stage, GameSettings.defaults());
+                JavaFxGameView view = new JavaFxGameView(stage, GameSettings.defaults());
 
                 Canvas preview = (Canvas) stage.getScene()
                         .lookup("#hold-preview");
@@ -276,7 +285,11 @@ class JavaFxGameViewTest {
                         PieceType.T,
                         0L,
                         GameStatus.PLAYING,
-                        1_000L));
+                        1_000L,
+                        null,
+                        null,
+                        List.of(),
+                        Map.of()));
 
                 assertTrue(containsColor(
                         preview,
@@ -288,7 +301,11 @@ class JavaFxGameViewTest {
                         null,
                         0L,
                         GameStatus.PLAYING,
-                        1_000L));
+                        1_000L,
+                        null,
+                        null,
+                        List.of(),
+                        Map.of()));
 
                 assertFalse(containsColor(
                         preview,
@@ -305,8 +322,7 @@ class JavaFxGameViewTest {
             Stage stage = new Stage();
 
             try {
-                JavaFxGameView view =
-                        new JavaFxGameView(stage, GameSettings.defaults());
+                JavaFxGameView view = new JavaFxGameView(stage, GameSettings.defaults());
 
                 Label pauseLabel = (Label) stage.getScene()
                         .lookup("#pause-label");
@@ -317,7 +333,11 @@ class JavaFxGameViewTest {
                         null,
                         0L,
                         GameStatus.PAUSED,
-                        1_000L));
+                        1_000L,
+                        null,
+                        null,
+                        List.of(),
+                        Map.of()));
 
                 assertTrue(pauseLabel.isVisible());
 
@@ -327,7 +347,11 @@ class JavaFxGameViewTest {
                         null,
                         0L,
                         GameStatus.PLAYING,
-                        1_000L));
+                        1_000L,
+                        null,
+                        null,
+                        List.of(),
+                        Map.of()));
 
                 assertFalse(pauseLabel.isVisible());
             } finally {
@@ -345,11 +369,10 @@ class JavaFxGameViewTest {
                 GameSettings settings = new GameSettings(
                         GameSettings.getDefaultWindowSize(),
                         GameSettings.getDefaultKeyBindings(),
-                        true, 
+                        true,
                         Difficulty.NORMAL);
 
-                JavaFxGameView view =
-                        new JavaFxGameView(stage, settings);
+                JavaFxGameView view = new JavaFxGameView(stage, settings);
 
                 int[][] cells = new int[20][10];
                 cells[0][0] = PieceType.I.getCellId();
@@ -360,7 +383,11 @@ class JavaFxGameViewTest {
                         PieceType.I,
                         0L,
                         GameStatus.PLAYING,
-                        1_000L));
+                        1_000L,
+                        null,
+                        null,
+                        List.of(),
+                        Map.of()));
 
                 Canvas board = (Canvas) stage.getScene()
                         .lookup("#game-board");
@@ -386,8 +413,7 @@ class JavaFxGameViewTest {
             Stage stage = new Stage();
 
             try {
-                Map<GameCommand, String> bindings =
-                        new HashMap<>(GameSettings.getDefaultKeyBindings());
+                Map<GameCommand, String> bindings = new HashMap<>(GameSettings.getDefaultKeyBindings());
                 bindings.put(GameCommand.PAUSE, "A");
 
                 GameSettings settings = new GameSettings(
@@ -418,8 +444,7 @@ class JavaFxGameViewTest {
             Stage stage = new Stage();
 
             try {
-                JavaFxGameView view =
-                        new JavaFxGameView(stage, GameSettings.defaults());
+                JavaFxGameView view = new JavaFxGameView(stage, GameSettings.defaults());
 
                 List<GameCommand> commands = new ArrayList<>();
                 view.setCommandHandler(commands::add);
@@ -438,9 +463,9 @@ class JavaFxGameViewTest {
 
     @ParameterizedTest
     @CsvSource({
-        "SMALL, 400, 480, 0.8",
-        "MEDIUM, 500, 600, 1.0",
-        "LARGE, 600, 720, 1.2"
+            "SMALL, 400, 480, 0.8",
+            "MEDIUM, 500, 600, 1.0",
+            "LARGE, 600, 720, 1.2"
     })
     void applyWindowSizeToOpenStage(
             WindowSize windowSize,
@@ -459,7 +484,7 @@ class JavaFxGameViewTest {
                 GameSettings settings = new GameSettings(
                         windowSize,
                         GameSettings.getDefaultKeyBindings(),
-                        false, 
+                        false,
                         Difficulty.NORMAL);
 
                 JavaFxGameView view = new JavaFxGameView(stage, settings);
@@ -469,7 +494,11 @@ class JavaFxGameViewTest {
                         PieceType.T,
                         100L,
                         GameStatus.PLAYING,
-                        1_000L));
+                        1_000L,
+                        null,
+                        null,
+                        List.of(),
+                        Map.of()));
                 view.show();
 
                 Scene scene = stage.getScene();
@@ -511,7 +540,7 @@ class JavaFxGameViewTest {
                 GameSettings settings = new GameSettings(
                         windowSize,
                         GameSettings.getDefaultKeyBindings(),
-                        false, 
+                        false,
                         Difficulty.NORMAL);
 
                 JavaFxGameView view = new JavaFxGameView(stage, settings);
@@ -521,7 +550,11 @@ class JavaFxGameViewTest {
                         PieceType.T,
                         100L,
                         GameStatus.PAUSED,
-                        1_000L));
+                        1_000L,
+                        null,
+                        null,
+                        List.of(),
+                        Map.of()));
                 view.show();
 
                 Scene scene = stage.getScene();
@@ -811,8 +844,7 @@ class JavaFxGameViewTest {
                 false,
                 false,
                 false,
-                false
-        );
+                false);
 
         Event.fireEvent(stage.getScene().getRoot(), event);
     }
@@ -842,9 +874,7 @@ class JavaFxGameViewTest {
         WritableImage image = canvas.snapshot(null, null);
 
         for (int row = 0; row < (int) image.getHeight(); row++) {
-            for (int column = 0;
-                    column < (int) image.getWidth();
-                    column++) {
+            for (int column = 0; column < (int) image.getWidth(); column++) {
 
                 Color actual = image.getPixelReader()
                         .getColor(column, row);
@@ -861,7 +891,7 @@ class JavaFxGameViewTest {
 
         return false;
     }
-    
+
     // firstFullRow 아래는 I 블록으로 꽉 찬 줄, 바로 위 한 줄은 한 칸이 빈 20x10 보드의 스냅샷
     private static GameSnapshot snapshotWithFullRowsFrom(int firstFullRow, List<Integer> clearingRows) {
         int[][] cells = new int[BOARD_ROWS][BOARD_COLUMNS];
@@ -874,7 +904,8 @@ class JavaFxGameViewTest {
         cells[firstFullRow - 1][BOARD_COLUMNS - 1] = Board.EMPTY_CELL;
 
         GameStatus status = clearingRows.isEmpty() ? GameStatus.PLAYING : GameStatus.CLEARING;
-        return new GameSnapshot(cells, List.of(PieceType.I), null, 0L, status, 1_000L, null, null, clearingRows);
+        return new GameSnapshot(cells, List.of(PieceType.I), null, 0L, status, 1_000L, null, null, clearingRows,
+                Map.of());
     }
 
     // firstColumn 이상 endColumn 미만 칸 영역(테두리 제외)에서 지정한 행의 순수한 흰색 픽셀 수를 센다
@@ -917,7 +948,8 @@ class JavaFxGameViewTest {
         }
 
         GameStatus status = clearingRows.isEmpty() ? GameStatus.PLAYING : GameStatus.CLEARING;
-        return new GameSnapshot(cells, List.of(PieceType.I), null, 0L, status, 1_000L, null, null, clearingRows);
+        return new GameSnapshot(cells, List.of(PieceType.I), null, 0L, status, 1_000L, null, null, clearingRows,
+                Map.of());
     }
 
     // AI-assisted code end

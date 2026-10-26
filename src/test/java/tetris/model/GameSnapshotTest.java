@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class GameSnapshotTest {
@@ -20,7 +21,11 @@ class GameSnapshotTest {
                 null,
                 0L,
                 GameStatus.READY,
-                1_000L
+                1_000L,
+                null,
+                null,
+                List.of(),
+                Map.of()
         );
 
         cells[0][0] = 0;
@@ -45,7 +50,11 @@ class GameSnapshotTest {
                 null,
                 0L,
                 GameStatus.READY,
-                1_000L
+                1_000L,
+                null,
+                null,
+                List.of(),
+                Map.of()
         );
 
         nextPieces.clear();
@@ -69,7 +78,11 @@ class GameSnapshotTest {
                 null,
                 0L,
                 GameStatus.PLAYING,
-                1_000L
+                1_000L,
+                null,
+                null,
+                List.of(),
+                Map.of()
         );
 
         assertEquals(List.of(), snapshot.getClearingRows());
@@ -86,7 +99,8 @@ class GameSnapshotTest {
                 1_000L,
                 null,
                 null,
-                List.of(18, 19)
+                List.of(18, 19),
+                Map.of()
         );
 
         assertEquals(List.of(18, 19), snapshot.getClearingRows());
@@ -107,7 +121,8 @@ class GameSnapshotTest {
                 1_000L,
                 null,
                 null,
-                clearingRows
+                clearingRows,
+                Map.of()
         );
 
         clearingRows.clear();
@@ -126,7 +141,8 @@ class GameSnapshotTest {
                 1_000L,
                 null,
                 null,
-                List.of(19)
+                List.of(19),
+                Map.of()
         );
 
         assertThrows(
