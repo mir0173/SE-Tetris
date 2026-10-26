@@ -5,6 +5,7 @@ import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.stage.Stage;
 import javafx.scene.control.TextInputDialog;
+import javafx.scene.image.Image;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -51,7 +52,7 @@ public class TetrisApplication extends Application {
 
     @Override
     public void start(Stage stage) {
-
+    stage.getIcons().add(new Image(TetrisApplication.class.getResourceAsStream("/icons/se-tetris.png")));
         Path dataDirectory = Path.of(System.getProperty("user.home"), ".se-tetris");
 
         settingsRepository = new FileSettingsRepository(dataDirectory.resolve("settings.json"));

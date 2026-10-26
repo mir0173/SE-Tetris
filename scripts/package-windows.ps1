@@ -24,6 +24,7 @@ try {
         '--main-jar', 'SE-Tetris.jar',
         '--main-class', 'tetris.Launcher',
         '--dest', 'target\dist',
+        '--icon', 'src\main\resources\icons\se-tetris.ico',
         '--add-modules', 'java.desktop,java.logging,java.xml,jdk.unsupported',
         '--java-options', '-Xmx256m'
     )
