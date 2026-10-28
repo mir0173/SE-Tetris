@@ -35,10 +35,20 @@ class DifficultyTest {
                 .mapToInt(Integer::intValue)
                 .sum();
 
+                double expectedProbability = 1.0 / 7.0 * factor;
+        double actualProbability =
+                (double) weights.get(PieceType.I) / total;
+
+        System.out.printf(
+                "[%s/I 설정] 목표: %.4f%%, 설정값: %.4f%%%n",
+                difficulty,
+                expectedProbability * 100,
+                actualProbability * 100);
+
         assertEquals(7, weights.size());
         assertEquals(
-                1.0 / 7.0 * factor,
-                (double) weights.get(PieceType.I) / total,
+                expectedProbability,
+                actualProbability,
                 1.0e-12);
     }
 
@@ -81,10 +91,19 @@ class DifficultyTest {
                     Math.abs(counts.get(type) - expectedCount)
                     / expectedCount;
 
-            assertTrue(
-                    relativeError <= RELATIVE_TOLERANCE,
-                    difficulty + "/" + type
-                            + ": relativeError=" + relativeError);
+                        double actualProbability =
+                    (double) counts.get(type) / DRAW_COUNT;
+
+            System.out.printf(
+                    "[%s/%s 추첨] 목표: %.4f%%, 실제: %.4f%%"
+                            + ", 개수: %d/%d, 상대 오차: %.4f%%%n",
+                    difficulty,
+                    type,
+                    expectedProbability * 100,
+                    actualProbability * 100,
+                    counts.get(type),
+                    DRAW_COUNT,
+                    relativeError * 100);
         }
     }
 
