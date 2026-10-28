@@ -2,7 +2,6 @@ package tetris.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -18,7 +17,6 @@ class DifficultyTest {
 
     private static final int DRAW_COUNT = 100_000;
     private static final long RANDOM_SEED = 20261018L;
-    private static final double RELATIVE_TOLERANCE = 0.05;
 
     @ParameterizedTest
     @CsvSource({

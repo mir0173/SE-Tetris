@@ -17,7 +17,7 @@ try {
     $packageArguments = @(
         '--type', 'app-image',
         '--name', 'SE-Tetris',
-        '--app-version', '1.0.0',
+        '--app-version', '0.2.0',
         '--vendor', 'SE-Tetris Team',
         '--description', 'Text-based Tetris game',
         '--input', 'target\app',
