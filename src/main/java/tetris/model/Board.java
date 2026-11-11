@@ -1,6 +1,7 @@
 package tetris.model;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -120,7 +121,7 @@ public class Board {
 
         int index = 0;
         for (Position pos : positions) {
-            copy[pos.row()][pos.column()] = calculateCellValue(piece.type(),piece.item(), index);
+            copy[pos.row()][pos.column()] = calculateCellValue(piece.type(), piece.item(), index);
             index++;
         }
         return copy;
@@ -173,7 +174,7 @@ public class Board {
         List<Position> positions = piece.getAbsolutePositions();
         int index = 0;
         for (Position pos : positions) {
-            cells[pos.row()][pos.column()] = calculateCellValue(piece.type(),piece.item(), index);
+            cells[pos.row()][pos.column()] = calculateCellValue(piece.type(), piece.item(), index);
             index++;
         }
     }
@@ -248,7 +249,7 @@ public class Board {
         if (rowIndex >= height || rowIndex < 0) {
             throw new IllegalArgumentException("rowIndex is out of height");
         }
-        for(int cellValue : cells[rowIndex]){
+        for (int cellValue : cells[rowIndex]) {
             collectItemCode(cellValue);
         }
         for (int row = rowIndex; row > 0; row--) {
@@ -304,13 +305,49 @@ public class Board {
     }
 
     /**
-     * 
+     * 주어진 줄들을 보드 맨 아래에 넣고, 기존 줄들을 그만큼 위로 올림
+     * 맨 위에서 밀려 나간 줄에 블록이 있었다면 넘침으로 판단함
+     * 넘쳐도 줄은 그대로 넣으며, 게임오버 처리는 호출한 쪽에서 처리
+     *
+     * @param garbageLines 넣을 줄 목록
+     * @return 맨 위에서 블록이 밀려 나갔으면 true
+     * @throws NullPointerException     garbageLines가 null인 경우
+     * @throws IllegalArgumentException 줄 수가 보드 높이보다 많거나 줄 길이가 보드 가로와 다른 경우
      */
-    public boolean pushRowsFromBottom(List<int[]> garbageList) {
-        if(garbageList == null) {
-            throw new NullPointerException("garbageList is null");
+    public boolean pushRowsFromBottom(List<int[]> garbageLines) {
+
+        // 예외 처리
+        if (garbageLines == null) {
+            throw new NullPointerException("garbageLines is null");
         }
-        return true;
+        int lineCount = garbageLines.size();
+        if (lineCount > height) {
+            throw new IllegalArgumentException("line count exceeds board height: " + lineCount);
+        }
+        for (int[] garbageLine : garbageLines) {
+            if (garbageLine.length != width) {
+                throw new IllegalArgumentException("line length must equal board width: " + garbageLine.length);
+            }
+        }
+
+        // 공격 줄이 없을 경우 반환
+        if (lineCount == 0) {
+            return false;
+        }
+
+        // 공격 줄을 적용할 때 보드가 넘치는지 확인
+        boolean overflow = hasBlockInTopRows(lineCount);
+
+        // 기존 보드를 위로 올리기
+        for (int row = 0; row + lineCount < height; row++) {
+            cells[row] = cells[row + lineCount];
+        }
+
+        // 공격 줄 반영
+        for (int index = 0; index < lineCount; index++) {
+            cells[height - lineCount + index] = garbageLines.get(index).clone();
+        }
+        return overflow;
     }
 
     // param으로 주어진 배열이 전부 차 있는지 확인하는 함수
@@ -329,5 +366,17 @@ public class Board {
         if (itemCode != NO_ITEM_CODE) {
             destroyedItemCodes.add(itemCode);
         }
+    }
+
+    // 맨 위 rowCount개 줄에 빈칸이 아닌 칸이 하나라도 있으면 true를 반환한다.
+    private boolean hasBlockInTopRows(int rowCount) {
+        for (int row = 0; row < rowCount; row++) {
+            for (int cell : cells[row]) {
+                if (cell != EMPTY_CELL) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
