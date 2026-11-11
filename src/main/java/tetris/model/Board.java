@@ -286,16 +286,6 @@ public class Board {
         return copiedList;
     }
 
-    // param으로 주어진 배열이 전부 차 있는지 확인하는 함수
-    private boolean isFullLine(int[] row) {
-        for (int cell : row) {
-            if (cell == EMPTY_CELL) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     // PieceType과 Item을 입력하고, index번째 칸에 적을 값을 반환
     public static int calculateCellValue(PieceType pieceType, Item item, int index) {
         if (item == null) {
@@ -311,6 +301,26 @@ public class Board {
         } else {
             return pieceType.getCellId();
         }
+    }
+
+    /**
+     * 
+     */
+    public boolean pushRowsFromBottom(List<int[]> garbageList) {
+        if(garbageList == null) {
+            throw new NullPointerException("garbageList is null");
+        }
+        return true;
+    }
+
+    // param으로 주어진 배열이 전부 차 있는지 확인하는 함수
+    private boolean isFullLine(int[] row) {
+        for (int cell : row) {
+            if (cell == EMPTY_CELL) {
+                return false;
+            }
+        }
+        return true;
     }
 
     // cellValue에서 itemCode를 추출해 destroyedItemCodes에 추가한다.
