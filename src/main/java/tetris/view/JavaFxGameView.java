@@ -53,6 +53,7 @@ public class JavaFxGameView implements GameView {
     private static final Color CLEARING_BACKGROUND_COLOR = Color.WHITE;
     private static final Color CLEARING_SYMBOL_COLOR = Color.BLACK;
     private static final Color GHOST_COLOR = Color.gray(0.7, 0.3);
+    private static final Color GARBAGE_COLOR = Color.GRAY;
     private static final String BORDER_SYMBOL = "X";
     private static final String BLOCK_SYMBOL = "O";
 
@@ -250,10 +251,25 @@ public class JavaFxGameView implements GameView {
             drawSymbol(graphics, BORDER_SYMBOL, Color.WHITE, (cols + 1) * cellWidth, (row + 1) * cellHeight);
 
             for (int col = 0; col < cols; col++) {
-                String symbol = findSymbol(cells[row][col]);
-                PieceType type = findType(Board.extractCellId(cells[row][col]));
+
                 double x = (col + 1) * cellWidth;
                 double y = (row + 1) * cellHeight;
+
+                // 쓰래기 칸: 모양이 따로 없으므로 findType 전에 처리
+                if (cells[row][col] == Board.GARBAGE_CELL) {
+                    if (clearingRows.contains(row)) {
+                        graphics.setFill(CLEARING_BACKGROUND_COLOR);
+                        graphics.fillRect(x, y, cellWidth, cellHeight);
+                        drawSymbol(graphics, BLOCK_SYMBOL, CLEARING_SYMBOL_COLOR, x, y);
+                    } else {
+                        drawSymbol(graphics, BLOCK_SYMBOL, GARBAGE_COLOR, x, y);
+                    }
+                    continue;
+                }
+
+                String symbol = findSymbol(cells[row][col]);
+                PieceType type = findType(Board.extractCellId(cells[row][col]));
+
                 Position pos = new Position(row, col);
 
                 if (clearingRows.contains(row)) {
