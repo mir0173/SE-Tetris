@@ -191,6 +191,20 @@ class TetrisApplicationIntegrationTest {
         return temporaryDirectory.resolve(".se-tetris").resolve(name);
     }
 
+    @Test
+    void openP2pLobbyAndReturnToStartMenu() throws Exception {
+        onFx(() -> {
+            clickButton("P2P 대전");
+            assertEquals("P2P 대전", stage.getTitle());
+            assertTrue(stage.getScene().lookup("#p2p-address") != null);
+            clickButton("메뉴로");
+            assertEquals("Tetris", stage.getTitle());
+            assertTrue(hasLabel("Tetris"));
+            return null;
+        });
+        System.out.println("[P2P 통합] 기존 시작 메뉴 → P2P 대기실 → 시작 메뉴 복귀 PASS");
+    }
+
     private void clickButton(String text) {
         stage.getScene().getRoot().applyCss();
         Button button = stage.getScene().getRoot().lookupAll(".button").stream()
