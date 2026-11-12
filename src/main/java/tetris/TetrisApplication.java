@@ -38,6 +38,11 @@ import tetris.view.JavaFxGameView;
 import tetris.view.JavaFxStartMenuView;
 import tetris.view.JavaFxScoreboardView;
 import tetris.view.JavaFxSettingsView;
+import tetris.view.JavaFxP2pLobbyView;
+import tetris.network.LobbyMode;
+import tetris.network.LobbySettings;
+import tetris.network.P2pLobbyController;
+
 
 /**
  * JavaFX 애플리케이션 진입점
@@ -49,6 +54,7 @@ public class TetrisApplication extends Application {
     private SettingsRepository settingsRepository;
     private ScoreRepository scoreRepository;
     private GameSettings currentSettings = GameSettings.defaults();
+    private P2pLobbyController p2pLobbyController;
 
     @Override
     public void start(Stage stage) {
@@ -64,6 +70,12 @@ public class TetrisApplication extends Application {
     public static void main(String[] args) {
         launch(args);
     }
+
+    @Override
+    public void stop() {
+        closeP2pLobby();
+    }
+
 
     /**
      * 저장된 설정을 불러온다
@@ -89,6 +101,30 @@ public class TetrisApplication extends Application {
         }
     }
 
+    private void showP2pLobby(Stage stage) {
+        closeP2pLobby();
+        JavaFxP2pLobbyView view = new JavaFxP2pLobbyView();
+        P2pLobbyController controller = new P2pLobbyController(
+                Platform::runLater, view::render, view::showMatchReady,
+                new LobbySettings(LobbyMode.NORMAL, currentSettings.getDifficulty(), 0));
+        p2pLobbyController = controller;
+        view.bind(controller, () -> {
+            closeP2pLobby();
+            showStartMenu(stage);
+        });
+        stage.setTitle("P2P 대전");
+        stage.setScene(view.getScene());
+        stage.sizeToScene();
+        stage.show();
+    }
+
+    private void closeP2pLobby() {
+        if (p2pLobbyController != null) {
+            p2pLobbyController.close();
+            p2pLobbyController = null;
+        }
+    }
+
     private void showStartMenu(Stage stage) {
 
         stage.setTitle("Tetris");
@@ -96,6 +132,7 @@ public class TetrisApplication extends Application {
         JavaFxStartMenuView menu = new JavaFxStartMenuView(
                 () -> startNewGame(stage, GameMode.NORMAL),
                 () -> startNewGame(stage, GameMode.ITEM),
+                () -> showP2pLobby(stage),
                 () -> showSettings(stage),
                 () -> showScoreboard(stage),
                 stage::close);

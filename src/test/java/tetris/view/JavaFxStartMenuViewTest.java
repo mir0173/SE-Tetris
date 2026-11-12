@@ -41,14 +41,15 @@ class JavaFxStartMenuViewTest {
     @BeforeEach
     void setUp() throws Exception {
         runOnFxThread(() -> {
-            actionCalls = new int[5];
+            actionCalls = new int[6];
 
             menu = new JavaFxStartMenuView(
                     () -> actionCalls[0]++,
                     () -> actionCalls[1]++,
                     () -> actionCalls[2]++,
                     () -> actionCalls[3]++,
-                    () -> actionCalls[4]++
+                    () -> actionCalls[4]++,
+                    () -> actionCalls[5]++
             );
         });
     }
@@ -69,9 +70,10 @@ class JavaFxStartMenuViewTest {
     @CsvSource({
             "일반 모드 시작, 0",
             "아이템 모드 시작, 1",
-            "설정, 2",
-            "스코어보드, 3",
-            "종료, 4"
+            "P2P 대전, 2",
+            "설정, 3",
+            "스코어보드, 4",
+            "종료, 5"
     })
     void buttonRunsOnlyItsOwnAction(
             String buttonText,
@@ -80,7 +82,7 @@ class JavaFxStartMenuViewTest {
         runOnFxThread(() -> {
             findButton(buttonText).fire();
 
-            int[] expectedCalls = new int[5];
+            int[] expectedCalls = new int[6];
             expectedCalls[expectedAction] = 1;
 
             assertArrayEquals(expectedCalls, actionCalls);
@@ -91,6 +93,8 @@ class JavaFxStartMenuViewTest {
     @CsvSource({
             "일반 모드 시작, DOWN, 아이템 모드 시작",
             "아이템 모드 시작, UP, 일반 모드 시작",
+            "아이템 모드 시작, DOWN, P2P 대전",
+            "P2P 대전, DOWN, 설정",
             "일반 모드 시작, UP, 종료",
             "종료, DOWN, 일반 모드 시작"
     })
@@ -110,7 +114,7 @@ class JavaFxStartMenuViewTest {
             );
 
             // 이동만 했으므로 메뉴 동작은 실행되지 않아야 한다.
-            assertArrayEquals(new int[5], actionCalls);
+            assertArrayEquals(new int[6], actionCalls);
         });
     }
 
@@ -118,9 +122,10 @@ class JavaFxStartMenuViewTest {
     @CsvSource({
             "일반 모드 시작, 0",
             "아이템 모드 시작, 1",
-            "설정, 2",
-            "스코어보드, 3",
-            "종료, 4"
+            "P2P 대전, 2",
+            "설정, 3",
+            "스코어보드, 4",
+            "종료, 5"
     })
     void enterRunsOnlySelectedAction(
             String buttonText,
@@ -131,7 +136,7 @@ class JavaFxStartMenuViewTest {
 
             pressKey(KeyCode.ENTER);
 
-            int[] expectedCalls = new int[5];
+            int[] expectedCalls = new int[6];
             expectedCalls[expectedAction] = 1;
 
             assertArrayEquals(expectedCalls, actionCalls);
