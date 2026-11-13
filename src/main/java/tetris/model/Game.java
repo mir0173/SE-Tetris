@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Deque;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+
 import static java.util.Objects.requireNonNull;
 
 public class Game {
@@ -302,18 +304,18 @@ public class Game {
      * 필드 pendingGarbageLines에 공격받을 쓰레기 줄들을 저장한다.
      * 
      * @param garbageLines pendingGarbageLines에 저장할 쓰레기 줄들, 앞이 위쪽줄
-     * @throws NullPointerException 매개변수가 null일 경우
+     * @throws NullPointerException     매개변수가 null일 경우
      * @throws IllegalArgumentException 매개변수의 하위 line들의 길이가 board.width와 맞지 않는 경우
      */
     public void receiveGarbageLines(List<int[]> garbageLines) {
-        requireNonNull(garbageLines,"garbageLines is null");
-        for(int[] garbageLine : garbageLines) {
-            if(garbageLine.length != board.getWidth()) {
+        requireNonNull(garbageLines, "garbageLines is null");
+        for (int[] garbageLine : garbageLines) {
+            if (garbageLine.length != board.getWidth()) {
                 throw new IllegalArgumentException("garbageLine Length is not board.width");
             }
         }
 
-        for(int[] garbageLine : garbageLines) {
+        for (int[] garbageLine : garbageLines) {
             pendingGarbageLines.addLast(garbageLine.clone());
         }
     }
@@ -380,7 +382,16 @@ public class Game {
             }
         }
         notifyDestroyedItems();
-        spawnNextPiece();
+        if (getPendingGarbageLineCount() != 0) {
+            boolean overflow = applyPendingGarbageLines();
+            if (overflow) {
+                status = GameStatus.GAMEOVER;
+            } else {
+                spawnNextPiece();
+            }
+        } else {
+            spawnNextPiece();
+        }
     }
 
     // nextPieceType를 꺼내 스폰하고, nextPieceType를 새로 채움
@@ -552,6 +563,14 @@ public class Game {
             map.put(p, Board.calculateCellValue(currentPiece.type(), currentPiece.item(), i));
         }
         return map;
+    }
+
+    // 다음 블록 생성 직전에 공격 줄들을 적용하고 넘치는지 유무를 반환하는 함수
+    private boolean applyPendingGarbageLines() {
+        List<int[]> garbageLines = new ArrayList<>(pendingGarbageLines);
+        boolean overflow = board.pushRowsFromBottom(garbageLines);
+        pendingGarbageLines.clear();
+        return overflow;
     }
 
     private class GameItemContext implements ItemContext {
