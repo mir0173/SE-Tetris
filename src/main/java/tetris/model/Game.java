@@ -6,6 +6,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Deque;
+import java.util.ArrayDeque;
 import static java.util.Objects.requireNonNull;
 
 public class Game {
@@ -54,6 +56,7 @@ public class Game {
     private long currentPieceScore; // 지금 블록이 스폰된 뒤 얻은 점수 합계
     private long slowTimeLeft; // 남은 속도 저하 시간
     private List<Integer> pendingClearRows = List.of(); // 삭제 대기 중인 줄 번호, 없으면 빈 목록
+    private final Deque<int[]> pendingGarbageLines = new ArrayDeque<>(); // 상대에게서 받아 아직 보드에 넣지 않은 공격줄
 
     public Game(Board board, TetrominoGenerator generator, Difficulty difficulty, GameMode mode) {
         this(board, generator, new ItemGenerator(new Random()), difficulty, mode);
@@ -293,6 +296,33 @@ public class Game {
             currentPiece = candidate;
             return true;
         }
+    }
+
+    /**
+     * 필드 pendingGarbageLines에 공격받을 쓰레기 줄들을 저장한다.
+     * 
+     * @param garbageLines pendingGarbageLines에 저장할 쓰레기 줄들, 앞이 위쪽줄
+     * @throws NullPointerException 매개변수가 null일 경우
+     * @throws IllegalArgumentException 매개변수의 하위 line들의 길이가 board.width와 맞지 않는 경우
+     */
+    public void receiveGarbageLines(List<int[]> garbageLines) {
+        requireNonNull(garbageLines,"garbageLines is null");
+        for(int[] garbageLine : garbageLines) {
+            if(garbageLine.length != board.getWidth()) {
+                throw new IllegalArgumentException("garbageLine Length is not board.width");
+            }
+        }
+
+        for(int[] garbageLine : garbageLines) {
+            pendingGarbageLines.addLast(garbageLine.clone());
+        }
+    }
+
+    /**
+     * 아직 보드에 넣지 않은 공격 줄 수를 반환한다.
+     */
+    public int getPendingGarbageLineCount() {
+        return pendingGarbageLines.size();
     }
 
     // 한 칸 내렸으면 true, 못 내려가서 고정했으면 false
