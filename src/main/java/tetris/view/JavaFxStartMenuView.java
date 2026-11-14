@@ -24,21 +24,23 @@ public class JavaFxStartMenuView {
      *
      * @param onStartGame     게임 시작 버튼을 선택했을 때 실행할 동작
      * @param onStartItemGame 아이템 모드 버튼을 선택했을 때 실행할 동작
+     * @param onStartP2p      P2P 대전 버튼을 선택했을 때 실행할 동작
      * @param onSettings      설정 버튼을 선택했을 때 실행할 동작
      * @param onScoreboard    스코어보드 버튼을 선택했을 때 실행할 동작
      * @param onExit          종료 버튼을 선택했을 때 실행할 동작
      */
-    public JavaFxStartMenuView(Runnable onStartGame, Runnable onStartItemGame, Runnable onSettings,
+    public JavaFxStartMenuView(Runnable onStartGame, Runnable onStartItemGame, Runnable onStartP2p, Runnable onSettings,
             Runnable onScoreboard, Runnable onExit) {
         Label title = new Label("Tetris");
 
         Button startButton = createButton("일반 모드 시작", onStartGame);
         Button itemModeButton = createButton("아이템 모드 시작", onStartItemGame);
+        Button p2pButton = createButton("P2P 대전", onStartP2p);
         Button settingsButton = createButton("설정", onSettings);
         Button scoreboardButton = createButton("스코어보드", onScoreboard);
         Button exitButton = createButton("종료", onExit);
 
-        menuButtons = List.of(startButton, itemModeButton, settingsButton, scoreboardButton, exitButton);
+        menuButtons = List.of(startButton, itemModeButton, p2pButton, settingsButton, scoreboardButton, exitButton);
 
         VBox root = new VBox(20);
         root.setAlignment(Pos.CENTER);
