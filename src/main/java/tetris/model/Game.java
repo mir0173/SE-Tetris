@@ -14,7 +14,6 @@ import java.util.HashSet;
 import static java.util.Objects.requireNonNull;
 
 public class Game {
-
     private static final long INITIAL_SCORE = 0L;
     private static final long INITIAL_DROP_INTERVAL = 1_000L;
     private static final int LINES_PER_LEVEL = 5;
@@ -121,7 +120,7 @@ public class Game {
 
     /**
      * 가장 최근에 블록이 고정될 때 지운 줄 수를 반환한다. 점수 계산에 사용된다.
-     *
+     * 
      * @return 지운 줄 수 (0~4)
      */
     public int getLastClearedLines() {
@@ -144,7 +143,6 @@ public class Game {
      * 사용자 명령을 현재 게임 상태에 적용한다
      * 일시정지 중에는 재개와 종료만 허용한다
      * 이동과 회전은 블록을 놓을 수 없는 위치이면 무시한다
-     *
      */
     public void handleCommand(GameCommand command) {
         if (command == GameCommand.QUIT_GAME && (status == GameStatus.PLAYING || status == GameStatus.PAUSED)) {
@@ -154,9 +152,9 @@ public class Game {
 
         if (command == GameCommand.PAUSE) {
             if (status == GameStatus.PLAYING) {
-                status = GameStatus.PAUSED;
+                pause();
             } else if (status == GameStatus.PAUSED) {
-                status = GameStatus.PLAYING;
+                resume();
             }
             return;
         }
@@ -202,7 +200,6 @@ public class Game {
 
     /**
      * 자동 낙하를 한 번 진행하고 점수와 속도를 갱신한다
-     * 
      */
     public void tick() {
         if (status != GameStatus.PLAYING) {
@@ -223,6 +220,32 @@ public class Game {
             gravityDropCells++;
         }
         updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
+    }
+
+    /**
+     * 진행 중인 게임을 일시정지한다. 진행 중이 아니면 아무것도 하지 않는다.
+     */
+    public void pause() {
+        if (status == GameStatus.PLAYING) {
+            status = GameStatus.PAUSED;
+        }
+    }
+
+    /** 일시정지된 게임을 재개한다. 일시정지 상태가 아니면 아무것도 하지 않는다. */
+    public void resume() {
+        if (isPaused()) {
+            status = GameStatus.PLAYING;
+        }
+    }
+
+    /**
+     * 게임을 밖에서 끝낸다. 이미 게임 오버이거나 종료된 게임은 그대로 둔다.
+     * 대전에서 상대가 졌을 때 심판이 이긴쪽 게임을 멈출 때 사용한다.
+     */
+    public void stop() {
+        if (!isGameOver() && !isFinished()) {
+            status = GameStatus.QUIT;
+        }
     }
 
     public boolean isPaused() {
@@ -269,7 +292,8 @@ public class Game {
                 nextItem,
                 heldItem,
                 pendingClearRows,
-                findGhostCells());
+                findGhostCells(),
+                new ArrayList<>(pendingGarbageRows));
     }
 
     /**
