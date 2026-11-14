@@ -43,7 +43,6 @@ import tetris.network.LobbyMode;
 import tetris.network.LobbySettings;
 import tetris.network.P2pLobbyController;
 
-
 /**
  * JavaFX 애플리케이션 진입점
  */
@@ -58,7 +57,7 @@ public class TetrisApplication extends Application {
 
     @Override
     public void start(Stage stage) {
-    stage.getIcons().add(new Image(TetrisApplication.class.getResourceAsStream("/icons/se-tetris.png")));
+        stage.getIcons().add(new Image(TetrisApplication.class.getResourceAsStream("/icons/se-tetris.png")));
         Path dataDirectory = Path.of(System.getProperty("user.home"), ".se-tetris");
 
         settingsRepository = new FileSettingsRepository(dataDirectory.resolve("settings.json"));
@@ -75,7 +74,6 @@ public class TetrisApplication extends Application {
     public void stop() {
         closeP2pLobby();
     }
-
 
     /**
      * 저장된 설정을 불러온다
@@ -150,11 +148,8 @@ public class TetrisApplication extends Application {
      */
     private void startNewGame(Stage stage, GameMode mode) {
 
-        GameConfig config = new GameConfig(BOARD_WIDTH, BOARD_HEIGHT);
-        Board board = new Board(config.getBoardWidth(), config.getBoardHeight());
         Difficulty difficulty = currentSettings.getDifficulty();
-        TetrominoGenerator generator = new TetrominoGenerator(new Random(), difficulty.createWeights());
-        Game game = new Game(board, generator, difficulty, mode);
+        Game game = createGame(mode, difficulty);
         GameView view = new JavaFxGameView(stage, currentSettings);
         GameTimer timer = new JavaFxGameTimer(Game.getInitialDropInterval());
         GameController controller = new GameController(game, view, timer, new JavaFxDelayScheduler(),
@@ -311,5 +306,14 @@ public class TetrisApplication extends Application {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    // 모드와 난이도에 맞는 새 게임을 만든다
+    private Game createGame(GameMode mode, Difficulty difficulty) {
+        GameConfig config = new GameConfig(BOARD_WIDTH, BOARD_HEIGHT);
+        Board board = new Board(config.getBoardWidth(), config.getBoardHeight());
+        TetrominoGenerator generator = new TetrominoGenerator(new Random(), difficulty.createWeights());
+        Game game = new Game(board, generator, difficulty, mode);
+        return game;
     }
 }
