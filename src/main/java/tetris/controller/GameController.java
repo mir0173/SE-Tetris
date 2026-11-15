@@ -16,29 +16,32 @@ public class GameController {
     public static final long MIN_LINE_CLEAR_DELAY_MILLIS = 100L; // 줄 삭제 연출 후 마무리까지 기다릴 최소 시간(밀리초)
     public static final long MAX_LINE_CLEAR_DELAY_MILLIS = 200L; // 줄 삭제 연출 후 마무리까지 기다릴 최대 시간(밀리초)
 
-    private final Game game;                // 게임 모델
-    private final GameView view;            // 게임 화면
-    private final GameTimer timer;          // 블록을 떨어트리는 게임 타이머
+    private final Game game; // 게임 모델
+    private final GameView view; // 게임 화면
+    private final GameTimer timer; // 블록을 떨어트리는 게임 타이머
     private final DelayScheduler delayScheduler; // 줄 삭제 연출 후 마무리를 예약하는 장치
-    private final Runnable onReturnToMenu;  // 사용자가 게임을 종료했을 때 실행할 동작
+    private final Runnable onReturnToMenu; // 사용자가 게임을 종료했을 때 실행할 동작
     private final Consumer<Long> onGameOver;
 
-    private long appliedDropInterval = Game.getInitialDropInterval(); 
+    private long appliedDropInterval = Game.getInitialDropInterval();
     private boolean timerRunning;
     private boolean started;
     private boolean terminalHandled;
     private boolean lineClearScheduled; // 삭제 마무리를 예약했는지 여부
+    private Runnable onUpdate = () -> {}; // 화면을 갱신할 때마다 실행할 동작 (대전에서 MatchManager가 등록)
+
     /**
      * 게임, 화면, 타이머를 연결하는 컨트롤러를 생성한다.
      * 
-     * @param game              진행할 게임
-     * @param view              게임을 표시할 화면
-     * @param timer             자동 낙하에 사용할 타이머
-     * @param delayScheduler    줄 삭제 연출 후 마무리를 예약하는 장치
-     * @param onReturnToMenu    게임 종료(QUIT) 시 실행할 동작
-     * @param onGameOver        게임 오버 시 최종 점수를 받을 동작
+     * @param game           진행할 게임
+     * @param view           게임을 표시할 화면
+     * @param timer          자동 낙하에 사용할 타이머
+     * @param delayScheduler 줄 삭제 연출 후 마무리를 예약하는 장치
+     * @param onReturnToMenu 게임 종료(QUIT) 시 실행할 동작
+     * @param onGameOver     게임 오버 시 최종 점수를 받을 동작
      */
-    public GameController(Game game, GameView view, GameTimer timer, DelayScheduler delayScheduler, Runnable onReturnToMenu, Consumer<Long> onGameOver) {
+    public GameController(Game game, GameView view, GameTimer timer, DelayScheduler delayScheduler,
+            Runnable onReturnToMenu, Consumer<Long> onGameOver) {
         this.game = game;
         this.view = view;
         this.timer = timer;
@@ -57,12 +60,34 @@ public class GameController {
         }
         started = true;
         view.setCommandHandler(this::handleCommand);
-        game.start();    
+        game.start();
         view.show();
-        
+
         synchronizeState();
     }
-    
+
+    /**
+     * 바깥에서 게임 갱신을 요청한다.
+     */
+    public void refresh() {
+        if (terminalHandled) {
+            return;
+        }
+
+        synchronizeState();
+    }
+
+    /**
+     * onUpdate 필드를 설정한다.
+     */
+    public void setOnUpdate(Runnable onUpdate) {
+        if (onUpdate == null) {
+            throw new NullPointerException("onUpdate is null");
+        }
+
+        this.onUpdate = onUpdate;
+    }
+
     /**
      * 줄 삭제 연출 후 마무리까지 기다릴 시간을 계산한다.
      * 게임이 빨라질수록 짧아진다
@@ -98,6 +123,7 @@ public class GameController {
     private void synchronizeState() {
         GameSnapshot snapshot = game.createSnapshot();
         view.render(snapshot);
+        onUpdate.run();
 
         if (game.isFinished() || game.isGameOver()) {
             stopTimer();
@@ -108,7 +134,7 @@ public class GameController {
                 onReturnToMenu.run();
             }
             return;
-        } 
+        }
 
         if (snapshot.getStatus() == GameStatus.CLEARING) {
             stopTimer();
@@ -118,11 +144,11 @@ public class GameController {
             }
             return;
         }
-        
+
         if (game.isPaused()) {
             stopTimer();
             return;
-        } 
+        }
 
         long dropInterval = snapshot.getDropInterval();
 
