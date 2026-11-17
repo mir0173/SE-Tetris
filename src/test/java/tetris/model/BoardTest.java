@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -38,6 +39,13 @@ class BoardTest {
         ItemType.SPECIAL_I.getItemCode() * Board.ITEM_CODE_MULTIPLIER + PieceType.SLOW.getCellId(),
         ItemType.LINE_CLEAR.getItemCode() * Board.ITEM_CODE_MULTIPLIER + PieceType.SLOW.getCellId()
     };
+    // pushRowsFromBottom 테스트에 사용하는 행 이동과 블록 위치 값
+    private static final int PUSH_ROW_COUNT = 2;
+    private static final int PUSH_BLOCK_ROW = 1;
+    private static final int PUSH_BLOCK_COLUMN = 3;
+    private static final int PUSH_CELL_VALUE = PieceType.SLOW.getCellId();
+    private static final int INVALID_ROW_COUNT = BOARD_HEIGHT + 1;
+    private static final int OVERFLOW_ROW_COUNT = 2;
 
     @Test
     void throwWhenWidthIsZero() {
@@ -65,6 +73,107 @@ class BoardTest {
                 assertTrue(board.isEmpty(row, column), "row " + row + ", column " + column);
             }
         }
+    }
+
+    @Test // 기존 블록을 위로 이동하고 입력 행을 아래쪽에 순서대로 저장하는지 확인하는 테스트
+    void pushRowsFromBottom() {
+        // given: 중간 행에 블록 하나와 아래에 넣을 두 행을 준비한다.
+        Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
+        board.lock(new Piece(PieceType.SLOW, 0, 3, PUSH_BLOCK_COLUMN));
+        List<int[]> rows = List.of(new int[BOARD_WIDTH], filledRow(Board.GARBAGE_CELL));
+
+        // when: 두 행을 보드 아래에서 밀어 넣는다.
+        boolean overflow = board.pushRowsFromBottom(rows);
+
+        // then: 기존 블록은 2행 올라가고 입력 행은 하단 순서를 유지한다.
+        assertFalse(overflow);
+        assertEquals(PUSH_CELL_VALUE, board.getCell(3 - PUSH_ROW_COUNT, PUSH_BLOCK_COLUMN));
+        assertArrayEquals(rows.get(0), rowOf(board, BOARD_HEIGHT - PUSH_ROW_COUNT));
+        assertArrayEquals(rows.get(1), rowOf(board, BOARD_HEIGHT - 1));
+        // 위의 모든 assert를 통과했을 시 아래 출력
+        System.out.println("[REQ3-보드] 기존 블록 2행 상승, 하단 2행 입력 순서 보존 PASS");
+    }
+
+    @Test // 밀려나는 상단 행에 블록이 있을 때만 overflow를 보고하는지 확인하는 테스트
+    void detectOverflowWhenPushingRows() {
+        // given: 한 행용 상단 블록 보드와 두 행용 두 번째 행 블록 보드를 준비한다.
+        Board overflowing = new Board(BOARD_WIDTH, BOARD_HEIGHT);
+        overflowing.lock(new Piece(PieceType.SLOW, 0, 0, 0));
+        Board overflowingAfterTwoRows = new Board(BOARD_WIDTH, BOARD_HEIGHT);
+        overflowingAfterTwoRows.lock(new Piece(PieceType.SLOW, 0, PUSH_BLOCK_ROW, 0));
+        Board safe = new Board(BOARD_WIDTH, BOARD_HEIGHT);
+        List<int[]> twoRows = new ArrayList<>();
+        for (int row = 0; row < OVERFLOW_ROW_COUNT; row++) {
+            twoRows.add(new int[BOARD_WIDTH]);
+        }
+
+        // when / then: 1행은 row 0 블록, 2행은 row 1 블록도 overflow로 판정한다.
+        assertTrue(overflowing.pushRowsFromBottom(List.of(new int[BOARD_WIDTH])));
+        assertTrue(overflowingAfterTwoRows.pushRowsFromBottom(twoRows));
+        assertFalse(safe.pushRowsFromBottom(List.of(new int[BOARD_WIDTH])));
+        // 위의 모든 assert를 통과했을 시 아래 출력
+        System.out.println("[REQ3-보드] 1행 row 0 및 2행 row 1 블록 overflow, 빈 보드 false PASS");
+    }
+
+    @Test // 빈 입력 행을 넣으면 보드와 overflow 결과를 바꾸지 않는지 확인하는 테스트
+    void leaveBoardUnchangedForEmptyRows() {
+        // given: 중간 행에 블록이 있는 보드를 준비한다.
+        Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
+        board.lock(new Piece(PieceType.SLOW, 0, PUSH_BLOCK_ROW, PUSH_BLOCK_COLUMN));
+        int[][] before = board.copyCells();
+
+        // when / then: 빈 목록은 아무 작업도 하지 않는다.
+        assertFalse(board.pushRowsFromBottom(List.of()));
+        assertEquals(before[PUSH_BLOCK_ROW][PUSH_BLOCK_COLUMN], board.getCell(PUSH_BLOCK_ROW, PUSH_BLOCK_COLUMN));
+    }
+
+    @Test // null, 높이 초과, 폭 불일치 입력을 각각 거부하는지 확인하는 테스트
+    void rejectInvalidRows() {
+        // given: 유효하지 않은 세 가지 입력을 준비한다.
+        Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
+
+        // when / then: 각 입력 형식에 맞는 예외가 발생한다.
+        assertThrows(NullPointerException.class, () -> board.pushRowsFromBottom(null));
+        List<int[]> tooManyRows = new ArrayList<>();
+        for (int row = 0; row < INVALID_ROW_COUNT; row++) {
+            tooManyRows.add(new int[BOARD_WIDTH]);
+        }
+        assertThrows(IllegalArgumentException.class, () -> board.pushRowsFromBottom(tooManyRows));
+        assertThrows(IllegalArgumentException.class,
+                () -> board.pushRowsFromBottom(List.of(new int[BOARD_WIDTH - 1])));
+    }
+
+    @Test // 입력 배열을 보드에 저장할 때 원본 배열을 복사하는지 확인하는 테스트
+    void storeCopiesOfPushedRows() {
+        // given: 첫 칸만 채운 입력 배열을 준비한다.
+        Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
+        int[] row = new int[BOARD_WIDTH];
+        row[0] = PUSH_CELL_VALUE;
+
+        // when: 행을 저장한 뒤 원본 배열을 바꾼다.
+        board.pushRowsFromBottom(List.of(row));
+        row[0] = Board.EMPTY_CELL;
+
+        // then: 보드에는 저장 당시 값이 남아 있다.
+        assertEquals(PUSH_CELL_VALUE, board.getCell(BOARD_HEIGHT - 1, 0));
+    }
+
+    // 지정한 값으로 보드 폭만큼 채운 행을 만든다.
+    private int[] filledRow(int value) {
+        int[] row = new int[BOARD_WIDTH];
+        for (int column = 0; column < BOARD_WIDTH; column++) {
+            row[column] = value;
+        }
+        return row;
+    }
+
+    // 보드의 한 행을 배열로 복사해 입력 배열과 비교한다.
+    private int[] rowOf(Board board, int rowIndex) {
+        int[] row = new int[board.getWidth()];
+        for (int column = 0; column < board.getWidth(); column++) {
+            row[column] = board.getCell(rowIndex, column);
+        }
+        return row;
     }
 
     @Test

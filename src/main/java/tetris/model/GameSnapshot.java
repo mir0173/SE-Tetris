@@ -2,6 +2,7 @@ package tetris.model;
 
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 
 public class GameSnapshot {
 
@@ -15,6 +16,7 @@ public class GameSnapshot {
     private final Item heldPieceItem; // 아이템이 없으면 null
     private final List<Integer> clearingRows; // 삭제 대기 중인 줄 번호, 없으면 빈 목록
     private final Map<Position, Integer> ghostPieceCells;
+    private final List<int[]> pendingGarbageRows; // 받았지만 아직 보드에 들어가지 않은 공격 줄
 
     public GameSnapshot(
             int[][] cells,
@@ -26,7 +28,8 @@ public class GameSnapshot {
             Item nextPieceItem,
             Item heldPieceItem,
             List<Integer> clearingRows,
-            Map<Position, Integer> ghostPieceCells) {
+            Map<Position, Integer> ghostPieceCells,
+            List<int[]> pendingGarbageRows) {
         this.cells = copyCells(cells);
         this.nextPieces = List.copyOf(nextPieces);
         this.heldPiece = heldPiece;
@@ -37,6 +40,7 @@ public class GameSnapshot {
         this.heldPieceItem = heldPieceItem;
         this.clearingRows = List.copyOf(clearingRows);
         this.ghostPieceCells = Map.copyOf(ghostPieceCells);
+        this.pendingGarbageRows = copyRows(pendingGarbageRows);
     }
 
     public int[][] getCells() {
@@ -89,6 +93,18 @@ public class GameSnapshot {
 
     public Map<Position, Integer> getGhostPieceCells() {
         return ghostPieceCells;
+    }
+
+    public List<int[]> getPendingGarbageRows() {
+        return copyRows(pendingGarbageRows);
+    }
+
+    private static List<int[]> copyRows(List<int[]> rows) {
+        List<int[]> copiedRows = new ArrayList<>();
+        for (int[] row : rows) {
+            copiedRows.add(row.clone());
+        }
+        return List.copyOf(copiedRows);
     }
 
     private int[][] copyCells(int[][] source) {

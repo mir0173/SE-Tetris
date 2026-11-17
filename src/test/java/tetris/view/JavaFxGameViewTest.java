@@ -167,7 +167,8 @@ class JavaFxGameViewTest {
                         null,
                         null,
                         List.of(),
-                        Map.of()));
+                        Map.of(),
+                        List.of()));
 
                 Label scoreLabel = (Label) stage.getScene()
                         .lookup("#score-label");
@@ -189,7 +190,8 @@ class JavaFxGameViewTest {
                         null,
                         null,
                         List.of(),
-                        Map.of()));
+                        Map.of(),
+                        List.of()));
 
                 assertEquals("점수: 250", scoreLabel.getText());
                 assertEquals(
@@ -222,7 +224,8 @@ class JavaFxGameViewTest {
                         null,
                         null,
                         List.of(),
-                        Map.of()));
+                        Map.of(),
+                        List.of()));
 
                 assertTrue(containsColor(
                         preview,
@@ -238,7 +241,8 @@ class JavaFxGameViewTest {
                         null,
                         null,
                         List.of(),
-                        Map.of()));
+                        Map.of(),
+                        List.of()));
 
                 assertTrue(containsColor(
                         preview,
@@ -257,7 +261,8 @@ class JavaFxGameViewTest {
                         null,
                         null,
                         List.of(),
-                        Map.of()));
+                        Map.of(),
+                        List.of()));
 
                 assertFalse(containsColor(
                         preview,
@@ -289,7 +294,8 @@ class JavaFxGameViewTest {
                         null,
                         null,
                         List.of(),
-                        Map.of()));
+                        Map.of(),
+                        List.of()));
 
                 assertTrue(containsColor(
                         preview,
@@ -305,7 +311,8 @@ class JavaFxGameViewTest {
                         null,
                         null,
                         List.of(),
-                        Map.of()));
+                        Map.of(),
+                        List.of()));
 
                 assertFalse(containsColor(
                         preview,
@@ -337,7 +344,8 @@ class JavaFxGameViewTest {
                         null,
                         null,
                         List.of(),
-                        Map.of()));
+                        Map.of(),
+                        List.of()));
 
                 assertTrue(pauseLabel.isVisible());
 
@@ -351,7 +359,8 @@ class JavaFxGameViewTest {
                         null,
                         null,
                         List.of(),
-                        Map.of()));
+                        Map.of(),
+                        List.of()));
 
                 assertFalse(pauseLabel.isVisible());
             } finally {
@@ -387,7 +396,8 @@ class JavaFxGameViewTest {
                         null,
                         null,
                         List.of(),
-                        Map.of()));
+                        Map.of(),
+                        List.of()));
 
                 Canvas board = (Canvas) stage.getScene()
                         .lookup("#game-board");
@@ -498,7 +508,8 @@ class JavaFxGameViewTest {
                         null,
                         null,
                         List.of(),
-                        Map.of()));
+                        Map.of(),
+                        List.of()));
                 view.show();
 
                 Scene scene = stage.getScene();
@@ -554,7 +565,8 @@ class JavaFxGameViewTest {
                         null,
                         null,
                         List.of(),
-                        Map.of()));
+                        Map.of(),
+                        List.of()));
                 view.show();
 
                 Scene scene = stage.getScene();
@@ -905,7 +917,7 @@ class JavaFxGameViewTest {
 
         GameStatus status = clearingRows.isEmpty() ? GameStatus.PLAYING : GameStatus.CLEARING;
         return new GameSnapshot(cells, List.of(PieceType.I), null, 0L, status, 1_000L, null, null, clearingRows,
-                Map.of());
+                Map.of(), List.of());
     }
 
     // firstColumn 이상 endColumn 미만 칸 영역(테두리 제외)에서 지정한 행의 순수한 흰색 픽셀 수를 센다
@@ -949,7 +961,7 @@ class JavaFxGameViewTest {
 
         GameStatus status = clearingRows.isEmpty() ? GameStatus.PLAYING : GameStatus.CLEARING;
         return new GameSnapshot(cells, List.of(PieceType.I), null, 0L, status, 1_000L, null, null, clearingRows,
-                Map.of());
+                Map.of(), List.of());
     }
 
     // AI-assisted code end

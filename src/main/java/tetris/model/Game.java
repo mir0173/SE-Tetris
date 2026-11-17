@@ -6,10 +6,14 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Deque;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashSet;
+
 import static java.util.Objects.requireNonNull;
 
 public class Game {
-
     private static final long INITIAL_SCORE = 0L;
     private static final long INITIAL_DROP_INTERVAL = 1_000L;
     private static final int LINES_PER_LEVEL = 5;
@@ -54,6 +58,8 @@ public class Game {
     private long currentPieceScore; // 지금 블록이 스폰된 뒤 얻은 점수 합계
     private long slowTimeLeft; // 남은 속도 저하 시간
     private List<Integer> pendingClearRows = List.of(); // 삭제 대기 중인 줄 번호, 없으면 빈 목록
+    private final Deque<int[]> pendingGarbageRows = new ArrayDeque<>(); // 상대에게서 받아 아직 보드에 넣지 않은 공격줄
+    private final List<int[]> pendingAttackRows = new ArrayList<>(); // 상대에게 보낼 공격줄 (심판이 꺼내감)
 
     public Game(Board board, TetrominoGenerator generator, Difficulty difficulty, GameMode mode) {
         this(board, generator, new ItemGenerator(new Random()), difficulty, mode);
@@ -114,7 +120,7 @@ public class Game {
 
     /**
      * 가장 최근에 블록이 고정될 때 지운 줄 수를 반환한다. 점수 계산에 사용된다.
-     *
+     * 
      * @return 지운 줄 수 (0~4)
      */
     public int getLastClearedLines() {
@@ -137,7 +143,6 @@ public class Game {
      * 사용자 명령을 현재 게임 상태에 적용한다
      * 일시정지 중에는 재개와 종료만 허용한다
      * 이동과 회전은 블록을 놓을 수 없는 위치이면 무시한다
-     *
      */
     public void handleCommand(GameCommand command) {
         if (command == GameCommand.QUIT_GAME && (status == GameStatus.PLAYING || status == GameStatus.PAUSED)) {
@@ -147,9 +152,9 @@ public class Game {
 
         if (command == GameCommand.PAUSE) {
             if (status == GameStatus.PLAYING) {
-                status = GameStatus.PAUSED;
+                pause();
             } else if (status == GameStatus.PAUSED) {
-                status = GameStatus.PLAYING;
+                resume();
             }
             return;
         }
@@ -195,7 +200,6 @@ public class Game {
 
     /**
      * 자동 낙하를 한 번 진행하고 점수와 속도를 갱신한다
-     * 
      */
     public void tick() {
         if (status != GameStatus.PLAYING) {
@@ -216,6 +220,32 @@ public class Game {
             gravityDropCells++;
         }
         updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
+    }
+
+    /**
+     * 진행 중인 게임을 일시정지한다. 진행 중이 아니면 아무것도 하지 않는다.
+     */
+    public void pause() {
+        if (status == GameStatus.PLAYING) {
+            status = GameStatus.PAUSED;
+        }
+    }
+
+    /** 일시정지된 게임을 재개한다. 일시정지 상태가 아니면 아무것도 하지 않는다. */
+    public void resume() {
+        if (isPaused()) {
+            status = GameStatus.PLAYING;
+        }
+    }
+
+    /**
+     * 게임을 밖에서 끝낸다. 이미 게임 오버이거나 종료된 게임은 그대로 둔다.
+     * 대전에서 상대가 졌을 때 심판이 이긴쪽 게임을 멈출 때 사용한다.
+     */
+    public void stop() {
+        if (!isGameOver() && !isFinished()) {
+            status = GameStatus.QUIT;
+        }
     }
 
     public boolean isPaused() {
@@ -262,7 +292,8 @@ public class Game {
                 nextItem,
                 heldItem,
                 pendingClearRows,
-                findGhostCells());
+                findGhostCells(),
+                new ArrayList<>(pendingGarbageRows));
     }
 
     /**
@@ -285,6 +316,18 @@ public class Game {
         updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
     }
 
+    /**
+     * 상대에게 보낼 공격 줄을 꺼낸다. 앞이 위쪽 줄
+     */
+    public List<int[]> takeAttackRows() {
+        List<int[]> attackRows = new ArrayList<>();
+        for (int[] attackRow : pendingAttackRows) {
+            attackRows.add(attackRow.clone());
+        }
+        pendingAttackRows.clear();
+        return List.copyOf(attackRows);
+    }
+
     // 후보가 놓일 수 있으면 현재 블록을 교체하고 true, 아니면 그대로 두고 false
     private boolean tryReplace(Piece candidate) {
         if (!board.canPlace(candidate)) {
@@ -293,6 +336,33 @@ public class Game {
             currentPiece = candidate;
             return true;
         }
+    }
+
+    /**
+     * 필드 pendingGarbageRows에 공격받을 쓰레기 줄들을 저장한다.
+     * 
+     * @param garbageRows pendingGarbageRows에 저장할 쓰레기 줄들, 앞이 위쪽줄
+     * @throws NullPointerException     매개변수가 null일 경우
+     * @throws IllegalArgumentException 매개변수의 하위 line들의 길이가 board.width와 맞지 않는 경우
+     */
+    public void receiveGarbageRows(List<int[]> garbageRows) {
+        requireNonNull(garbageRows, "GarbageRows is null");
+        for (int[] garbageRow : garbageRows) {
+            if (garbageRow.length != board.getWidth()) {
+                throw new IllegalArgumentException("garbageRow Length is not board.width");
+            }
+        }
+
+        for (int[] garbageRow : garbageRows) {
+            pendingGarbageRows.addLast(garbageRow.clone());
+        }
+    }
+
+    /**
+     * 아직 보드에 넣지 않은 공격 줄 수를 반환한다.
+     */
+    public int getPendingGarbageRowCount() {
+        return pendingGarbageRows.size();
     }
 
     // 한 칸 내렸으면 true, 못 내려가서 고정했으면 false
@@ -327,6 +397,7 @@ public class Game {
         rowsToClear.addAll(board.findFullLines());
         if (!rowsToClear.isEmpty()) {
             pendingClearRows = List.copyOf(rowsToClear);
+            recordAttackRows(rowsToClear);
             status = GameStatus.CLEARING;
             return;
         }
@@ -350,7 +421,16 @@ public class Game {
             }
         }
         notifyDestroyedItems();
-        spawnNextPiece();
+        if (getPendingGarbageRowCount() != 0) {
+            boolean overflow = applyPendingGarbageRows();
+            if (overflow) {
+                status = GameStatus.GAMEOVER;
+            } else {
+                spawnNextPiece();
+            }
+        } else {
+            spawnNextPiece();
+        }
     }
 
     // nextPieceType를 꺼내 스폰하고, nextPieceType를 새로 채움
@@ -522,6 +602,28 @@ public class Game {
             map.put(p, Board.calculateCellValue(currentPiece.type(), currentPiece.item(), i));
         }
         return map;
+    }
+
+    // 다음 블록 생성 직전에 공격 줄들을 적용하고 넘치는지 유무를 반환하는 함수
+    private boolean applyPendingGarbageRows() {
+        List<int[]> garbageRows = new ArrayList<>(pendingGarbageRows);
+        boolean overflow = board.pushRowsFromBottom(garbageRows);
+        pendingGarbageRows.clear();
+        return overflow;
+    }
+
+    // 지워질 줄들의 모양을 마지막 블록 칸만 비워 공격 줄로 기록한는 함수
+    private void recordAttackRows(Set<Integer> rowsToClear) {
+        Set<Position> lastPieceCells = new HashSet<>(currentPiece.getAbsolutePositions());
+        for (int row : rowsToClear) {
+            int[] attackRow = new int[board.getWidth()];
+            for (int column = 0; column < board.getWidth(); column++) {
+                if (!board.isEmpty(row, column) && !lastPieceCells.contains(new Position(row, column))) {
+                    attackRow[column] = Board.GARBAGE_CELL;
+                }
+            }
+            pendingAttackRows.add(attackRow);
+        }
     }
 
     private class GameItemContext implements ItemContext {
