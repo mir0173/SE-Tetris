@@ -24,9 +24,9 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import tetris.battle.BattleMode;
+import tetris.battle.BattleSettings;
 import tetris.model.Difficulty;
-import tetris.network.LobbyMode;
-import tetris.network.LobbySettings;
 import tetris.network.LobbyState;
 import tetris.network.MatchStart;
 import tetris.network.P2pLobbyController;
@@ -80,12 +80,12 @@ class JavaFxP2pLobbyViewTest {
         Endpoint client = endpoint();
         connect(host, client);
         onFx(() -> {
-            host.modeBox().setValue(LobbyMode.ITEM);
+            host.modeBox().setValue(BattleMode.ITEM);
             return null;
         });
-        client.await(state -> state.settings().mode() == LobbyMode.ITEM);
+        client.await(state -> state.settings().mode() == BattleMode.ITEM);
         onFx(() -> {
-            assertEquals(LobbyMode.ITEM, client.modeBox().getValue());
+            assertEquals(BattleMode.ITEM, client.modeBox().getValue());
             assertTrue(client.modeBox().isDisabled());
             assertFalse(host.modeBox().isDisabled());
             host.button("p2p-ready").fire();
@@ -112,8 +112,8 @@ class JavaFxP2pLobbyViewTest {
         connect(host, client);
         onFx(() -> { host.button("p2p-ready").fire(); return null; });
         client.await(LobbyState::remoteReady);
-        onFx(() -> { host.modeBox().setValue(LobbyMode.TIME_LIMIT); return null; });
-        client.await(state -> state.settings().mode() == LobbyMode.TIME_LIMIT);
+        onFx(() -> { host.modeBox().setValue(BattleMode.TIME_LIMIT); return null; });
+        client.await(state -> state.settings().mode() == BattleMode.TIME_LIMIT);
         onFx(() -> {
             assertEquals("나: 대기", host.label("p2p-local-ready").getText());
             assertEquals("상대: 대기", client.label("p2p-remote-ready").getText());
@@ -151,7 +151,7 @@ class JavaFxP2pLobbyViewTest {
         private final P2pLobbyController controller = new P2pLobbyController(Platform::runLater,
                 state -> { view.render(state); states.add(state); },
                 start -> { view.showMatchReady(start); starts.add(start); },
-                new LobbySettings(LobbyMode.NORMAL, Difficulty.NORMAL, 0));
+                new BattleSettings(BattleMode.NORMAL, Difficulty.NORMAL, 0));
 
         private Endpoint() {
             view.bind(controller, controller::close);
@@ -167,8 +167,8 @@ class JavaFxP2pLobbyViewTest {
         }
 
         @SuppressWarnings("unchecked")
-        private ComboBox<LobbyMode> modeBox() {
-            return (ComboBox<LobbyMode>) view.getScene().lookup("#p2p-mode");
+        private ComboBox<BattleMode> modeBox() {
+            return (ComboBox<BattleMode>) view.getScene().lookup("#p2p-mode");
         }
 
         private LobbyState await(Predicate<LobbyState> condition) throws Exception {

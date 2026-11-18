@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
+import tetris.battle.BattleSettings;
 import tetris.network.LobbyState.Phase;
 
 // AI-assisted code start
@@ -28,7 +29,7 @@ public final class P2pLobbyController implements AutoCloseable {
 
     private Phase phase = Phase.IDLE;
     private PeerRole role;
-    private LobbySettings settings;
+    private BattleSettings settings;
     private String message = "서버를 열거나 상대 서버에 접속하세요.";
     private int port;
     private boolean localReady;
@@ -42,7 +43,7 @@ public final class P2pLobbyController implements AutoCloseable {
     private PeerConnection connection;
 
     public P2pLobbyController(Executor uiExecutor, Consumer<LobbyState> onState,
-            Consumer<MatchStart> onMatchStart, LobbySettings initialSettings) {
+            Consumer<MatchStart> onMatchStart, BattleSettings initialSettings) {
         this.uiExecutor = Objects.requireNonNull(uiExecutor, "uiExecutor");
         this.onState = Objects.requireNonNull(onState, "onState");
         this.onMatchStart = Objects.requireNonNull(onMatchStart, "onMatchStart");
@@ -72,7 +73,7 @@ public final class P2pLobbyController implements AutoCloseable {
     }
 
     /** 서버가 설정을 바꾸면 준비를 해제함 */
-    public synchronized void updateSettings(LobbySettings newSettings) {
+    public synchronized void updateSettings(BattleSettings newSettings) {
         Objects.requireNonNull(newSettings, "newSettings");
         if (role != PeerRole.HOST || (phase != Phase.HOSTING && phase != Phase.CONNECTED)) {
             throw new IllegalStateException("호스트만 설정을 변경할 수 있습니다.");

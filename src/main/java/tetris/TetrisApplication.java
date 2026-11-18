@@ -14,6 +14,8 @@ import java.util.Random;
 import java.util.Optional;
 import java.util.UUID;
 
+import tetris.battle.BattleMode;
+import tetris.battle.BattleSettings;
 import tetris.controller.GameController;
 import tetris.model.Board;
 import tetris.model.Game;
@@ -39,8 +41,6 @@ import tetris.view.JavaFxStartMenuView;
 import tetris.view.JavaFxScoreboardView;
 import tetris.view.JavaFxSettingsView;
 import tetris.view.JavaFxP2pLobbyView;
-import tetris.network.LobbyMode;
-import tetris.network.LobbySettings;
 import tetris.network.P2pLobbyController;
 
 /**
@@ -104,7 +104,7 @@ public class TetrisApplication extends Application {
         JavaFxP2pLobbyView view = new JavaFxP2pLobbyView();
         P2pLobbyController controller = new P2pLobbyController(
                 Platform::runLater, view::render, view::showMatchReady,
-                new LobbySettings(LobbyMode.NORMAL, currentSettings.getDifficulty(), 0));
+                new BattleSettings(BattleMode.NORMAL, currentSettings.getDifficulty(), 0));
         p2pLobbyController = controller;
         view.bind(controller, () -> {
             closeP2pLobby();
