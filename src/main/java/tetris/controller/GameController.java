@@ -177,7 +177,7 @@ public class GameController {
             appliedDropInterval = dropInterval;
         }
 
-        // 타이머가 꺼져있으면 킨다 : 게임 시작, 줄 삭제 애니메이션 마무리, 일시정지 재개 후
+        // 타이머가 꺼져있으면 켠다 : 게임 시작, 줄 삭제 애니메이션 마무리, 일시정지 재개 후
         if (!timerRunning) {
             timer.start(this::handleTick);
             timerRunning = true;

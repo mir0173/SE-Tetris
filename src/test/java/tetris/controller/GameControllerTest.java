@@ -232,6 +232,41 @@ class GameControllerTest {
         assertEquals(updateCount, updates.count);
     }
 
+    // AI-assisted code start
+    @Test // update 알림 안에서 stop과 refresh가 중첩 실행되어도 게임오버 콜백이 한 번만 호출되는지 확인하는 테스트
+    void callGameOverOnceWhenRefreshedInsideUpdate() {
+        // given: 작은 보드에서 게임오버 콜백을 세는 컨트롤러를 준비한다.
+        FakeGameView view = new FakeGameView();
+        FakeGameTimer timer = new FakeGameTimer();
+        Game game = new Game(new Board(GAME_OVER_BOARD_WIDTH, GAME_OVER_BOARD_HEIGHT),
+                sequenceGenerator(PieceType.O), Difficulty.NORMAL, GameMode.NORMAL);
+        int[] gameOverCallbackCount = {0};
+        boolean[] matchStopped = {false};
+        GameController controller = new GameController(
+                game, view, timer, IMMEDIATE_SCHEDULER, new Callback(),
+                score -> gameOverCallbackCount[0]++);
+        controller.setOnUpdate(() -> {
+            if (game.isGameOver() && !matchStopped[0]) {
+                matchStopped[0] = true;
+                // 대전 매치 코디네이터가 갱신 알림 안에서 게임을 멈추는 동작을 흉내 낸다.
+                game.stop();
+                controller.refresh();
+            }
+        });
+
+        // when: 게임을 시작하고 게임오버가 될 때까지 하드 드롭을 보낸다.
+        controller.start();
+        while (!game.isGameOver()) {
+            view.commandHandler.accept(GameCommand.HARD_DROP);
+        }
+
+        // then: 중첩된 refresh가 실행되어도 게임오버 콜백은 한 번만 호출된다.
+        assertTrue(game.isGameOver());
+        assertEquals(EXPECTED_ONE_CALLBACK, gameOverCallbackCount[0]);
+        System.out.println("[REQ3-컨트롤러] 알림 안에서 stop + refresh가 다시 실행돼도 게임오버 콜백 1회 PASS");
+    }
+    // AI-assisted code end
+
     @Test // null 갱신 콜백을 등록하려는 시도를 거부하는지 확인하는 테스트
     void rejectNullOnUpdate() {
         // given: 콜백을 등록할 컨트롤러를 준비한다.
