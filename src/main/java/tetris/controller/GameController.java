@@ -28,8 +28,7 @@ public class GameController {
     private boolean started;
     private boolean terminalHandled;
     private boolean lineClearScheduled; // 삭제 마무리를 예약했는지 여부
-    private Runnable onUpdate = () -> {
-    }; // 화면을 갱신할 때마다 실행할 동작 (대전에서 MatchManager가 등록)
+    private Runnable onUpdate = () -> {}; // 화면을 갱신할 때마다 실행할 동작 (대전에서 MatchManager가 등록)
 
     /**
      * 게임, 화면, 타이머를 연결하는 컨트롤러를 생성한다.
@@ -133,8 +132,8 @@ public class GameController {
         // MatchManager 동기화 : MatchManager에게 알린다.
         onUpdate.run();
 
-        // (#41-2) onUpdate 안에서 심판이 stop() -> refresh로 이 메서드를 다시 실행했다면 
-        // 안쪽에서 이미 (1) 끝 처리를 했으므로 멈춘다. 이 코드가 없을 시 onGameOver가 두번 불리는 문제 발생
+        // (#41-2) onUpdate 안에서 심판이 stop() -> refresh로 이 메서드를 다시 실행했다면
+        // 안쪽에서 이미 (1) 끝 처리를 했으므로 멈춘다. 이 코드가 없을 시 onGameOver가 두 번 불리는 문제 발생
         if (terminalHandled) {
             return;
         }

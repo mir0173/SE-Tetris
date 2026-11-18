@@ -218,9 +218,9 @@ public class Game {
         long previousSpawnedPieceCount = spawnedPieceCount;
         
         
-        if (drilling) {     // 무게추가 뚫는 중이면 한칸 부수기
+        if (drilling) {     // 무게추가 뚫는 중이면 한 칸 부수기
             drillDown();
-        } else if (softDrop()) {    // 아니면 한칸 내리기
+        } else if (softDrop()) {    // 아니면 한 칸 내리기
             gravityDropCells++;
         }
 
@@ -401,7 +401,7 @@ public class Game {
 
     // 현재 블록을 고정. 꽉 찬 줄이 있으면 삭제 대기로 멈추고, 없으면 마무리
     private void lockAndSpawnNext() {
-        // L아이템이 지우려고 예악한 번호 초기화
+        // L아이템이 지우려고 예약한 번호 초기화
         reservedItemRows.clear();
         
         // 실제 보드에 박기
@@ -414,7 +414,7 @@ public class Game {
             currentPiece.item().type().getItemEffect().handleLock(context, position);   // handleLock에서 reservedItemRows 예약
         }
 
-        // reservedItemRows에서 중복된 Row가 나와도 처리되도록 Treeset으로
+        // reservedItemRows에서 중복된 Row가 나와도 처리되도록 TreeSet으로
         Set<Integer> rowsToClear = new TreeSet<>(reservedItemRows);
 
         // 본디 지워질 Rows들도 추가
