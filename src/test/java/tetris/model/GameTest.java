@@ -383,7 +383,7 @@ class GameTest {
 
         assertTrue(game.isGameOver());
         assertEquals(GameStatus.GAMEOVER, game.createSnapshot().getStatus());
-        assertFalse(game.isFinished());
+        assertFalse(game.isQuit());
     }
 
     @Test
@@ -413,7 +413,7 @@ class GameTest {
         Game game = startedGame(PieceType.O);
         game.handleCommand(GameCommand.QUIT_GAME);
 
-        assertTrue(game.isFinished());
+        assertTrue(game.isQuit());
         assertFalse(game.isGameOver());
     }
 
@@ -424,7 +424,7 @@ class GameTest {
         game.handleCommand(GameCommand.MOVE_LEFT);
         game.tick();
 
-        assertTrue(game.isFinished());
+        assertTrue(game.isQuit());
         assertCells(game.createSnapshot(), Set.of("0,4", "0,5", "1,4", "1,5"), CELL_ID_O);
     }
 
