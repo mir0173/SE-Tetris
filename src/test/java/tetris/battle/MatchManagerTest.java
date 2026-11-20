@@ -41,6 +41,10 @@ class MatchManagerTest {
     private static final int DISCARDED_ROW_VALUE = 10;
     private static final int NEXT_ATTACK_ROW_A_VALUE = 20;
     private static final int NEXT_ATTACK_ROW_B_VALUE = 30;
+    private static final long FIRST_GAME_OVER_SCORE = 300L;
+    private static final long SECOND_GAME_OVER_SCORE = 500L;
+    private static final long SCORE_BEFORE_STOP = 700L;
+    private static final long SCORE_AFTER_STOP = 900L;
 
     // AI-assisted code start
     @Test   // 양쪽이 만든 공격 행이 2줄일 때 상대에게만 전달되는지 확인하는 테스트
@@ -170,37 +174,45 @@ class MatchManagerTest {
         assertEquals(EXPECTED_NO_RECEIVE, second.receiveCalls);
     }
 
+    // AI-assisted code start
     @Test   // 2P가 지면 1P가 이기고, 결과가 딱 한번 알려지고, 양쪽 게임이 동기화되어 멈추는지 확인하는 테스트
     void resolveSecondPlayerGameOver() {
         // given: 2P만 게임오버 상태인 경기를 준비한다.
         FakePlayer first = new FakePlayer();
         FakePlayer second = new FakePlayer();
+        first.score = FIRST_GAME_OVER_SCORE;
+        second.score = SECOND_GAME_OVER_SCORE;
         second.status = GameStatus.GAMEOVER;    // 2P 진 상황으로 세팅
         List<MatchResult> results = new ArrayList<>(); // 결과 값과 전달 횟수를 함께 확인하도록 모든 결과를 모은다.
-        // 결과 값과 전달 횟수를 함께 확인하도록 모든 결과를 모은다.
-        // 결과 값과 전달 횟수를 함께 확인하도록 모든 결과를 모은다.
         MatchManager manager = new MatchManager(first, second, results::add);
 
         // when: 심판을 시작하고 1P의 갱신을 발생시킨다.
         manager.start(); // 양쪽 플레이어에 심판의 갱신 핸들러를 등록한다.
         first.onUpdate.run(); // 1P의 갱신을 계기로 양쪽 게임오버 상태를 확인한다.
 
-        assertEquals(List.of(MatchResult.PLAYER_ONE_WIN), results);
+        assertEquals(EXPECTED_ONE_RESULT, results.size());
+        MatchResult result = results.get(0);
+        assertEquals(MatchResult.Winner.PLAYER_ONE, result.winner());
+        assertEquals(MatchResult.EndReason.GAME_OVER, result.reason());
+        assertEquals(FIRST_GAME_OVER_SCORE, result.firstScore());
+        assertEquals(SECOND_GAME_OVER_SCORE, result.secondScore());
         assertEquals(EXPECTED_ONE_STOP, first.stopCalls);
         assertEquals(EXPECTED_ONE_STOP, second.stopCalls);
         // 위의 모든 assert를 통과했을 시 아래 출력
         System.out.println("[REQ3-종료] 2P 게임오버 → 1P 승리, 결과 1회 전달, 양쪽 게임 정지 PASS");
     }
+    // AI-assisted code end
 
+    // AI-assisted code start
     @Test // 위의 테스트에서 1P <-> 2P 된 테스트
     void resolveFirstPlayerGameOver() {
         // given: 1P만 게임오버 상태인 경기를 준비한다.
         FakePlayer first = new FakePlayer();
         FakePlayer second = new FakePlayer();
+        first.score = FIRST_GAME_OVER_SCORE;
+        second.score = SECOND_GAME_OVER_SCORE;
         first.status = GameStatus.GAMEOVER;
         List<MatchResult> results = new ArrayList<>();
-        // 결과 값과 전달 횟수를 함께 확인하도록 모든 결과를 모은다.
-        // 결과 값과 전달 횟수를 함께 확인하도록 모든 결과를 모은다.
         MatchManager manager = new MatchManager(first, second, results::add);
 
         // when: 심판을 시작하고 2P의 갱신을 발생시킨다.
@@ -208,12 +220,18 @@ class MatchManagerTest {
         second.onUpdate.run(); // 2P의 갱신을 계기로 양쪽 게임오버 상태를 확인한다.
 
         // then: 패배한 1P와 승리한 2P 모두 stop 호출을 한 번씩 받는다.
-        assertEquals(List.of(MatchResult.PLAYER_TWO_WIN), results);
+        assertEquals(EXPECTED_ONE_RESULT, results.size());
+        MatchResult result = results.get(0);
+        assertEquals(MatchResult.Winner.PLAYER_TWO, result.winner());
+        assertEquals(MatchResult.EndReason.GAME_OVER, result.reason());
+        assertEquals(FIRST_GAME_OVER_SCORE, result.firstScore());
+        assertEquals(SECOND_GAME_OVER_SCORE, result.secondScore());
         assertEquals(EXPECTED_ONE_STOP, first.stopCalls);
         assertEquals(EXPECTED_ONE_STOP, second.stopCalls);
         // 위의 모든 assert를 통과했을 시 아래 출력
         System.out.println("[REQ3-종료] 1P 게임오버 → 2P 승리, 결과 1회 전달, 양쪽 게임 정지 PASS");
     }
+    // AI-assisted code end
 
     // AI-assisted code start
     @ParameterizedTest
@@ -236,7 +254,10 @@ class MatchManagerTest {
         }
 
         // then: 양쪽 동시 게임오버는 무승부로 한 번 전달되고 양쪽이 정지된다.
-        assertEquals(List.of(MatchResult.DRAW), results);
+        assertEquals(EXPECTED_ONE_RESULT, results.size());
+        MatchResult result = results.get(0);
+        assertEquals(MatchResult.Winner.DRAW, result.winner());
+        assertEquals(MatchResult.EndReason.GAME_OVER, result.reason());
         assertEquals(EXPECTED_ONE_STOP, first.stopCalls);
         assertEquals(EXPECTED_ONE_STOP, second.stopCalls);
         // 위의 모든 assert를 통과했을 시 아래 출력
@@ -244,11 +265,12 @@ class MatchManagerTest {
     }
     // AI-assisted code end
 
+    // AI-assisted code start
     // 제한 시간 모드에서 점수가 높은 쪽이 이기고, 같으면 무승부가 되는지 확인하는 테스트
     // ParameterizedTest + CsvSource로 서로 다른 파라미터의 테스트 3번 실행
     @ParameterizedTest 
-    @CsvSource({"20, 10, PLAYER_ONE_WIN", "10, 20, PLAYER_TWO_WIN", "10, 10, DRAW"})
-    void finishByTimeChoosesResult(long firstScore, long secondScore, MatchResult expected) {
+    @CsvSource({"20, 10, PLAYER_ONE", "10, 20, PLAYER_TWO", "10, 10, DRAW"})
+    void finishByTimeChoosesResult(long firstScore, long secondScore, MatchResult.Winner expected) {
         // given: 파라미터로 두 플레이어의 점수와 기대 결과를 준비한다.
         FakePlayer first = new FakePlayer();
         FakePlayer second = new FakePlayer();
@@ -263,10 +285,16 @@ class MatchManagerTest {
         manager.finishByTime(); // 제한 시간이 끝난 상황에서 점수로 결과를 결정한다.
 
         // then: 파라미터에 맞는 결과가 한 번 전달된다.
-        assertEquals(List.of(expected), results);
+        assertEquals(EXPECTED_ONE_RESULT, results.size());
+        MatchResult result = results.get(0);
+        assertEquals(expected, result.winner());
+        assertEquals(MatchResult.EndReason.TIME_UP, result.reason());
+        assertEquals(firstScore, result.firstScore());
+        assertEquals(secondScore, result.secondScore());
         // 위의 모든 assert를 통과했을 시 아래 출력
         System.out.println("[REQ3-시간] 점수 " + firstScore + ":" + secondScore + " → " + expected + " PASS");
     }
+    // AI-assisted code end
 
     @Test // 한 플레이어가 일시정지하면 다른 플레이어도 함께 일시정지되는지 확인하는 테스트
     void synchronizePause() {
@@ -388,14 +416,13 @@ class MatchManagerTest {
         // then: 재진입이 반복되어도 StackOverflowError 없이 처리가 끝난다.
     }
 
+    // AI-assisted code start
     @Test // 경기가 끝난 뒤에는 추가 갱신이나 시간 종료가 결과와 공격 전달을 다시 발생시키지 않는지 확인하는 테스트
     void ignoreEverythingAfterMatchEnded() {
         // given: 1P 게임오버로 경기를 먼저 종료한다.
         FakePlayer first = new FakePlayer();
         FakePlayer second = new FakePlayer();
         List<MatchResult> results = new ArrayList<>(); // 결과 값과 전달 횟수를 함께 확인하도록 모든 결과를 모은다.
-        // 결과 값과 전달 횟수를 함께 확인하도록 모든 결과를 모은다.
-        // 결과 값과 전달 횟수를 함께 확인하도록 모든 결과를 모은다.
         MatchManager manager = new MatchManager(first, second, results::add);
         manager.start(); // 양쪽 플레이어에 심판의 갱신 핸들러를 등록한다.
         first.status = GameStatus.GAMEOVER;
@@ -410,7 +437,39 @@ class MatchManagerTest {
         // then: 수신 호출과 결과 전달 모두 추가로 발생하지 않는다.
         assertEquals(receiveCalls, second.receiveCalls);
         assertEquals(EXPECTED_ONE_RESULT, results.size());
+        MatchResult result = results.get(0);
+        assertEquals(MatchResult.Winner.PLAYER_TWO, result.winner());
+        assertEquals(MatchResult.EndReason.GAME_OVER, result.reason());
     }
+    // AI-assisted code end
+
+    // AI-assisted code start
+    @Test // 경기가 종료되어 정지될 때 정지 전 점수가 결과에 보존되는지 확인하는 테스트
+    void reportScoresReadBeforeStopping() {
+        // given: 양쪽 점수를 준비하고 정지 시 점수가 변경되도록 가짜 플레이어를 설정한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        first.score = SCORE_BEFORE_STOP;
+        second.score = SECOND_GAME_OVER_SCORE;
+        first.status = GameStatus.GAMEOVER;
+        first.changeScoreOnStop = true;
+        second.changeScoreOnStop = true;
+        List<MatchResult> results = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, results::add);
+
+        // when: 심판을 시작하고 1P의 게임오버 갱신을 발생시킨다.
+        manager.start();
+        first.onUpdate.run();
+
+        // then: 두 결과 점수는 stop 호출로 변경되기 전 값이다.
+        assertEquals(EXPECTED_ONE_RESULT, results.size());
+        MatchResult result = results.get(0);
+        assertEquals(SCORE_BEFORE_STOP, result.firstScore());
+        assertEquals(SECOND_GAME_OVER_SCORE, result.secondScore());
+        assertEquals(SCORE_AFTER_STOP, first.score);
+        assertEquals(SCORE_AFTER_STOP, second.score);
+    }
+    // AI-assisted code end
 
     // 비교 가능한 공격 행 하나를 만든다.
     private int[] garbageRow(int value) {
@@ -432,6 +491,7 @@ class MatchManagerTest {
         private int pauseCalls; // 일시정지 동기화 호출 횟수를 기록한다.
         private int resumeCalls; // 재개 동기화 호출 횟수를 기록한다.
         private GameStatus statusBeforePause = GameStatus.PLAYING;
+        private boolean changeScoreOnStop;
 
         @Override
         public GameSnapshot createSnapshot() {
@@ -500,6 +560,9 @@ class MatchManagerTest {
         @Override
         public void stop() {
             stopCalls++;
+            if (changeScoreOnStop) {
+                score = SCORE_AFTER_STOP;
+            }
             if (!isFinished()) {
                 status = GameStatus.QUIT;
                 onUpdate.run();

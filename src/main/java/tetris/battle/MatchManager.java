@@ -8,7 +8,7 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * 대전의 심판
- * 두 플레이어의 갱신 알림을 받아 공격 줄을 전달하고, 일시정지를 맞추고, 승패를 정한다.
+ * 두 플레이어의 갱신 알림을 받아 공격 줄을 전달하고, 일시정지를 맞추고, 결과(승자, 끝난 이유, 점수)를 알린다.
  */
 public class MatchManager {
     private static final int MIN_ATTACK_LINES = 2;
@@ -46,15 +46,15 @@ public class MatchManager {
         if (finished) {
             return;
         }
-        MatchResult result;
+        MatchResult.Winner winner;
         if (firstPlayer.getScore() > secondPlayer.getScore()) {
-            result = MatchResult.PLAYER_ONE_WIN;
+            winner = MatchResult.Winner.PLAYER_ONE;
         } else if (firstPlayer.getScore() < secondPlayer.getScore()) {
-            result = MatchResult.PLAYER_TWO_WIN;
+            winner = MatchResult.Winner.PLAYER_TWO;
         } else {
-            result = MatchResult.DRAW;
+            winner = MatchResult.Winner.DRAW;
         }
-        finish(result);
+        finish(winner, MatchResult.EndReason.TIME_UP);
     }
 
     private void handleUpdate() {
@@ -78,17 +78,17 @@ public class MatchManager {
         // 승패 판정
         // 동시에 게임 오버일 시 무승부
         if (firstPlayer.isGameOver() && secondPlayer.isGameOver()) {
-            finish(MatchResult.DRAW);
+            finish(MatchResult.Winner.DRAW, MatchResult.EndReason.GAME_OVER);
             return;
         }
 
         if (firstPlayer.isGameOver()) {
-            finish(MatchResult.PLAYER_TWO_WIN);
+            finish(MatchResult.Winner.PLAYER_TWO, MatchResult.EndReason.GAME_OVER);
             return;
         }
 
         if (secondPlayer.isGameOver()) {
-            finish(MatchResult.PLAYER_ONE_WIN);
+            finish(MatchResult.Winner.PLAYER_ONE, MatchResult.EndReason.GAME_OVER);
             return;
         }
 
@@ -117,10 +117,14 @@ public class MatchManager {
 
     }
 
-    private void finish(MatchResult result) {
+    private void finish(MatchResult.Winner winner, MatchResult.EndReason reason) {
         finished = true;
+        long firstScore = firstPlayer.getScore();
+        long secondScore = secondPlayer.getScore();
         firstPlayer.stop();
         secondPlayer.stop();
+
+        MatchResult result = new MatchResult(winner, reason, firstScore, secondScore);
         onMatchEnd.accept(result);
     }
 }
