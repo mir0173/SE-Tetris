@@ -25,6 +25,7 @@ public class Game {
     private static final long LINE_CLEAR_BONUS = 100L;
     private static final long SLOW_DURATION = 10_000L;
     private static final long SLOW_MULTIPLIER = 2L;
+    private static final int MAX_PENDING_GARBAGE_ROWS = 10; // 대기할 수 있는 공격 줄의 최대 수. 넘치면 아래쪽부터 버린다.
 
     private final Board board;
     private final TetrominoGenerator generator;
@@ -59,7 +60,7 @@ public class Game {
     private long currentPieceScore; // 지금 블록이 스폰된 뒤 얻은 점수 합계
     private long slowTimeLeft; // 남은 속도 저하 시간
     private List<Integer> pendingClearRows = List.of(); // 삭제 대기 중인 줄 번호, 없으면 빈 목록
-    private final Deque<int[]> pendingGarbageRows = new ArrayDeque<>(); // 상대에게서 받아 아직 보드에 넣지 않은 공격줄
+    private final Deque<int[]> pendingGarbageRows = new ArrayDeque<>(); // 상대에게서 받아 아직 보드에 넣지 않은 공격 줄
     private final List<int[]> pendingAttackRows = new ArrayList<>(); // 상대에게 보낼 공격줄 (심판이 꺼내감)
 
     public Game(Board board, TetrominoGenerator generator, Difficulty difficulty, GameMode mode) {
@@ -370,22 +371,27 @@ public class Game {
     }
 
     /**
-     * 필드 pendingGarbageRows에 공격받을 쓰레기 줄들을 저장한다.
+     * 상대에게서 받은 공격 줄을 대기열 아래쪽에 추가한다. 대기열은 최대 10줄이다.
+     * 10줄이 넘어가면 아래 줄부터 버린다.(이미 10줄일 시 새 줄은 모두 무시된다.)
      * 
-     * @param garbageRows pendingGarbageRows에 저장할 쓰레기 줄들, 앞이 위쪽줄
+     * @param garbageRows pendingGarbageRows에 저장할 쓰레기 줄들, 앞이 위쪽 줄
      * @throws NullPointerException     매개변수가 null일 경우
      * @throws IllegalArgumentException 매개변수의 하위 line들의 길이가 board.width와 맞지 않는 경우
      */
     public void receiveGarbageRows(List<int[]> garbageRows) {
-        requireNonNull(garbageRows, "GarbageRows is null");
+        requireNonNull(garbageRows, "garbageRows is null");
         for (int[] garbageRow : garbageRows) {
             if (garbageRow.length != board.getWidth()) {
-                throw new IllegalArgumentException("garbageRow Length is not board.width");
+                throw new IllegalArgumentException("row length must equal board width :  " + garbageRow.length);
             }
         }
 
         for (int[] garbageRow : garbageRows) {
             pendingGarbageRows.addLast(garbageRow.clone());
+        }
+
+        while (pendingGarbageRows.size() > MAX_PENDING_GARBAGE_ROWS) {
+            pendingGarbageRows.removeLast();
         }
     }
 
