@@ -23,13 +23,15 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import tetris.battle.BattleMode;
+import tetris.battle.BattleSettings;
 import tetris.model.Difficulty;
 import tetris.network.LobbyState.Phase;
 
 // AI-assisted code start
 @Timeout(15)
 class P2pLobbyControllerTest {
-    private static final LobbySettings NORMAL = new LobbySettings(LobbyMode.NORMAL, Difficulty.NORMAL, 0);
+    private static final BattleSettings NORMAL = new BattleSettings(BattleMode.NORMAL, Difficulty.NORMAL, 0);
     private final List<P2pLobbyController> controllers = new ArrayList<>();
 
     @AfterEach
@@ -41,7 +43,7 @@ class P2pLobbyControllerTest {
     void connectAndSynchronizeHostSettings() throws Exception {
         Pair pair = connectPair();
         assertEquals(NORMAL, pair.client.controller.getState().settings());
-        LobbySettings settings = new LobbySettings(LobbyMode.TIME_LIMIT, Difficulty.HARD, 180);
+        BattleSettings settings = new BattleSettings(BattleMode.TIME_LIMIT, Difficulty.HARD, 180);
         pair.host.controller.updateSettings(settings);
         LobbyState state = pair.client.await(s -> settings.equals(s.settings()));
         assertEquals(PeerRole.CLIENT, state.role());
@@ -76,7 +78,7 @@ class P2pLobbyControllerTest {
         Pair pair = connectPair();
         pair.host.controller.toggleReady();
         pair.client.await(LobbyState::remoteReady);
-        LobbySettings item = new LobbySettings(LobbyMode.ITEM, Difficulty.EASY, 0);
+        BattleSettings item = new BattleSettings(BattleMode.ITEM, Difficulty.EASY, 0);
         pair.host.controller.updateSettings(item);
         LobbyState clientState = pair.client.await(s -> item.equals(s.settings()));
         assertFalse(clientState.localReady());
@@ -171,7 +173,7 @@ class P2pLobbyControllerTest {
             MessageCodec.write(output, LobbyMessage.hello(PeerRole.CLIENT));
             LobbyMessage original = MessageCodec.read(input);
             host.await(s -> s.phase() == Phase.CONNECTED);
-            host.controller.updateSettings(new LobbySettings(LobbyMode.ITEM, Difficulty.NORMAL, 0));
+            host.controller.updateSettings(new BattleSettings(BattleMode.ITEM, Difficulty.NORMAL, 0));
             LobbyMessage current = MessageCodec.read(input);
             host.states.clear();
             MessageCodec.write(output, LobbyMessage.ready(original.revision(), true));

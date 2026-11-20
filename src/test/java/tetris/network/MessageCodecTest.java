@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import tetris.battle.BattleMode;
+import tetris.battle.BattleSettings;
 import tetris.model.Difficulty;
 
 // AI-assisted code start
@@ -23,7 +25,7 @@ class MessageCodecTest {
     void preserveConsecutiveMessageBoundaries() throws Exception {
         LobbyMessage first = LobbyMessage.hello(PeerRole.HOST);
         LobbyMessage second = LobbyMessage.config(3,
-                new LobbySettings(LobbyMode.TIME_LIMIT, Difficulty.HARD, 120));
+                new BattleSettings(BattleMode.TIME_LIMIT, Difficulty.HARD, 120));
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         DataOutputStream output = new DataOutputStream(buffer);
         MessageCodec.write(output, first);

@@ -2,9 +2,11 @@ package tetris.network;
 
 import java.util.Objects;
 
+import tetris.battle.BattleSettings;
+
 /** 대기실 전송 메시지 */
 record LobbyMessage(Type type, int version, PeerRole role, long revision,
-        LobbySettings settings, boolean ready, long matchId) {
+        BattleSettings settings, boolean ready, long matchId) {
     static final int PROTOCOL_VERSION = 1;
 
     enum Type {
@@ -41,7 +43,7 @@ record LobbyMessage(Type type, int version, PeerRole role, long revision,
         return new LobbyMessage(Type.HELLO, PROTOCOL_VERSION, role, 0, null, false, 0);
     }
 
-    static LobbyMessage config(long revision, LobbySettings settings) {
+    static LobbyMessage config(long revision, BattleSettings settings) {
         return new LobbyMessage(Type.CONFIG, PROTOCOL_VERSION, null, revision, settings, false, 0);
     }
 

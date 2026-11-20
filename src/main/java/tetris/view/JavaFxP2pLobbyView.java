@@ -15,9 +15,9 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import tetris.battle.BattleMode;
+import tetris.battle.BattleSettings;
 import tetris.model.Difficulty;
-import tetris.network.LobbyMode;
-import tetris.network.LobbySettings;
 import tetris.network.LobbyState;
 import tetris.network.MatchStart;
 import tetris.network.P2pLobbyController;
@@ -37,11 +37,11 @@ public final class JavaFxP2pLobbyView {
     private final Button readyButton = new Button("게임 시작");
     private final Button resetButton = new Button("대기실로 돌아가기");
     private final Button backButton = new Button("메뉴로");
-    private final ComboBox<LobbyMode> modeBox = new ComboBox<>();
+    private final ComboBox<BattleMode> modeBox = new ComboBox<>();
     private final ComboBox<Difficulty> difficultyBox = new ComboBox<>();
     private final Spinner<Integer> durationSpinner = new Spinner<>(
-            LobbySettings.MIN_TIME_LIMIT_SECONDS, LobbySettings.MAX_TIME_LIMIT_SECONDS,
-            LobbySettings.DEFAULT_TIME_LIMIT_SECONDS, 10);
+            BattleSettings.MIN_TIME_LIMIT_SECONDS, BattleSettings.MAX_TIME_LIMIT_SECONDS,
+            BattleSettings.DEFAULT_TIME_LIMIT_SECONDS, 10);
     private final Label statusLabel = new Label();
     private final Label localReadyLabel = new Label("나: 대기");
     private final Label remoteReadyLabel = new Label("상대: 대기");
@@ -68,7 +68,7 @@ public final class JavaFxP2pLobbyView {
         cancelButton.setId("p2p-cancel");
         backButton.setId("p2p-back");
 
-        modeBox.getItems().setAll(LobbyMode.values());
+        modeBox.getItems().setAll(BattleMode.values());
         difficultyBox.getItems().setAll(Difficulty.values());
         statusLabel.setWrapText(true);
         matchLabel.setWrapText(true);
@@ -117,7 +117,7 @@ public final class JavaFxP2pLobbyView {
         try {
             modeBox.setValue(state.settings().mode());
             difficultyBox.setValue(state.settings().difficulty());
-            if (state.settings().mode() == LobbyMode.TIME_LIMIT) {
+            if (state.settings().mode() == BattleMode.TIME_LIMIT) {
                 durationSpinner.getValueFactory().setValue(state.settings().timeLimitSeconds());
             }
             boolean idle = state.phase() == LobbyState.Phase.IDLE;
@@ -130,7 +130,7 @@ public final class JavaFxP2pLobbyView {
             cancelButton.setDisable(idle);
             modeBox.setDisable(!hostCanConfigure);
             difficultyBox.setDisable(!hostCanConfigure);
-            durationSpinner.setDisable(!hostCanConfigure || state.settings().mode() != LobbyMode.TIME_LIMIT);
+            durationSpinner.setDisable(!hostCanConfigure || state.settings().mode() != BattleMode.TIME_LIMIT);
             readyButton.setDisable(state.phase() != LobbyState.Phase.CONNECTED);
             readyButton.setText(state.localReady() ? "준비 취소" : "게임 시작");
             localReadyLabel.setText("나: " + (state.localReady() ? "준비 완료" : "대기"));
@@ -156,8 +156,8 @@ public final class JavaFxP2pLobbyView {
         if (rendering || controller == null || modeBox.getValue() == null || difficultyBox.getValue() == null) {
             return;
         }
-        runAction(() -> controller.updateSettings(new LobbySettings(modeBox.getValue(), difficultyBox.getValue(),
-                modeBox.getValue() == LobbyMode.TIME_LIMIT ? durationSpinner.getValue() : 0)));
+        runAction(() -> controller.updateSettings(new BattleSettings(modeBox.getValue(), difficultyBox.getValue(),
+                modeBox.getValue() == BattleMode.TIME_LIMIT ? durationSpinner.getValue() : 0)));
     }
 
     private int readPort() {
