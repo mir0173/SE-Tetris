@@ -205,20 +205,26 @@ public class Game {
         if (status != GameStatus.PLAYING) {
             return;
         }
-
+        
+        // 슬로우 남은 시간 계산
         if (slowTimeLeft > 0) {
             slowTimeLeft -= selectTimeInterval();
             slowTimeLeft = Math.max(0, slowTimeLeft);
         }
+
+        // 바뀌기 전 상태 기록
         long previousDropCells = getTotalDropCells();
         long previousLockedPieceCount = lockedPieceCount;
         long previousSpawnedPieceCount = spawnedPieceCount;
-
-        if (drilling) {
+        
+        
+        if (drilling) {     // 무게추가 뚫는 중이면 한 칸 부수기
             drillDown();
-        } else if (softDrop()) {
+        } else if (softDrop()) {    // 아니면 한 칸 내리기
             gravityDropCells++;
         }
+
+        // 점수, 레벨, 속도 계산
         updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
     }
 
@@ -243,7 +249,7 @@ public class Game {
      * 대전에서 상대가 졌을 때 심판이 이긴쪽 게임을 멈출 때 사용한다.
      */
     public void stop() {
-        if (!isGameOver() && !isFinished()) {
+        if (!isGameOver() && !isQuit()) {
             status = GameStatus.QUIT;
         }
     }
@@ -253,7 +259,7 @@ public class Game {
     }
 
     // 사용자가 게임을 종료했으면 true (GAMEOVER는 포함되지 않음)
-    public boolean isFinished() {
+    public boolean isQuit() {
         return status == GameStatus.QUIT;
     }
 
@@ -305,14 +311,24 @@ public class Game {
             return;
         }
 
+        // 전 값들 기록
         long previousDropCells = getTotalDropCells();
         long previousLockedPieceCount = lockedPieceCount;
         long previousSpawnedPieceCount = spawnedPieceCount;
 
-        List<Integer> rowsToClear = pendingClearRows;
+        // 저장해둔 지울 줄 꺼내기
+        List<Integer> rowsToClear = pendingClearRows;   
+        
+        // 지울 줄 초기화
         pendingClearRows = List.of();
+
+        // 상태 변환
         status = GameStatus.PLAYING;
+
+        // 실제 마무리 작업
         completeLock(rowsToClear);
+
+        // 점수, 속도 반영
         updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
     }
 
@@ -385,34 +401,47 @@ public class Game {
 
     // 현재 블록을 고정. 꽉 찬 줄이 있으면 삭제 대기로 멈추고, 없으면 마무리
     private void lockAndSpawnNext() {
+        // L아이템이 지우려고 예약한 번호 초기화
         reservedItemRows.clear();
+        
+        // 실제 보드에 박기
         board.lock(currentPiece);
+
+        // 아이템이 박힌 블록이었을 시 고정 효과를 알림(handleLock)
         if (currentPiece.item() != null && currentPiece.item().isEmbedded()) {
             int cellIndex = currentPiece.item().cellIndex();
             Position position = currentPiece.getAbsolutePositions().get(cellIndex);
-            currentPiece.item().type().getItemEffect().handleLock(context, position);
+            currentPiece.item().type().getItemEffect().handleLock(context, position);   // handleLock에서 reservedItemRows 예약
         }
 
+        // reservedItemRows에서 중복된 Row가 나와도 처리되도록 TreeSet으로
         Set<Integer> rowsToClear = new TreeSet<>(reservedItemRows);
+
+        // 본디 지워질 Rows들도 추가
         rowsToClear.addAll(board.findFullLines());
+
+        // 지울 줄이 있다면, 삭제 대기상태로 전환
         if (!rowsToClear.isEmpty()) {
             pendingClearRows = List.copyOf(rowsToClear);
             recordAttackRows(rowsToClear);
             status = GameStatus.CLEARING;
             return;
         }
+
+        // 지울 줄이 없다면 마무리
         completeLock(List.of());
     }
 
     // 줄을 지우고, 아이템 효과와 카운터 반영, 다음 블록을 내보냄
     private void completeLock(List<Integer> rowsToClear) {
-        lockedPieceCount++;
-        lastClearedLines = board.clearRows(rowsToClear);
-        if (currentPiece.item() != null) {
+        lockedPieceCount++;     // 고정된 블록 수 증가
+        lastClearedLines = board.clearRows(rowsToClear);    // 줄을 실제로 지움
+        if (currentPiece.item() != null) {      // 특수 I블록용 지워진 줄 수 알림
             currentPiece.item().type().getItemEffect().handleLinesCleared(context, lastClearedLines);
         }
-        holdUsed = false;
+        holdUsed = false;   // 새 블록부터 홀드 가능
 
+        // 아이템 모드 시 지운 줄 수 누적
         if (mode == GameMode.ITEM) {
             itemLineCounter += lastClearedLines;
             if (itemLineCounter >= LINES_PER_ITEM_SPAWN) {
@@ -420,7 +449,11 @@ public class Game {
                 itemReserved = true;
             }
         }
+
+        // 지워진칸 속 아이템 효과 발동
         notifyDestroyedItems();
+
+        // 쓰레기 줄 적용
         if (getPendingGarbageRowCount() != 0) {
             boolean overflow = applyPendingGarbageRows();
             if (overflow) {

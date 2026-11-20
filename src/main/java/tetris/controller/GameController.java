@@ -119,13 +119,28 @@ public class GameController {
         synchronizeState();
     }
 
-    // 현재 게임 상태의 스냅샷을 만들어 화면에 그린다.
+    /**
+     * 모델이 바뀐 뒤, 화면과 타이머를 지금 상태에 맞춘다.
+     * View, MatchManager, Timer, 화면전환의 상태를 동기화한다.
+     */
     private void synchronizeState() {
+
+        // View 동기화 : snapshot을 찍어 화면에 출력한다.
         GameSnapshot snapshot = game.createSnapshot();
         view.render(snapshot);
+
+        // MatchManager 동기화 : MatchManager에게 알린다.
         onUpdate.run();
 
-        if (game.isFinished() || game.isGameOver()) {
+        // (#41-2) onUpdate 안에서 심판이 stop() -> refresh로 이 메서드를 다시 실행했다면
+        // 안쪽에서 이미 (1) 끝 처리를 했으므로 멈춘다. 이 코드가 없을 시 onGameOver가 두 번 불리는 문제 발생
+        if (terminalHandled) {
+            return;
+        }
+
+        // (1) 게임종료 || 게임오버시 타이머 정지, 끝 처리 표시 후 콜백을 부른다.
+        // terminalHandled 가 true일 시 tick/키입력/refresh는 모두 무시된다.
+        if (game.isQuit() || game.isGameOver()) {
             stopTimer();
             terminalHandled = true;
             if (game.isGameOver()) {
@@ -136,6 +151,8 @@ public class GameController {
             return;
         }
 
+        // (2) 줄 삭제 연출중일 시 블록이 떨어지지 않게 타이머 정지
+        // 연출 시간이 지난 뒤 finishLineClear로 실제 삭제하도록 한번만 예약한다.
         if (snapshot.getStatus() == GameStatus.CLEARING) {
             stopTimer();
             if (!lineClearScheduled) {
@@ -145,11 +162,14 @@ public class GameController {
             return;
         }
 
+        // (3) 일시정지 시 타이머만 끄기, 재개시 이후에 다시 켜짐
         if (game.isPaused()) {
             stopTimer();
             return;
         }
 
+        // (4) 게임 진행중일 시
+        // 낙하 간격이 바뀌었으면 타이머에 반영
         long dropInterval = snapshot.getDropInterval();
 
         if (dropInterval != appliedDropInterval) {
@@ -157,6 +177,7 @@ public class GameController {
             appliedDropInterval = dropInterval;
         }
 
+        // 타이머가 꺼져있으면 켠다 : 게임 시작, 줄 삭제 애니메이션 마무리, 일시정지 재개 후
         if (!timerRunning) {
             timer.start(this::handleTick);
             timerRunning = true;

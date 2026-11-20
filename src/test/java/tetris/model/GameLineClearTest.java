@@ -195,7 +195,7 @@ class GameLineClearTest {
         game.handleCommand(GameCommand.QUIT_GAME);
 
         // then
-        assertFalse(game.isFinished());
+        assertFalse(game.isQuit());
         assertEquals(GameStatus.CLEARING, game.createSnapshot().getStatus());
     }
 

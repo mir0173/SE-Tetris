@@ -132,7 +132,7 @@ class GameProgressionTest {
         game.handleCommand(GameCommand.PAUSE);
         game.handleCommand(GameCommand.QUIT_GAME);
 
-        assertTrue(game.isFinished());
+        assertTrue(game.isQuit());
         assertEquals(GameStatus.QUIT, game.createSnapshot().getStatus());
     }
 
