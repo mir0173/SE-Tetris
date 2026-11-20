@@ -11,6 +11,8 @@ import static java.util.Objects.requireNonNull;
  * 두 플레이어의 갱신 알림을 받아 공격 줄을 전달하고, 일시정지를 맞추고, 승패를 정한다.
  */
 public class MatchManager {
+    private static final int MIN_ATTACK_LINES = 2;
+
     private final Player firstPlayer;
     private final Player secondPlayer;
 
@@ -63,12 +65,13 @@ public class MatchManager {
         List<int[]> firstAttackRows = firstPlayer.takeAttackRows();
         List<int[]> secondAttackRows = secondPlayer.takeAttackRows();
 
-        // T18 : 2줄 이상일 때만 공격, 10줄 제한
-        if (!firstAttackRows.isEmpty()) {
+        // 블록 하나로 지운 줄이 MIN_ATTACK_LINES 이상일 때만 상대에게 보낸다 (L 아이템으로 지운 줄 포함)
+        // 블록이 고정될 때마다 갱신 알림이 오므로, 한 번에 꺼낸 줄 = 블록 하나로 지운 줄
+        if (firstAttackRows.size() >= MIN_ATTACK_LINES) {
             secondPlayer.receiveGarbageRows(firstAttackRows);
         }
 
-        if (!secondAttackRows.isEmpty()) {
+        if (secondAttackRows.size() >= MIN_ATTACK_LINES) {
             firstPlayer.receiveGarbageRows(secondAttackRows);
         }
 

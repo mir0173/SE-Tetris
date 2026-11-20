@@ -30,16 +30,32 @@ class MatchManagerTest {
     private static final int EXPECTED_NO_RECEIVE = 0;
     private static final int EXPECTED_ONE_RESULT = 1;
     private static final int EXPECTED_ONE_SYNC_CALL = 1;
+    private static final int MIN_ATTACK_ROW_COUNT = 2;
+    private static final int FIRST_ROW_VALUE = 1;
+    private static final int SECOND_ROW_VALUE = 2;
+    private static final int THIRD_ROW_VALUE = 3;
+    private static final int FOURTH_ROW_VALUE = 4;
+    private static final int BOUNDARY_ONE_ROW_VALUE = 1;
+    private static final int BOUNDARY_TWO_ROW_A_VALUE = 2;
+    private static final int BOUNDARY_TWO_ROW_B_VALUE = 3;
+    private static final int DISCARDED_ROW_VALUE = 10;
+    private static final int NEXT_ATTACK_ROW_A_VALUE = 20;
+    private static final int NEXT_ATTACK_ROW_B_VALUE = 30;
 
-    @Test   // 한쪽이 만든 공격 줄이 상대에게만 전달되는지 확인하는 테스트
+    // AI-assisted code start
+    @Test   // 양쪽이 만든 공격 행이 2줄일 때 상대에게만 전달되는지 확인하는 테스트
     void relayAttackRowsFromFirstToSecondAndFromSecondToFirst() {
-        // given: 양쪽 플레이어가 각각 상대에게 보낼 공격 행을 하나씩 준비한다.
+        // given: 양쪽 플레이어가 각각 상대에게 보낼 공격 행을 두 개 준비한다.
         FakePlayer first = new FakePlayer();
         FakePlayer second = new FakePlayer();
-        int[] firstRow = garbageRow(1);
-        int[] secondRow = garbageRow(2);
-        first.rowsToSend.add(firstRow);
-        second.rowsToSend.add(secondRow);
+        int[] firstRowA = garbageRow(FIRST_ROW_VALUE);
+        int[] firstRowB = garbageRow(SECOND_ROW_VALUE);
+        int[] secondRowA = garbageRow(THIRD_ROW_VALUE);
+        int[] secondRowB = garbageRow(FOURTH_ROW_VALUE);
+        first.rowsToSend.add(firstRowA);
+        first.rowsToSend.add(firstRowB);
+        second.rowsToSend.add(secondRowA);
+        second.rowsToSend.add(secondRowB);
         MatchManager manager = new MatchManager(first, second, result -> {
         });
 
@@ -47,14 +63,96 @@ class MatchManagerTest {
         manager.start(); // 양쪽 플레이어에 심판의 갱신 핸들러를 등록한다.
         first.onUpdate.run(); // 컨트롤러가 갱신을 알린 상황을 흉내 내며 양쪽을 함께 검사한다.
 
-        // then: 각 공격 행은 자기 자신이 아니라 상대에게만 한 번씩 전달된다.
+        // then: 각 공격 행은 자기 자신이 아니라 상대에게만 정확히 한 번씩 전달된다.
         assertEquals(EXPECTED_ONE_RECEIVE, second.receiveCalls);
-        assertArrayEquals(firstRow, second.receivedRows.get(0));
+        assertEquals(MIN_ATTACK_ROW_COUNT, second.receivedRows.size());
+        assertArrayEquals(firstRowA, second.receivedRows.get(0));
+        assertArrayEquals(firstRowB, second.receivedRows.get(1));
         assertEquals(EXPECTED_ONE_RECEIVE, first.receiveCalls);
-        assertArrayEquals(secondRow, first.receivedRows.get(0));
+        assertEquals(MIN_ATTACK_ROW_COUNT, first.receivedRows.size());
+        assertArrayEquals(secondRowA, first.receivedRows.get(0));
+        assertArrayEquals(secondRowB, first.receivedRows.get(1));
         // 위의 모든 assert를 통과했을 시 아래 출력
-        System.out.println("[REQ3-공격] 양쪽 공격 행이 상대에게만 각 1회 전달 PASS");
+        System.out.println("[REQ3-공격] 양쪽 공격 행이 상대에게만 2줄씩 각 1회 전달 PASS");
     }
+    // AI-assisted code end
+
+    // AI-assisted code start
+    @Test // 1줄과 2줄 삭제가 공격 전달 경계를 나누는지 확인하는 테스트
+    void relayOnlyWhenTwoOrMoreLinesCleared() {
+        // given: 1P가 각각 1줄과 2줄을 보낼 수 있는 가짜 플레이어를 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        MatchManager manager = new MatchManager(first, second, result -> {
+        });
+        manager.start();
+
+        // when: 1P가 1줄을 보내고 갱신한다.
+        first.rowsToSend.add(garbageRow(BOUNDARY_ONE_ROW_VALUE));
+        first.onUpdate.run();
+
+        // then: 1줄은 공격으로 전달되지 않는다.
+        assertEquals(EXPECTED_NO_RECEIVE, second.receiveCalls);
+        assertTrue(second.receivedRows.isEmpty());
+
+        // given: 이어서 1P가 서로 다른 2줄을 준비한다.
+        int[] rowA = garbageRow(BOUNDARY_TWO_ROW_A_VALUE);
+        int[] rowB = garbageRow(BOUNDARY_TWO_ROW_B_VALUE);
+        first.rowsToSend.add(rowA);
+        first.rowsToSend.add(rowB);
+
+        // when: 1P가 다시 갱신한다.
+        first.onUpdate.run();
+
+        // then: 2줄만 정확히 한 번 전달된다.
+        assertEquals(EXPECTED_ONE_RECEIVE, second.receiveCalls);
+        assertEquals(MIN_ATTACK_ROW_COUNT, second.receivedRows.size());
+        assertArrayEquals(rowA, second.receivedRows.get(0));
+        assertArrayEquals(rowB, second.receivedRows.get(1));
+        // 위의 모든 assert를 통과했을 시 아래 출력
+        System.out.println("[REQ3-공격] 1줄 삭제 → 공격 없음, 2줄 삭제 → 2줄 전달 PASS");
+    }
+    // AI-assisted code end
+
+    // AI-assisted code start
+    @Test // 단일 줄 공격이 다음 공격과 혼합되지 않고 폐기되는지 확인하는 테스트
+    void discardSingleLineSoItDoesNotMixIntoNextAttack() {
+        // given: 1P가 값 A인 단일 줄을 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        int[] rowA = garbageRow(DISCARDED_ROW_VALUE);
+        first.rowsToSend.add(rowA);
+        MatchManager manager = new MatchManager(first, second, result -> {
+        });
+        manager.start();
+
+        // when: 단일 줄로 갱신한다.
+        first.onUpdate.run();
+
+        // then: 단일 줄은 폐기되어 공격이 전달되지 않는다.
+        assertEquals(EXPECTED_NO_RECEIVE, second.receiveCalls);
+
+        // given: 다음 갱신에서 값 B와 C인 2줄을 준비한다.
+        int[] rowB = garbageRow(NEXT_ATTACK_ROW_A_VALUE);
+        int[] rowC = garbageRow(NEXT_ATTACK_ROW_B_VALUE);
+        first.rowsToSend.add(rowB);
+        first.rowsToSend.add(rowC);
+
+        // when: 다시 갱신한다.
+        first.onUpdate.run();
+
+        // then: 다음 공격에는 B와 C만 순서대로 전달된다.
+        assertEquals(EXPECTED_ONE_RECEIVE, second.receiveCalls);
+        assertEquals(MIN_ATTACK_ROW_COUNT, second.receivedRows.size());
+        assertArrayEquals(rowB, second.receivedRows.get(0));
+        assertArrayEquals(rowC, second.receivedRows.get(1));
+        for (int[] receivedRow : second.receivedRows) {
+            assertTrue(receivedRow[0] != DISCARDED_ROW_VALUE);
+        }
+        // 위의 모든 assert를 통과했을 시 아래 출력
+        System.out.println("[REQ3-공격] 단일 줄은 폐기되고 다음 2줄만 전달 PASS");
+    }
+    // AI-assisted code end
 
     @Test   // 보낼 공격이 없을 때 상대에게 아무것도 넘기지 않는지 확인하는 테스트
     void doNotRelayWhenThereIsNothingToSend() {
