@@ -9,6 +9,7 @@ import javafx.geometry.Pos;
 import javafx.geometry.VPos;
 import javafx.geometry.Bounds;
 import javafx.scene.Scene;
+import javafx.scene.Parent;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Label;
@@ -103,8 +104,14 @@ public class JavaFxGameView implements GameView {
 
     private Consumer<GameCommand> commandHandler;
     private boolean pauseKeyHeld;
+    private Parent content;
+    private Label keyHelpLabel;
 
     public JavaFxGameView(Stage stage, GameSettings settings) {
+        this(stage, settings, true);
+    }
+
+    private JavaFxGameView(Stage stage, GameSettings settings, boolean attachToStage) {
         this.stage = stage;
         this.keyBindings = Map.copyOf(settings.getKeyBindings());
         this.colorBlindMode = settings.isColorBlindMode();
@@ -125,7 +132,20 @@ public class JavaFxGameView implements GameView {
         this.cellWidth = logicalBounds.getWidth() + transferredPadding;
         this.cellHeight = logicalBounds.getHeight() - transferredPadding;
         this.textBaselineOffset = (cellHeight - visualBounds.getHeight()) / 2 - visualBounds.getMinY();
-        initializeView();
+        initializeView(attachToStage);
+    }
+
+    /** 기존 문자 렌더러를 창 전체가 아닌 대전 화면의 한 패널로 생성한다. */
+    public static JavaFxGameView createEmbedded(GameSettings settings) {
+        return new JavaFxGameView(null, settings, false);
+    }
+
+    public Parent getContent() {
+        return content;
+    }
+
+    public void setKeyHelpText(String text) {
+        keyHelpLabel.setText(text);
     }
 
     @Override
@@ -148,16 +168,20 @@ public class JavaFxGameView implements GameView {
 
     @Override
     public void show() {
-        stage.show();
-        stage.getScene().getRoot().requestFocus();
+        if (stage != null) {
+            stage.show();
+        }
+        content.requestFocus();
     }
 
     @Override
     public void close() {
-        stage.close();
+        if (stage != null) {
+            stage.close();
+        }
     }
 
-    private void initializeView() {
+    private void initializeView(boolean attachToStage) {
         boardCanvas.setId("game-board");
         nextCanvas.setId("next-preview");
         holdCanvas.setId("hold-preview");
@@ -196,9 +220,9 @@ public class JavaFxGameView implements GameView {
         root.setPadding(new Insets(ROOT_PADDING * scale));
         root.setFocusTraversable(true);
 
-        Scene scene = new Scene(root, VIEW_WIDTH * scale, VIEW_HEIGHT * scale);
-        scene.setOnKeyPressed(event -> handleKey(event.getCode()));
-        scene.setOnKeyReleased(event -> {
+        content = root;
+        root.setOnKeyPressed(event -> handleKey(event.getCode()));
+        root.setOnKeyReleased(event -> {
             if (mapKey(event.getCode()) == GameCommand.PAUSE) {
                 pauseKeyHeld = false;
             }
@@ -211,9 +235,12 @@ public class JavaFxGameView implements GameView {
                     }
                 });
 
-        stage.setTitle("SE Tetris");
-        stage.setScene(scene);
-        stage.sizeToScene();
+        if (attachToStage) {
+            Scene scene = new Scene(root, VIEW_WIDTH * scale, VIEW_HEIGHT * scale);
+            stage.setTitle("SE Tetris");
+            stage.setScene(scene);
+            stage.sizeToScene();
+        }
     }
 
     private Label createKeyHelp() {
@@ -221,6 +248,8 @@ public class JavaFxGameView implements GameView {
                 keyBindings.get(GameCommand.HOLD) + ": 홀드\n" + keyBindings.get(GameCommand.PAUSE) + ": 일시정지 / 재개\n"
                         + keyBindings.get(GameCommand.QUIT_GAME) + ": 메뉴");
         help.setWrapText(true);
+        help.setId("game-key-help");
+        keyHelpLabel = help;
         return help;
     }
 

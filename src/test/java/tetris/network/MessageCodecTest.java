@@ -15,8 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import tetris.battle.BattleMode;
 import tetris.battle.BattleSettings;
+import tetris.battle.BattleMode;
 import tetris.model.Difficulty;
 
 // AI-assisted code start
@@ -47,10 +47,10 @@ class MessageCodecTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "null", "{", "{}", "{\"type\":\"UNKNOWN\",\"version\":1}",
-            "{\"type\":\"HELLO\",\"version\":2,\"role\":\"CLIENT\"}",
-            "{\"type\":\"CONFIG\",\"version\":1,\"revision\":1}",
-            "{\"type\":\"CONFIG\",\"version\":1,\"revision\":1,\"settings\":{\"mode\":\"TIME_LIMIT\",\"difficulty\":\"NORMAL\",\"timeLimitSeconds\":0}}"
+            "null", "{", "{}", "{\"type\":\"UNKNOWN\",\"version\":2}",
+            "{\"type\":\"HELLO\",\"version\":999,\"role\":\"CLIENT\"}",
+            "{\"type\":\"CONFIG\",\"version\":2,\"revision\":1}",
+            "{\"type\":\"CONFIG\",\"version\":2,\"revision\":1,\"settings\":{\"mode\":\"TIME_LIMIT\",\"difficulty\":\"NORMAL\",\"timeLimitSeconds\":0}}"
     })
     void rejectInvalidJsonOrProtocol(String json) throws Exception {
         byte[] payload = json.getBytes(StandardCharsets.UTF_8);
