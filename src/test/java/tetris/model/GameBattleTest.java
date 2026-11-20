@@ -22,9 +22,6 @@ class GameBattleTest {
     private static final int BOARD_HEIGHT = 6;
     private static final int NORMAL_BOARD_WIDTH = 10;
     private static final int NORMAL_BOARD_HEIGHT = 20;
-    private static final int BOTTOM_ROW = BOARD_HEIGHT - 1;
-    private static final int SECOND_BOTTOM_ROW = BOARD_HEIGHT - 2;
-    private static final int EMPTY_COLUMN = 2;
     private static final int GARBAGE_VALUE = Board.GARBAGE_CELL;
     private static final int EXPECTED_TWO_ROWS = 2;
     private static final int EXPECTED_ONE_ROW = 1;
