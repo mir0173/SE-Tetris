@@ -33,6 +33,7 @@ public class Game {
     private final Difficulty difficulty;
     private final ItemContext context = new GameItemContext();
     private GameStatus status;
+    private GameStatus statusBeforePause; // 일시정지 전에 기억할 게임상태
 
     private Piece currentPiece; // 현재 드랍중인 블록
     private PieceType nextPieceType; // 다음에 드랍될 블록 타입
@@ -151,10 +152,10 @@ public class Game {
         }
 
         if (command == GameCommand.PAUSE) {
-            if (status == GameStatus.PLAYING) {
-                pause();
-            } else if (status == GameStatus.PAUSED) {
+            if (status == GameStatus.PAUSED) {
                 resume();
+            } else {
+                pause();
             }
             return;
         }
@@ -205,7 +206,7 @@ public class Game {
         if (status != GameStatus.PLAYING) {
             return;
         }
-        
+
         // 슬로우 남은 시간 계산
         if (slowTimeLeft > 0) {
             slowTimeLeft -= selectTimeInterval();
@@ -216,11 +217,10 @@ public class Game {
         long previousDropCells = getTotalDropCells();
         long previousLockedPieceCount = lockedPieceCount;
         long previousSpawnedPieceCount = spawnedPieceCount;
-        
-        
-        if (drilling) {     // 무게추가 뚫는 중이면 한 칸 부수기
+
+        if (drilling) { // 무게추가 뚫는 중이면 한 칸 부수기
             drillDown();
-        } else if (softDrop()) {    // 아니면 한 칸 내리기
+        } else if (softDrop()) { // 아니면 한 칸 내리기
             gravityDropCells++;
         }
 
@@ -229,24 +229,25 @@ public class Game {
     }
 
     /**
-     * 진행 중인 게임을 일시정지한다. 진행 중이 아니면 아무것도 하지 않는다.
+     * 진행 중이거나 줄 삭제 연출 중인 게임을 일시정지한다.
      */
     public void pause() {
-        if (status == GameStatus.PLAYING) {
+        if (status == GameStatus.PLAYING || status == GameStatus.CLEARING) {
+            statusBeforePause = status;
             status = GameStatus.PAUSED;
         }
     }
 
-    /** 일시정지된 게임을 재개한다. 일시정지 상태가 아니면 아무것도 하지 않는다. */
+    /** 일시정지된 게임을 멈추기 전 상태(진행 중 또는 줄 삭제 연출 중)로 되돌린다. 일시정지 상태가 아니면 아무것도 하지 않는다. */
     public void resume() {
         if (isPaused()) {
-            status = GameStatus.PLAYING;
+            status = statusBeforePause;
         }
     }
 
     /**
      * 게임을 밖에서 끝낸다. 이미 게임 오버이거나 종료된 게임은 그대로 둔다.
-     * 대전에서 상대가 졌을 때 심판이 이긴쪽 게임을 멈출 때 사용한다.
+     * 대전에서 상대가 졌을 때 심판이 이긴 쪽 게임을 멈출 때 사용한다.
      */
     public void stop() {
         if (!isGameOver() && !isQuit()) {
@@ -317,8 +318,8 @@ public class Game {
         long previousSpawnedPieceCount = spawnedPieceCount;
 
         // 저장해둔 지울 줄 꺼내기
-        List<Integer> rowsToClear = pendingClearRows;   
-        
+        List<Integer> rowsToClear = pendingClearRows;
+
         // 지울 줄 초기화
         pendingClearRows = List.of();
 
@@ -403,7 +404,7 @@ public class Game {
     private void lockAndSpawnNext() {
         // L아이템이 지우려고 예약한 번호 초기화
         reservedItemRows.clear();
-        
+
         // 실제 보드에 박기
         board.lock(currentPiece);
 
@@ -411,7 +412,8 @@ public class Game {
         if (currentPiece.item() != null && currentPiece.item().isEmbedded()) {
             int cellIndex = currentPiece.item().cellIndex();
             Position position = currentPiece.getAbsolutePositions().get(cellIndex);
-            currentPiece.item().type().getItemEffect().handleLock(context, position);   // handleLock에서 reservedItemRows 예약
+            currentPiece.item().type().getItemEffect().handleLock(context, position); // handleLock에서 reservedItemRows
+                                                                                      // 예약
         }
 
         // reservedItemRows에서 중복된 Row가 나와도 처리되도록 TreeSet으로
@@ -434,12 +436,12 @@ public class Game {
 
     // 줄을 지우고, 아이템 효과와 카운터 반영, 다음 블록을 내보냄
     private void completeLock(List<Integer> rowsToClear) {
-        lockedPieceCount++;     // 고정된 블록 수 증가
-        lastClearedLines = board.clearRows(rowsToClear);    // 줄을 실제로 지움
-        if (currentPiece.item() != null) {      // 특수 I블록용 지워진 줄 수 알림
+        lockedPieceCount++; // 고정된 블록 수 증가
+        lastClearedLines = board.clearRows(rowsToClear); // 줄을 실제로 지움
+        if (currentPiece.item() != null) { // 특수 I블록용 지워진 줄 수 알림
             currentPiece.item().type().getItemEffect().handleLinesCleared(context, lastClearedLines);
         }
-        holdUsed = false;   // 새 블록부터 홀드 가능
+        holdUsed = false; // 새 블록부터 홀드 가능
 
         // 아이템 모드 시 지운 줄 수 누적
         if (mode == GameMode.ITEM) {

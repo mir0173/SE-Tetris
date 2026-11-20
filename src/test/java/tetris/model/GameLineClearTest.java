@@ -173,8 +173,8 @@ class GameLineClearTest {
         assertCellsEqual(before.getCells(), after.getCells());
     }
 
-    @Test
-    void ignorePauseWhileClearing() {
+    @Test // 줄 삭제 연출 중에도 일시정지할 수 있고, 재개하면 연출 상태로 돌아간다 (T18에서 규칙 변경)
+    void pauseWhileClearingAndResumeToClearing() {
         // given
         Game game = gameWithTwoFullLinesPending();
 
@@ -182,7 +182,12 @@ class GameLineClearTest {
         game.handleCommand(GameCommand.PAUSE);
 
         // then
-        assertFalse(game.isPaused());
+        assertTrue(game.isPaused());
+
+        // when
+        game.handleCommand(GameCommand.PAUSE);
+
+        // then
         assertEquals(GameStatus.CLEARING, game.createSnapshot().getStatus());
     }
 
