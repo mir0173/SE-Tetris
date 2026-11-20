@@ -75,10 +75,19 @@ public class MatchManager {
             firstPlayer.receiveGarbageRows(secondAttackRows);
         }
 
+        // 승패 판정
+        // 동시에 게임 오버일 시 무승부
+        if (firstPlayer.isGameOver() && secondPlayer.isGameOver()) {
+            finish(MatchResult.DRAW);
+            return;
+        }
+
         if (firstPlayer.isGameOver()) {
             finish(MatchResult.PLAYER_TWO_WIN);
             return;
-        } else if (secondPlayer.isGameOver()) {
+        }
+
+        if (secondPlayer.isGameOver()) {
             finish(MatchResult.PLAYER_ONE_WIN);
             return;
         }
@@ -95,7 +104,7 @@ public class MatchManager {
                 secondPlayer.pause();
                 syncing = false;
             }
-        } else { 
+        } else {
             // 이제 진행 중인 플레이어는 연출 중에도 멈추므로, 멈춘 동안 PAUSED가 아니면 누군가 재개한 것
             if (firstStatus != GameStatus.PAUSED || secondStatus != GameStatus.PAUSED) {
                 syncing = true;

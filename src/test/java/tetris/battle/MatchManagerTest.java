@@ -215,6 +215,35 @@ class MatchManagerTest {
         System.out.println("[REQ3-종료] 1P 게임오버 → 2P 승리, 결과 1회 전달, 양쪽 게임 정지 PASS");
     }
 
+    // AI-assisted code start
+    @ParameterizedTest
+    @CsvSource({"true", "false"})
+    void drawWhenBothPlayersAreGameOver(boolean firstTriggers) { // 양쪽이 동시에 게임오버일 때 어느 갱신으로든 무승부가 되는지 확인하는 테스트
+        // given: 두 플레이어가 모두 게임오버 상태이고 결과를 모으는 심판을 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        first.status = GameStatus.GAMEOVER;
+        second.status = GameStatus.GAMEOVER;
+        List<MatchResult> results = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, results::add);
+        manager.start();
+
+        // when: 파라미터에 따라 1P 또는 2P의 갱신을 발생시킨다.
+        if (firstTriggers) {
+            first.onUpdate.run();
+        } else {
+            second.onUpdate.run();
+        }
+
+        // then: 양쪽 동시 게임오버는 무승부로 한 번 전달되고 양쪽이 정지된다.
+        assertEquals(List.of(MatchResult.DRAW), results);
+        assertEquals(EXPECTED_ONE_STOP, first.stopCalls);
+        assertEquals(EXPECTED_ONE_STOP, second.stopCalls);
+        // 위의 모든 assert를 통과했을 시 아래 출력
+        System.out.println("[REQ3-종료] 양쪽 동시 게임오버 → 무승부, 결과 1회 전달 PASS");
+    }
+    // AI-assisted code end
+
     // 제한 시간 모드에서 점수가 높은 쪽이 이기고, 같으면 무승부가 되는지 확인하는 테스트
     // ParameterizedTest + CsvSource로 서로 다른 파라미터의 테스트 3번 실행
     @ParameterizedTest 
