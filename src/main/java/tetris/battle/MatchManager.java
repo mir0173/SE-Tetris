@@ -4,7 +4,12 @@ import tetris.model.GameStatus;
 
 import java.util.List;
 import java.util.function.Consumer;
+import static java.util.Objects.requireNonNull;
 
+/**
+ * 대전의 심판
+ * 두 플레이어의 갱신 알림을 받아 공격 줄을 전달하고, 일시정지를 맞추고, 승패를 정한다.
+ */
 public class MatchManager {
     private final Player firstPlayer;
     private final Player secondPlayer;
@@ -15,22 +20,31 @@ public class MatchManager {
     private boolean syncing;
 
     public MatchManager(Player firstPlayer, Player secondPlayer, Consumer<MatchResult> onMatchEnd) {
+        requireNonNull(firstPlayer);
+        requireNonNull(secondPlayer);
+        requireNonNull(onMatchEnd);
+
         this.firstPlayer = firstPlayer;
         this.secondPlayer = secondPlayer;
         this.onMatchEnd = onMatchEnd;
     }
 
+    /**
+     * 두 플레이어에 갱신 알림을 등록해 경기를 지켜보기 시작한다. 게임 시작은 바깥에서 한다.
+     */
     public void start() {
         firstPlayer.setOnUpdate(() -> handleUpdate());
         secondPlayer.setOnUpdate(() -> handleUpdate());
     }
 
+    /**
+     * 제한 시간이 끝났을 때 부른다. 점수가 높은 쪽이 이기고 같으면 무승부, 이미 끝났으면 무시한다.
+     */
     public void finishByTime() {
-        MatchResult result;
         if (finished) {
             return;
         }
-
+        MatchResult result;
         if (firstPlayer.getScore() > secondPlayer.getScore()) {
             result = MatchResult.PLAYER_ONE_WIN;
         } else if (firstPlayer.getScore() < secondPlayer.getScore()) {
@@ -46,16 +60,16 @@ public class MatchManager {
             return;
         }
 
-        List<int[]> AttackRows_1P = firstPlayer.takeAttackRows();
-        List<int[]> AttackRows_2P = secondPlayer.takeAttackRows();
+        List<int[]> firstAttackRows = firstPlayer.takeAttackRows();
+        List<int[]> secondAttackRows = secondPlayer.takeAttackRows();
 
         // T18 : 2줄 이상일 때만 공격, 10줄 제한
-        if (!AttackRows_1P.isEmpty()) {
-            secondPlayer.receiveGarbageRows(AttackRows_1P);
+        if (!firstAttackRows.isEmpty()) {
+            secondPlayer.receiveGarbageRows(firstAttackRows);
         }
 
-        if (!AttackRows_2P.isEmpty()) {
-            firstPlayer.receiveGarbageRows(AttackRows_2P);
+        if (!secondAttackRows.isEmpty()) {
+            firstPlayer.receiveGarbageRows(secondAttackRows);
         }
 
         if (firstPlayer.isGameOver()) {
@@ -65,22 +79,22 @@ public class MatchManager {
             finish(MatchResult.PLAYER_ONE_WIN);
             return;
         }
-        
+
         // 게임 일시정지, 재개 동기화
-        GameStatus status_1P = firstPlayer.createSnapshot().getStatus();
-        GameStatus status_2P = secondPlayer.createSnapshot().getStatus();
+        GameStatus firstStatus = firstPlayer.getStatus();
+        GameStatus secondStatus = secondPlayer.getStatus();
 
         if (!paused) {
-            if (status_1P == GameStatus.PAUSED || status_2P == GameStatus.PAUSED) {
+            if (firstStatus == GameStatus.PAUSED || secondStatus == GameStatus.PAUSED) {
                 syncing = true;
                 paused = true;
                 firstPlayer.pause();
                 secondPlayer.pause();
                 syncing = false;
             }
-            syncing = false;
-        } else if(paused) {
-            if(status_1P == GameStatus.PLAYING || status_2P == GameStatus.PLAYING) {
+        } else { 
+            // 이제 진행 중인 플레이어는 연출 중에도 멈추므로, 멈춘 동안 PAUSED가 아니면 누군가 재개한 것
+            if (firstStatus != GameStatus.PAUSED || secondStatus != GameStatus.PAUSED) {
                 syncing = true;
                 paused = false;
                 firstPlayer.resume();

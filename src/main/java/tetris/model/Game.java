@@ -129,6 +129,20 @@ public class Game {
     }
 
     /**
+     * 현 GameStatus를 반환한다.
+     */
+    public GameStatus getStatus() {
+        return status;
+    }
+
+    /**
+     * 현 점수를 반환한다.
+     */
+    public long getScore() {
+        return score;
+    }
+
+    /**
      * 게임을 시작 가능한 상태에서 실행 상태로 변경하고, 첫 블록을 내보낸다.
      */
     public void start() {
@@ -278,7 +292,7 @@ public class Game {
      */
     public GameSnapshot createSnapshot() {
         int[][] cells;
-        if (isGameOver() || currentPiece == null || status == GameStatus.CLEARING) {
+        if (isGameOver() || currentPiece == null || isWaitingForLineClear()) {
             cells = board.copyCells();
         } else {
             cells = board.copyCellsWith(currentPiece);
@@ -623,7 +637,7 @@ public class Game {
 
     // 하드 드롭했을 때 놓일 위치를 구하여 반환한다.
     private Map<Position, Integer> findGhostCells() {
-        if (currentPiece == null || isGameOver() || status == GameStatus.CLEARING || drilling) {
+        if (currentPiece == null || isGameOver() || isWaitingForLineClear() || drilling) {
             return Map.of();
         }
         Piece candidate = currentPiece;
@@ -659,6 +673,13 @@ public class Game {
             }
             pendingAttackRows.add(attackRow);
         }
+    }   
+
+    // 블록이 고정되어 줄 삭제를 기다리는 중이면 true. 
+    // 줄 삭제 연출 중(CLEARING)뿐 아니라 그 상태에서 일시정지한 경우도 포함한다
+    private boolean isWaitingForLineClear() {
+        if(pendingClearRows.isEmpty()) return false;
+         return true;
     }
 
     private class GameItemContext implements ItemContext {

@@ -185,8 +185,8 @@ class MatchManagerTest {
         System.out.println("[REQ3-재개] 한 플레이어 재개 → 양쪽 PLAYING, 각 1회 호출 PASS");
     }
 
-    @Test // 상대가 줄 삭제 중이어도 일시정지한 플레이어를 재개시키지 않는지 확인하는 테스트
-    void keepPausedWhileOpponentIsClearing() {
+    @Test // 줄 삭제 중인 상대도 함께 멈추고 재개 시 연출 상태로 복귀하는지 확인하는 테스트
+    void pauseClearingOpponentAndResumeToClearing() {
         // given: 1P는 일시정지하고 2P는 줄 삭제 중인 경기를 준비한다.
         FakePlayer first = new FakePlayer();
         FakePlayer second = new FakePlayer();
@@ -198,11 +198,45 @@ class MatchManagerTest {
 
         // when: 1P의 갱신을 심판에게 알린다.
         first.onUpdate.run();
-        second.onUpdate.run(); // 2P가 줄 삭제 중에 한번 더 갱신을 알린다.
 
-        // then: 줄 삭제가 끝난 뒤 재개하는 동작은 T18에서 처리할 알려진 제한이므로,
-        //       현재는 1P가 계속 일시정지 상태인지 확인한다.
+        // then: 줄 삭제 중이던 2P도 일시정지된다.
         assertEquals(GameStatus.PAUSED, first.status);
+        assertEquals(GameStatus.PAUSED, second.status);
+
+        // when: 1P가 재개 상태가 되어 갱신을 알리면 심판은 양쪽 재개를 동기화한다.
+        first.status = GameStatus.PLAYING;
+        first.onUpdate.run();
+
+        // then: 1P는 PLAYING으로 복귀하고 2P는 이전 CLEARING 상태로 복귀한다.
+        assertEquals(GameStatus.PLAYING, first.status);
+        assertEquals(GameStatus.CLEARING, second.status);
+        // 위의 모든 assert를 통과했을 시 아래 출력
+        System.out.println("[REQ3-일시정지] 줄 삭제 중인 상대도 함께 멈추고 재개 시 연출 상태로 복귀 PASS");
+    }
+
+    @Test // 한 플레이어가 CLEARING 상태로 재개될 때 다른 플레이어도 함께 재개되는지 확인하는 테스트
+    void resumeBothWhenPlayerResumesIntoClearing() {
+        // given: 양쪽을 일시정지하고, 1P의 일시정지 전 상태를 CLEARING으로 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        first.status = GameStatus.CLEARING;
+        second.status = GameStatus.PAUSED;
+        MatchManager manager = new MatchManager(first, second, result -> {
+        });
+        manager.start();
+        first.onUpdate.run();
+        assertEquals(GameStatus.PAUSED, first.status);
+        assertEquals(GameStatus.PAUSED, second.status);
+
+        // when: 1P가 줄 삭제 연출 상태 CLEARING으로 재개되어 갱신을 알린다.
+        first.status = GameStatus.CLEARING;
+        first.onUpdate.run();
+
+        // then: 연출 상태가 아닌 줄 삭제 상태도 재개 신호로 보고 2P를 재개한다.
+        assertEquals(GameStatus.CLEARING, first.status);
+        assertEquals(GameStatus.PLAYING, second.status);
+        assertEquals(EXPECTED_ONE_SYNC_CALL, first.resumeCalls);
+        assertEquals(EXPECTED_ONE_SYNC_CALL, second.resumeCalls);
     }
 
     @Test // 일반 갱신과 상태 동기화 및 게임오버 처리에서 재귀 호출이 무한히 이어지지 않는지 확인하는 테스트
@@ -270,6 +304,7 @@ class MatchManagerTest {
         private int stopCalls; // 이미 끝난 플레이어에 대한 호출까지 포함해 모든 stop 호출을 기록한다.
         private int pauseCalls; // 일시정지 동기화 호출 횟수를 기록한다.
         private int resumeCalls; // 재개 동기화 호출 횟수를 기록한다.
+        private GameStatus statusBeforePause = GameStatus.PLAYING;
 
         @Override
         public GameSnapshot createSnapshot() {
@@ -306,9 +341,15 @@ class MatchManagerTest {
         }
 
         @Override
+        public GameStatus getStatus() {
+            return status;
+        }
+
+        @Override
         public void pause() {
             pauseCalls++;
-            if (status == GameStatus.PLAYING) {
+            if (status == GameStatus.PLAYING || status == GameStatus.CLEARING) {
+                statusBeforePause = status;
                 status = GameStatus.PAUSED;
             }
             if (!isFinished()) {
@@ -320,7 +361,9 @@ class MatchManagerTest {
         public void resume() {
             resumeCalls++;
             if (status == GameStatus.PAUSED) {
-                status = GameStatus.PLAYING;
+                status = statusBeforePause;
+            } else if (status == GameStatus.CLEARING) {
+                status = statusBeforePause;
             }
             if (!isFinished()) {
                 onUpdate.run();
