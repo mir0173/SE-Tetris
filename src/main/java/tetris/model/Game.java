@@ -673,13 +673,15 @@ public class Game {
             }
             pendingAttackRows.add(attackRow);
         }
-    }   
+    }
 
-    // 블록이 고정되어 줄 삭제를 기다리는 중이면 true. 
+    // 블록이 고정되어 줄 삭제를 기다리는 중이면 true.
     // 줄 삭제 연출 중(CLEARING)뿐 아니라 그 상태에서 일시정지한 경우도 포함한다
     private boolean isWaitingForLineClear() {
-        if(pendingClearRows.isEmpty()) return false;
-         return true;
+        if (pendingClearRows.isEmpty()) {
+            return false;
+        }
+        return true;
     }
 
     private class GameItemContext implements ItemContext {

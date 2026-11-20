@@ -191,6 +191,21 @@ class GameLineClearTest {
         assertEquals(GameStatus.CLEARING, game.createSnapshot().getStatus());
     }
 
+    // AI-assisted code start
+    @Test // 줄 삭제 대기 중 일시정지하면 고스트 조각이 숨겨지는지 확인하는 테스트
+    void hideGhostWhilePausedDuringLineClear() {
+        // given
+        Game game = gameWithTwoFullLinesPending();
+
+        // when
+        game.handleCommand(GameCommand.PAUSE);
+
+        // then
+        assertEquals(GameStatus.PAUSED, game.getStatus());
+        assertTrue(game.createSnapshot().getGhostPieceCells().isEmpty());
+    }
+    // AI-assisted code end
+
     @Test
     void ignoreQuitWhileClearing() {
         // given
