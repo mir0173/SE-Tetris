@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import tetris.battle.BattleSettings;
 import tetris.battle.BattleMode;
@@ -26,6 +28,7 @@ import tetris.model.TetrominoGenerator;
 import tetris.controller.GameTimer;
 import tetris.persistence.FileScoreRepository;
 import tetris.persistence.FileSettingsRepository;
+import tetris.persistence.RecentPeerAddressRepository;
 import tetris.persistence.ScoreRepository;
 import tetris.persistence.SettingsRepository;
 import tetris.scoreboard.ScoreCategory;
@@ -52,6 +55,7 @@ import tetris.view.JavaFxP2pGameView;
  */
 public class TetrisApplication extends Application {
 
+    private static final Logger LOGGER = Logger.getLogger(TetrisApplication.class.getName());
     private static final int BOARD_WIDTH = 10;
     private static final int BOARD_HEIGHT = 20;
     private SettingsRepository settingsRepository;
@@ -59,6 +63,8 @@ public class TetrisApplication extends Application {
     private GameSettings currentSettings = GameSettings.defaults();
     private P2pLobbyController p2pLobbyController;
     private P2pBattleController p2pBattleController;
+    private JavaFxP2pGameView p2pBattleView;
+    private RecentPeerAddressRepository recentPeerAddresses;
 
     @Override
     public void start(Stage stage) {
@@ -67,6 +73,7 @@ public class TetrisApplication extends Application {
 
         settingsRepository = new FileSettingsRepository(dataDirectory.resolve("settings.json"));
         scoreRepository = new FileScoreRepository(dataDirectory.resolve("scores.json"));
+        recentPeerAddresses = new RecentPeerAddressRepository(dataDirectory.resolve("last-peer-ip.txt"));
         currentSettings = loadSettings(stage);
         showStartMenu(stage);
     }
@@ -107,6 +114,7 @@ public class TetrisApplication extends Application {
     private void showP2pLobby(Stage stage) {
         closeP2pLobby();
         JavaFxP2pLobbyView view = new JavaFxP2pLobbyView();
+        restorePeerAddress(view);
         P2pLobbyController controller = new P2pLobbyController(
                 Platform::runLater, state -> {
                     view.render(state);
@@ -116,9 +124,11 @@ public class TetrisApplication extends Application {
                         stage.setScene(view.getScene());
                         stage.setTitle("P2P 대전");
                         stage.sizeToScene();
+                    } else if (p2pBattleView != null) {
+                        p2pBattleView.renderConnectionHealth(state.health());
                     }
                 }, start -> startP2pBattle(stage, start),
-                new BattleSettings(BattleMode.NORMAL, currentSettings.getDifficulty(), 0));
+                new BattleSettings(BattleMode.NORMAL, currentSettings.getDifficulty(), 0), this::rememberPeerAddress);
         p2pLobbyController = controller;
         view.bind(controller, () -> {
             closeP2pLobby();
@@ -128,6 +138,22 @@ public class TetrisApplication extends Application {
         stage.setScene(view.getScene());
         stage.sizeToScene();
         stage.show();
+    }
+
+    private void restorePeerAddress(JavaFxP2pLobbyView view) {
+        try {
+            recentPeerAddresses.load().ifPresent(view::setRecentAddress);
+        } catch (IOException exception) {
+            LOGGER.log(Level.WARNING, "최근 접속 IP를 불러오지 못했습니다.", exception);
+        }
+    }
+
+    private void rememberPeerAddress(String address) {
+        try {
+            recentPeerAddresses.save(address);
+        } catch (IOException exception) {
+            LOGGER.log(Level.WARNING, "최근 접속 IP를 저장하지 못했습니다.", exception);
+        }
     }
 
     private void closeP2pLobby() {
@@ -148,6 +174,8 @@ public class TetrisApplication extends Application {
             p2pLobbyController.requestReturnToLobby();
         };
         JavaFxP2pGameView view = new JavaFxP2pGameView(currentSettings, back);
+        p2pBattleView = view;
+        view.renderConnectionHealth(p2pLobbyController.getState().health());
         GameMode mode = start.settings().mode() == BattleMode.ITEM ? GameMode.ITEM : GameMode.NORMAL;
         Game game = createGame(mode, start.settings().difficulty());
         p2pBattleController = new P2pBattleController(game, view.getLocalView(),
@@ -160,6 +188,7 @@ public class TetrisApplication extends Application {
     }
 
     private void closeP2pBattle() {
+        p2pBattleView = null;
         if (p2pBattleController != null) {
             p2pBattleController.close();
             p2pBattleController = null;

@@ -24,6 +24,7 @@ public final class P2pLobbyController implements AutoCloseable {
     private final Executor uiExecutor;
     private final Consumer<LobbyState> onState;
     private final Consumer<MatchStart> onMatchStart;
+    private final Consumer<String> onConnectedAddress;
     private final ExecutorService workers = Executors.newCachedThreadPool(
             Thread.ofPlatform().daemon(true).name("p2p-connect-", 0).factory());
 
@@ -42,12 +43,20 @@ public final class P2pLobbyController implements AutoCloseable {
     private Socket pendingSocket;
     private PeerConnection connection;
     private BattleLink battleLink;
+    private PeerHealth health;
 
     public P2pLobbyController(Executor uiExecutor, Consumer<LobbyState> onState,
             Consumer<MatchStart> onMatchStart, BattleSettings initialSettings) {
+        this(uiExecutor, onState, onMatchStart, initialSettings, address -> { });
+    }
+
+    /** 최초 설정 수신이 끝나면 실제로 연결된 IP를 전달한다. */
+    public P2pLobbyController(Executor uiExecutor, Consumer<LobbyState> onState,
+            Consumer<MatchStart> onMatchStart, BattleSettings initialSettings, Consumer<String> onConnectedAddress) {
         this.uiExecutor = Objects.requireNonNull(uiExecutor, "uiExecutor");
         this.onState = Objects.requireNonNull(onState, "onState");
         this.onMatchStart = Objects.requireNonNull(onMatchStart, "onMatchStart");
+        this.onConnectedAddress = Objects.requireNonNull(onConnectedAddress, "onConnectedAddress");
         settings = Objects.requireNonNull(initialSettings, "initialSettings");
     }
 
@@ -137,7 +146,7 @@ public final class P2pLobbyController implements AutoCloseable {
     }
 
     public synchronized LobbyState getState() {
-        return new LobbyState(phase, role, port, settings, localReady, remoteReady, message);
+        return new LobbyState(phase, role, port, settings, localReady, remoteReady, message, health);
     }
 
     /** 준비가 완료된 현재 경기에서만 송수신 통로를 제공한다. 소켓의 소유권은 대기실에 유지한다. */
@@ -241,7 +250,12 @@ public final class P2pLobbyController implements AutoCloseable {
         phase = Phase.HANDSHAKING;
         message = "연결 정보를 확인 중입니다.";
         connection = new PeerConnection(socket, received -> receive(attempt, received),
-                error -> fail(attempt, "상대와의 연결이 종료되었습니다: " + error.getMessage()));
+                error -> {
+                    String detail = error.getMessage();
+                    fail(attempt, detail == null ? "상대와의 연결이 끊겼습니다."
+                            : "상대와의 연결이 종료되었습니다: " + detail);
+                },
+                result -> updateHealth(attempt, result));
         connection.start();
         send(LobbyMessage.hello(role));
         publish();
@@ -267,6 +281,7 @@ public final class P2pLobbyController implements AutoCloseable {
                         returnToLobby();
                     }
                 }
+                case PING, PONG -> throw new IOException("연결 확인 메시지를 처리하지 못했습니다.");
             }
         } catch (IOException exception) {
             fail(attempt, "연결 정보를 처리할 수 없습니다: " + exception.getMessage());
@@ -277,7 +292,7 @@ public final class P2pLobbyController implements AutoCloseable {
         requireProtocol(phase == Phase.HANDSHAKING && !helloReceived && received.role() != role);
         helloReceived = true;
         if (role == PeerRole.HOST) {
-            connection.finishHandshake();
+            finishHandshake();
             phase = Phase.CONNECTED;
             message = "모드를 선택하고 게임 시작을 눌러주세요.";
             send(LobbyMessage.config(revision, settings));
@@ -291,12 +306,16 @@ public final class P2pLobbyController implements AutoCloseable {
         if (received.revision() <= revision) {
             return;
         }
+        if (phase == Phase.HANDSHAKING) {
+            finishHandshake();
+            String address = pendingSocket.getInetAddress().getHostAddress();
+            uiExecutor.execute(() -> onConnectedAddress.accept(address));
+        }
         closeBattleLink();
         settings = received.settings();
         revision = received.revision();
         localReady = false;
         remoteReady = false;
-        connection.finishHandshake();
         phase = Phase.CONNECTED;
         message = "서버 설정을 확인 후 게임 시작을 눌러주세요.";
         publish();
@@ -447,6 +466,7 @@ public final class P2pLobbyController implements AutoCloseable {
     }
 
     private void closeResources() {
+        health = null;
         closeBattleLink();
         if (connection != null) {
             connection.close();
@@ -456,6 +476,18 @@ public final class P2pLobbyController implements AutoCloseable {
         closeQuietly(serverSocket);
         pendingSocket = null;
         serverSocket = null;
+    }
+
+    private void finishHandshake() throws IOException {
+        connection.finishHandshake();
+        health = PeerHealth.MEASURING;
+    }
+
+    private synchronized void updateHealth(long attempt, PeerHealth result) {
+        if (attempt == generation && health != null) {
+            health = result;
+            publish();
+        }
     }
 
     private void requireIdle() {

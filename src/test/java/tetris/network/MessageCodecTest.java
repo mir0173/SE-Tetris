@@ -47,10 +47,11 @@ class MessageCodecTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "null", "{", "{}", "{\"type\":\"UNKNOWN\",\"version\":2}",
-            "{\"type\":\"HELLO\",\"version\":999,\"role\":\"CLIENT\"}",
-            "{\"type\":\"CONFIG\",\"version\":2,\"revision\":1}",
-            "{\"type\":\"CONFIG\",\"version\":2,\"revision\":1,\"settings\":{\"mode\":\"TIME_LIMIT\",\"difficulty\":\"NORMAL\",\"timeLimitSeconds\":0}}"
+            "null", "{", "{}", "{\"type\":\"UNKNOWN\",\"version\":3}",
+            "{\"type\":\"HELLO\",\"version\":2,\"role\":\"CLIENT\"}",
+            "{\"type\":\"CONFIG\",\"version\":3,\"revision\":1}",
+            "{\"type\":\"CONFIG\",\"version\":3,\"revision\":1,\"settings\":{\"mode\":\"TIME_LIMIT\",\"difficulty\":\"NORMAL\",\"timeLimitSeconds\":0}}",
+            "{\"type\":\"PING\",\"version\":3,\"probeId\":0}"
     })
     void rejectInvalidJsonOrProtocol(String json) throws Exception {
         byte[] payload = json.getBytes(StandardCharsets.UTF_8);
