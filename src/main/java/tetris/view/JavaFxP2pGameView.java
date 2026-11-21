@@ -9,6 +9,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import tetris.model.GameSnapshot;
 import tetris.model.GameCommand;
+import tetris.network.PeerHealth;
 import tetris.settings.GameSettings;
 
 public final class JavaFxP2pGameView {
@@ -17,6 +18,7 @@ public final class JavaFxP2pGameView {
     private final JavaFxGameView localView;
     private final JavaFxGameView remoteView;
     private final Label status = new Label("상대 상태 정보를 기다립니다.");
+    private final Label health = new Label();
     private final Scene scene;
 
     public JavaFxP2pGameView(GameSettings settings, Runnable onReturnToLobby) {
@@ -35,6 +37,7 @@ public final class JavaFxP2pGameView {
         back.setOnAction(event -> onReturnToLobby.run());
         status.setId("p2p-battle-status");
         status.setWrapText(true);
+        health.setId("p2p-battle-health");
         Label scope = new Label("통신 확인 단계: 공격 적용, 승패, 시간제한 판정은 아직 연결되지 않았습니다.");
         scope.setWrapText(true);
         HBox boards = new HBox(SPACING,
@@ -43,7 +46,7 @@ public final class JavaFxP2pGameView {
         ScrollPane scroll = new ScrollPane(boards);
         scroll.setPannable(false);
         scroll.setFocusTraversable(false);
-        VBox root = new VBox(SPACING, scope, status, scroll, back);
+        VBox root = new VBox(SPACING, scope, status, health, scroll, back);
         root.setPadding(new Insets(PADDING));
         scene = new Scene(root, 980 * settings.getWindowSize().getScale(),
                 680 * settings.getWindowSize().getScale());
@@ -52,6 +55,11 @@ public final class JavaFxP2pGameView {
     public GameView getLocalView() { return localView; }
     public Scene getScene() { return scene; }
     public void setStatus(String text) { status.setText(text); }
+
+
+    public void renderConnectionHealth(PeerHealth result) {
+        health.setText(result == null ? "" : result.displayText());
+    }
 
     public void renderRemote(GameSnapshot snapshot) {
         remoteView.render(snapshot);

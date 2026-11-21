@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.awt.image.BufferedImage;
 import java.net.ServerSocket;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -89,6 +90,7 @@ class P2pBattleScreenIntegrationTest {
         onFx(() -> { button(clientStage, "p2p-connect").fire(); return null; });
         await(() -> !button(hostStage, "p2p-ready").isDisabled()
                 && !button(clientStage, "p2p-ready").isDisabled());
+        assertEquals("127.0.0.1", Files.readString(data.resolve(".se-tetris/last-peer-ip.txt")).strip());
         onFx(() -> {
             button(hostStage, "p2p-ready").fire();
             button(clientStage, "p2p-ready").fire();
@@ -114,6 +116,7 @@ class P2pBattleScreenIntegrationTest {
         double elapsed = (System.nanoTime() - before) / 1_000_000.0;
         System.out.printf("[T20 화면 통합] 두 앱 접속·양쪽 준비·입력 후 상대 점수 표시 PASS (관측 %.3fms)%n", elapsed);
         captureOptionalPreview();
+        await(() -> label(hostStage, "p2p-battle-health").getText().matches(".*[0-9]+\\s*ms"));
 
         onFx(() -> { button(clientStage, "p2p-battle-back").fire(); return null; });
         await(() -> hostStage.getScene().lookup("#p2p-ready") != null
@@ -131,6 +134,17 @@ class P2pBattleScreenIntegrationTest {
         await(() -> hostStage.getScene().lookup("#p2p-ready") != null
                 && !button(hostStage, "p2p-host").isDisabled());
         System.out.println("[T20 화면 수명] 클라이언트 대기실 복귀→재접속 없는 재진입→상대 앱 종료 후 대기실 복귀 PASS");
+        // 초기 입력값과 다른 저장 주소로 다시 열었을 때 파일에서 불러오는지 확인한다.
+        Files.writeString(data.resolve(".se-tetris/last-peer-ip.txt"), "192.0.2.1");
+        onFx(() -> {
+            assertTrue(label(hostStage, "p2p-status").getText().contains("연결이"));
+            assertFalse(label(hostStage, "p2p-health").isVisible());
+            button(hostStage, "p2p-back").fire();
+            click(hostStage, "P2P 대전");
+            assertEquals("192.0.2.1", field(hostStage, "p2p-address").getText());
+            return null;
+        });
+        System.out.println("[T21 화면 통합] 경기 중 왕복 지연 표시·단절 후 초기 상태 복귀·최근 IP 채우기 PASS");
     }
 
     private void captureOptionalPreview() throws Exception {
