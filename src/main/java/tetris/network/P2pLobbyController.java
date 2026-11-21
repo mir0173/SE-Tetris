@@ -41,6 +41,7 @@ public final class P2pLobbyController implements AutoCloseable {
     private ServerSocket serverSocket;
     private Socket pendingSocket;
     private PeerConnection connection;
+    private BattleLink battleLink;
 
     public P2pLobbyController(Executor uiExecutor, Consumer<LobbyState> onState,
             Consumer<MatchStart> onMatchStart, BattleSettings initialSettings) {
@@ -111,6 +112,7 @@ public final class P2pLobbyController implements AutoCloseable {
             return;
         }
         revision++;
+        closeBattleLink();
         localReady = false;
         remoteReady = false;
         phase = Phase.CONNECTED;
@@ -136,6 +138,26 @@ public final class P2pLobbyController implements AutoCloseable {
 
     public synchronized LobbyState getState() {
         return new LobbyState(phase, role, port, settings, localReady, remoteReady, message);
+    }
+
+    /** 준비가 완료된 현재 경기에서만 송수신 통로를 제공한다. 소켓의 소유권은 대기실에 유지한다. */
+    public synchronized BattleLink getBattleLink(MatchStart start) {
+        if (phase != Phase.STARTED || battleLink == null || start.matchId() != matchId || start.role() != role) {
+            throw new IllegalStateException("현재 경기의 연결을 사용할 수 없습니다.");
+        }
+        return battleLink;
+    }
+
+    /** 어느 쪽에서 요청해도 서버가 연결을 유지한 대기실 복귀를 확정한다. 승패 판정은 하지 않는다. */
+    public synchronized void requestReturnToLobby() {
+        if (phase != Phase.STARTED) {
+            return;
+        }
+        if (role == PeerRole.HOST) {
+            returnToLobby();
+        } else {
+            send(LobbyMessage.start(LobbyMessage.Type.RETURN_LOBBY, revision, matchId));
+        }
     }
 
     public synchronized void refresh() {
@@ -238,6 +260,13 @@ public final class P2pLobbyController implements AutoCloseable {
                 case START_ACK -> receiveStartAcknowledgement(received);
                 case START_COMMIT -> receiveStartCommit(received);
                 case START_REJECT -> receiveStartRejection(received);
+                case BATTLE -> receiveBattle(received);
+                case RETURN_LOBBY -> {
+                    requireProtocol(role == PeerRole.HOST);
+                    if (phase == Phase.STARTED && received.matchId() == matchId && received.revision() == revision) {
+                        returnToLobby();
+                    }
+                }
             }
         } catch (IOException exception) {
             fail(attempt, "연결 정보를 처리할 수 없습니다: " + exception.getMessage());
@@ -262,6 +291,7 @@ public final class P2pLobbyController implements AutoCloseable {
         if (received.revision() <= revision) {
             return;
         }
+        closeBattleLink();
         settings = received.settings();
         revision = received.revision();
         localReady = false;
@@ -339,6 +369,9 @@ public final class P2pLobbyController implements AutoCloseable {
         message = "전원 준비가 완료되었습니다.";
         publish();
         long attempt = generation;
+        long currentMatch = matchId;
+        battleLink = new BattleLink(uiExecutor, outgoing -> sendBattle(attempt, currentMatch, outgoing),
+                failure -> failBattle(attempt, currentMatch, failure));
         MatchStart start = new MatchStart(matchId, role, settings);
         uiExecutor.execute(() -> {
             synchronized (this) {
@@ -347,6 +380,34 @@ public final class P2pLobbyController implements AutoCloseable {
                 }
             }
         });
+    }
+
+    private void receiveBattle(LobbyMessage received) throws IOException {
+        // 전환 직전에 이미 전송된 이전 경기의 메시지는 새 대기실이나 경기에 반영하지 않는다.
+        if (received.matchId() < matchId || phase != Phase.STARTED) {
+            return;
+        }
+        requireProtocol(received.matchId() == matchId && received.revision() == revision);
+        battleLink.receive(received.battle());
+    }
+
+    private synchronized void sendBattle(long attempt, long currentMatch, BattleMessage outgoing) {
+        if (attempt == generation && phase == Phase.STARTED && currentMatch == matchId) {
+            send(LobbyMessage.battle(revision, matchId, outgoing));
+        }
+    }
+
+    private synchronized void failBattle(long attempt, long currentMatch, RuntimeException failure) {
+        if (attempt == generation && phase == Phase.STARTED && currentMatch == matchId) {
+            fail(attempt, "경기 정보를 처리할 수 없습니다: " + failure.getMessage());
+        }
+    }
+
+    private void closeBattleLink() {
+        if (battleLink != null) {
+            battleLink.close();
+            battleLink = null;
+        }
     }
 
     private boolean send(LobbyMessage outgoing) {
@@ -386,6 +447,7 @@ public final class P2pLobbyController implements AutoCloseable {
     }
 
     private void closeResources() {
+        closeBattleLink();
         if (connection != null) {
             connection.close();
             connection = null;
