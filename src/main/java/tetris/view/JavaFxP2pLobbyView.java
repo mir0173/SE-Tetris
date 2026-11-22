@@ -43,6 +43,7 @@ public final class JavaFxP2pLobbyView {
             BattleSettings.MIN_TIME_LIMIT_SECONDS, BattleSettings.MAX_TIME_LIMIT_SECONDS,
             BattleSettings.DEFAULT_TIME_LIMIT_SECONDS, 10);
     private final Label statusLabel = new Label();
+    private final Label healthLabel = new Label();
     private final Label localReadyLabel = new Label("나: 대기");
     private final Label remoteReadyLabel = new Label("상대: 대기");
     private final Label matchLabel = new Label();
@@ -61,6 +62,10 @@ public final class JavaFxP2pLobbyView {
         difficultyBox.setId("p2p-difficulty");
         durationSpinner.setId("p2p-duration");
         statusLabel.setId("p2p-status");
+        healthLabel.setId("p2p-health");
+        healthLabel.setWrapText(true);
+        healthLabel.managedProperty().bind(healthLabel.visibleProperty());
+        healthLabel.setVisible(false);
         localReadyLabel.setId("p2p-local-ready");
         remoteReadyLabel.setId("p2p-remote-ready");
         matchLabel.setId("p2p-match");
@@ -85,7 +90,7 @@ public final class JavaFxP2pLobbyView {
         fields.addRow(4, new Label("제한시간(초)"), durationSpinner);
 
         VBox root = new VBox(SPACING, new Label("P2P 대전"), ipLabel,
-                fields, new HBox(SPACING, hostButton, connectButton), statusLabel,
+                fields, new HBox(SPACING, hostButton, connectButton), statusLabel, healthLabel,
                 localReadyLabel, remoteReadyLabel, readyButton, matchLabel, resetButton,
                 new HBox(SPACING, cancelButton, backButton));
         root.setPadding(new Insets(PADDING));
@@ -109,6 +114,10 @@ public final class JavaFxP2pLobbyView {
 
     public Scene getScene() {
         return scene;
+    }
+
+    public void setRecentAddress(String address) {
+        addressField.setText(address);
     }
 
     /** 화면 스레드에서 대기실의 최신 상태를 표시한다. */
@@ -136,6 +145,8 @@ public final class JavaFxP2pLobbyView {
             localReadyLabel.setText("나: " + (state.localReady() ? "준비 완료" : "대기"));
             remoteReadyLabel.setText("상대: " + (state.remoteReady() ? "준비 완료" : "대기"));
             statusLabel.setText(state.message());
+            healthLabel.setText(state.health() == null ? "" : state.health().displayText());
+            healthLabel.setVisible(state.health() != null);
             resetButton.setVisible(state.role() == PeerRole.HOST && state.phase() == LobbyState.Phase.STARTED);
             resetButton.setManaged(resetButton.isVisible());
             if (state.phase() != LobbyState.Phase.STARTED) {
