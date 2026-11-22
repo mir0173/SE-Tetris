@@ -40,12 +40,86 @@ class MatchManagerTest {
     private static final int DISCARDED_ROW_VALUE = 10;
     private static final int NEXT_ATTACK_ROW_A_VALUE = 20;
     private static final int NEXT_ATTACK_ROW_B_VALUE = 30;
+    private static final int EXPECTED_NO_CALLS = 0;
     private static final long FIRST_GAME_OVER_SCORE = 300L;
     private static final long SECOND_GAME_OVER_SCORE = 500L;
     private static final long SCORE_BEFORE_STOP = 700L;
     private static final long SCORE_AFTER_STOP = 900L;
 
-    // AI-assisted code start
+    @Test // 결과를 판정하지 않는 심판이 갱신 공격 행을 상대에게 전달하는지 확인하는 테스트
+    void relayAttacksWhenNotDecidingResult() {
+        // given: 결과를 판정하지 않는 심판과 2줄 공격을 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        int[] firstRow = garbageRow(FIRST_ROW_VALUE);
+        int[] secondRow = garbageRow(SECOND_ROW_VALUE);
+        first.rowsToSend.add(firstRow);
+        first.rowsToSend.add(secondRow);
+        MatchManager manager = new MatchManager(first, second, result -> {
+        }, false);
+
+        // when: 심판을 시작하고 1P의 갱신을 발생시킨다.
+        manager.start();
+        first.onUpdate.run();
+
+        // then: 2줄 공격은 2P에게 한 번 전달된다.
+        assertEquals(EXPECTED_ONE_RECEIVE, second.receiveCalls);
+        assertEquals(MIN_ATTACK_ROW_COUNT, second.receivedRows.size());
+        assertArrayEquals(firstRow, second.receivedRows.get(0));
+        assertArrayEquals(secondRow, second.receivedRows.get(1));
+    }
+
+    @Test // 결과를 판정하지 않는 심판이 게임오버를 판정하거나 정지하지 않는지 확인하는 테스트
+    void doNotDecideResultWhenNotDeciding() {
+        // given: 2P만 게임오버이고 결과를 판정하지 않는 심판을 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        second.status = GameStatus.GAMEOVER;
+        List<MatchResult> results = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, results::add, false);
+
+        // when: 심판을 시작하고 1P의 갱신을 발생시킨다.
+        manager.start();
+        first.onUpdate.run();
+
+        // then: 결과도 전달되지 않고 양쪽 모두 정지되지 않는다.
+        assertEquals(EXPECTED_NO_CALLS, results.size());
+        assertEquals(EXPECTED_NO_CALLS, first.stopCalls);
+        assertEquals(EXPECTED_NO_CALLS, second.stopCalls);
+    }
+
+    @Test // 결과를 판정하지 않는 심판이 시간 종료를 무시하는지 확인하는 테스트
+    void ignoreFinishByTimeWhenNotDeciding() {
+        // given: 결과를 판정하지 않는 심판과 결과 기록자를 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        List<MatchResult> results = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, results::add, false);
+
+        // when: 제한 시간이 끝났다고 알린다.
+        manager.finishByTime();
+
+        // then: 시간 종료로 결과가 전달되지 않는다.
+        assertEquals(EXPECTED_NO_CALLS, results.size());
+    }
+
+    @Test // 결과를 판정하지 않는 심판이 일시정지를 동기화하지 않는지 확인하는 테스트
+    void doNotSyncPauseWhenNotDeciding() {
+        // given: 1P가 일시정지 상태이고 결과를 판정하지 않는 심판을 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        first.status = GameStatus.PAUSED;
+        MatchManager manager = new MatchManager(first, second, result -> {
+        }, false);
+
+        // when: 심판을 시작하고 1P의 갱신을 발생시킨다.
+        manager.start();
+        first.onUpdate.run();
+
+        // then: 2P는 일시정지되지 않는다.
+        assertEquals(EXPECTED_NO_CALLS, second.pauseCalls);
+    }
+
     @Test   // 양쪽이 만든 공격 행이 2줄일 때 상대에게만 전달되는지 확인하는 테스트
     void relayAttackRowsFromFirstToSecondAndFromSecondToFirst() {
         // given: 양쪽 플레이어가 각각 상대에게 보낼 공격 행을 두 개 준비한다.

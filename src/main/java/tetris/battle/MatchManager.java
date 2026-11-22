@@ -17,11 +17,21 @@ public class MatchManager {
     private final Player secondPlayer;
 
     private final Consumer<MatchResult> onMatchEnd;
+    private final boolean decidesResult; // false일 시 공격 전달만, 승패는 판정하지 않는다. (P2P CLIENT)
     private boolean finished;
     private boolean paused;
     private boolean syncing;
 
-    public MatchManager(Player firstPlayer, Player secondPlayer, Consumer<MatchResult> onMatchEnd) {
+    /**
+     * 심판을 만든다.
+     *
+     * @param firstPlayer   1P (P2P에서는 나)
+     * @param secondPlayer  2P (P2P에서는 상대)
+     * @param onMatchEnd    경기가 끝났을 때 결과를 받을 동작. 결과를 정하는 심판에서만 불린다
+     * @param decidesResult true면 승패를 판정해 결과를 알리고, false면 공격 전달만 한다 (P2P CLIENT)
+     */
+    public MatchManager(Player firstPlayer, Player secondPlayer, Consumer<MatchResult> onMatchEnd,
+            boolean decidesResult) {
         requireNonNull(firstPlayer);
         requireNonNull(secondPlayer);
         requireNonNull(onMatchEnd);
@@ -29,6 +39,18 @@ public class MatchManager {
         this.firstPlayer = firstPlayer;
         this.secondPlayer = secondPlayer;
         this.onMatchEnd = onMatchEnd;
+        this.decidesResult = decidesResult;
+    }
+
+    /**
+     * 결과를 판정하는 심판을 만든다. (decidesResult가 true인 생성자와 같다)
+     *
+     * @param firstPlayer  1P
+     * @param secondPlayer 2P
+     * @param onMatchEnd   경기가 끝났을 때 결과를 받을 동작
+     */
+    public MatchManager(Player firstPlayer, Player secondPlayer, Consumer<MatchResult> onMatchEnd) {
+        this(firstPlayer, secondPlayer, onMatchEnd, true);
     }
 
     /**
@@ -43,7 +65,7 @@ public class MatchManager {
      * 제한 시간이 끝났을 때 부른다. 점수가 높은 쪽이 이기고 같으면 무승부, 이미 끝났으면 무시한다.
      */
     public void finishByTime() {
-        if (finished) {
+        if (finished || !decidesResult) {
             return;
         }
         MatchResult.Winner winner;
@@ -73,6 +95,12 @@ public class MatchManager {
 
         if (secondAttackRows.size() >= MIN_ATTACK_LINES) {
             firstPlayer.receiveGarbageRows(secondAttackRows);
+        }
+
+        // 결과를 정하지 않는 P2P CLIENT의 심판은 공격 전달만 한다.
+        // P2P에는 일시정지가 없어 아래 동기화도 필요 없다.
+        if (!decidesResult) {
+            return;
         }
 
         // 승패 판정
