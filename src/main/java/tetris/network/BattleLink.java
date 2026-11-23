@@ -7,7 +7,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
+import java.util.function.LongFunction;
 
+import tetris.battle.MatchResult;
 import tetris.model.GameSnapshot;
 
 /** 대기실 소켓을 유지하며 경기별 송수신을 분리한다.*/
@@ -48,24 +50,29 @@ public final class BattleLink implements AutoCloseable {
     }
 
     void sendStateIfOpen(GameSnapshot state) {
-        long sequence;
-        synchronized (this) {
-            if (closed) {
-                return;
-            }
-            sequence = ++sentSequence;
-        }
-        sender.accept(BattleMessage.state(sequence, BattleStateData.fromSnapshot(state)));
+        sendIfOpen(sequence -> BattleMessage.state(sequence, BattleStateData.fromSnapshot(state)));
     }
 
     public void sendAttackRows(List<int[]> rows) {
         if (!rows.isEmpty()) {
-            sender.accept(BattleMessage.attack(nextSequence(), rows));
+            sendIfOpen(sequence -> BattleMessage.attack(sequence, rows));
         }
     }
 
-    public void sendStop() {
-        sender.accept(new BattleMessage(BattleMessage.Type.STOP, nextSequence(), null, 0, List.of()));
+    void sendForfeit() {
+        sendIfOpen(sequence -> BattleMessage.control(BattleMessage.Type.FORFEIT, sequence));
+    }
+
+    boolean sendResult(MatchResult result) {
+        return sendIfOpen(sequence -> BattleMessage.result(sequence, result));
+    }
+
+    void acknowledgeResult() {
+        sendIfOpen(sequence -> BattleMessage.control(BattleMessage.Type.RESULT_ACK, sequence));
+    }
+
+    void sendTimeLeft(int seconds) {
+        sendIfOpen(sequence -> BattleMessage.timeLeft(sequence, seconds));
     }
 
     void receive(BattleMessage message) throws IOException {
@@ -96,6 +103,20 @@ public final class BattleLink implements AutoCloseable {
     private synchronized long nextSequence() {
         requireOpen();
         return ++sentSequence;
+    }
+
+    private boolean sendIfOpen(LongFunction<BattleMessage> createMessage) {
+        long sequence;
+        synchronized (this) {
+            if (closed) {
+                return false;
+            }
+            sequence = ++sentSequence;
+        }
+        sender.accept(createMessage.apply(sequence));
+        synchronized (this) {
+            return !closed;
+        }
     }
 
     private void scheduleDrain() {

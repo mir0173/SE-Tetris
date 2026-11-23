@@ -16,17 +16,23 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import javafx.application.Platform;
 import javafx.event.Event;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.Spinner;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
+import tetris.battle.BattleMode;
+import tetris.battle.BattleSettings;
 
 // AI-assisted code start
 @ResourceLock(Resources.SYSTEM_PROPERTIES)
@@ -76,28 +82,9 @@ class P2pBattleScreenIntegrationTest {
 
     @Test
     void showBothBoardsTransmitInputAndReturnWithoutReconnecting() throws Exception {
-        int port;
-        try (ServerSocket reservation = new ServerSocket(0)) { port = reservation.getLocalPort(); }
-        onFx(() -> {
-            click(hostStage, "P2P 대전");
-            click(clientStage, "P2P 대전");
-            field(hostStage, "p2p-port").setText(String.valueOf(port));
-            field(clientStage, "p2p-port").setText(String.valueOf(port));
-            button(hostStage, "p2p-host").fire();
-            return null;
-        });
-        await(() -> label(hostStage, "p2p-status").getText().contains("서버 대기"));
-        onFx(() -> { button(clientStage, "p2p-connect").fire(); return null; });
-        await(() -> !button(hostStage, "p2p-ready").isDisabled()
-                && !button(clientStage, "p2p-ready").isDisabled());
+        connectPeers();
         assertEquals("127.0.0.1", Files.readString(data.resolve(".se-tetris/last-peer-ip.txt")).strip());
-        onFx(() -> {
-            button(hostStage, "p2p-ready").fire();
-            button(clientStage, "p2p-ready").fire();
-            return null;
-        });
-        await(() -> hostStage.getScene().lookup("#p2p-local-panel") != null
-                && clientStage.getScene().lookup("#p2p-local-panel") != null);
+        startMatch();
         onFx(() -> {
             Parent local = (Parent) hostStage.getScene().lookup("#p2p-local-panel");
             assertFalse(((Label) local.lookup("#game-key-help")).getText().contains("일시정지"));
@@ -119,17 +106,15 @@ class P2pBattleScreenIntegrationTest {
         await(() -> label(hostStage, "p2p-battle-health").getText().matches(".*[0-9]+\\s*ms"));
 
         onFx(() -> { button(clientStage, "p2p-battle-back").fire(); return null; });
+        await(() -> result(hostStage).startsWith("승리 · 기권")
+                && result(clientStage).startsWith("패배 · 기권"));
+        System.out.println(onFx(() -> "[T20 CLIENT 기권] HOST " + result(hostStage) + " / CLIENT " + result(clientStage)));
+        onFx(() -> { button(clientStage, "p2p-battle-back").fire(); return null; });
         await(() -> hostStage.getScene().lookup("#p2p-ready") != null
                 && clientStage.getScene().lookup("#p2p-ready") != null);
         await(() -> !button(hostStage, "p2p-ready").isDisabled()
                 && !button(clientStage, "p2p-ready").isDisabled());
-        onFx(() -> {
-            button(hostStage, "p2p-ready").fire();
-            button(clientStage, "p2p-ready").fire();
-            return null;
-        });
-        await(() -> hostStage.getScene().lookup("#p2p-local-panel") != null
-                && clientStage.getScene().lookup("#p2p-local-panel") != null);
+        startMatch();
         onFx(() -> { client.stop(); clientStage.close(); return null; });
         await(() -> hostStage.getScene().lookup("#p2p-ready") != null
                 && !button(hostStage, "p2p-host").isDisabled());
@@ -145,6 +130,117 @@ class P2pBattleScreenIntegrationTest {
             return null;
         });
         System.out.println("[T21 화면 통합] 경기 중 왕복 지연 표시·단절 후 초기 상태 복귀·최근 IP 채우기 PASS");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void showComplementaryGameOverResultsAndRetainThemAfterDisconnect(boolean hostLoses) throws Exception {
+        connectPeers();
+        startMatch();
+        Stage loserStage = hostLoses ? hostStage : clientStage;
+        Stage winnerStage = hostLoses ? clientStage : hostStage;
+        long losingScore = onFx(() -> {
+            Node board = loserStage.getScene().lookup("#p2p-local-panel");
+            for (int drop = 0; drop < 35; drop++) {
+                Event.fireEvent(board, new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.SPACE,
+                        false, false, false, false));
+            }
+            return score(loserStage, "p2p-local-panel");
+        });
+        await(() -> result(loserStage).startsWith("패배 · 게임오버")
+                && result(winnerStage).startsWith("승리 · 게임오버"));
+        String loss = onFx(() -> result(loserStage));
+        String win = onFx(() -> result(winnerStage));
+        long winningScore = scorePair(win)[0];
+        assertArrayEquals(new long[]{losingScore, winningScore}, scorePair(loss));
+        assertArrayEquals(new long[]{winningScore, losingScore}, scorePair(win));
+        onFx(() -> {
+            if (hostLoses) { host.stop(); } else { client.stop(); }
+            loserStage.close();
+            return null;
+        });
+        await(() -> label(winnerStage, "p2p-battle-status").getText().contains("연결이"));
+        assertEquals(win, onFx(() -> result(winnerStage)));
+        onFx(() -> { button(winnerStage, "p2p-battle-back").fire(); return null; });
+        await(() -> winnerStage.getScene().lookup("#p2p-host") != null
+                && !button(winnerStage, "p2p-host").isDisabled());
+        System.out.printf("[T20 게임오버] %s: %s / 상대: %s / 단절 후 결과 유지 PASS%n",
+                hostLoses ? "HOST" : "CLIENT", loss, win);
+    }
+
+    @Test
+    void showHostForfeitResultOnBothScreensBeforeReturning() throws Exception {
+        connectPeers();
+        startMatch();
+        onFx(() -> { button(hostStage, "p2p-battle-back").fire(); return null; });
+        await(() -> result(hostStage).startsWith("패배 · 기권")
+                && result(clientStage).startsWith("승리 · 기권"));
+        onFx(() -> { button(hostStage, "p2p-battle-back").fire(); return null; });
+        await(() -> hostStage.getScene().lookup("#p2p-ready") != null
+                && clientStage.getScene().lookup("#p2p-ready") != null);
+        System.out.println("[T20 HOST 기권] 양쪽 결과 표시 후 호스트 요청으로 대기실 복귀 PASS");
+    }
+
+    @Test
+    void showSameCountdownAndHostScoreDecisionOnBothScreens() throws Exception {
+        connectPeers();
+        onFx(() -> {
+            ComboBox<?> mode = (ComboBox<?>) hostStage.getScene().lookup("#p2p-mode");
+            mode.getSelectionModel().select(mode.getItems().indexOf(BattleMode.TIME_LIMIT));
+            Spinner<?> duration = (Spinner<?>) hostStage.getScene().lookup("#p2p-duration");
+            duration.decrement(BattleSettings.DEFAULT_TIME_LIMIT_SECONDS - BattleSettings.MIN_TIME_LIMIT_SECONDS);
+            return null;
+        });
+        await(() -> BattleMode.TIME_LIMIT.equals(((ComboBox<?>) clientStage.getScene().lookup("#p2p-mode")).getValue())
+                && Integer.valueOf(BattleSettings.MIN_TIME_LIMIT_SECONDS).equals(
+                        ((Spinner<?>) clientStage.getScene().lookup("#p2p-duration")).getValue()));
+        startMatch();
+        await(() -> !timeLeft(hostStage).isEmpty() && timeLeft(hostStage).equals(timeLeft(clientStage)));
+        String startingTime = onFx(() -> timeLeft(hostStage));
+        onFx(() -> {
+            Node board = hostStage.getScene().lookup("#p2p-local-panel");
+            Event.fireEvent(board, new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.SPACE,
+                    false, false, false, false));
+            return null;
+        });
+        await(() -> result(hostStage).contains("시간 종료") && result(clientStage).contains("시간 종료"),
+                BattleSettings.MIN_TIME_LIMIT_SECONDS + 5);
+        onFx(() -> {
+            assertEquals("남은 시간 0:00", timeLeft(hostStage));
+            assertEquals(timeLeft(hostStage), timeLeft(clientStage));
+            assertTrue(result(hostStage).startsWith("승리 · 시간 종료"));
+            assertTrue(result(clientStage).startsWith("패배 · 시간 종료"));
+            System.out.printf("[T20 화면 제한시간] %s → %s / HOST %s / CLIENT %s PASS%n",
+                    startingTime, timeLeft(hostStage), result(hostStage), result(clientStage));
+            return null;
+        });
+    }
+
+    private void connectPeers() throws Exception {
+        int port;
+        try (ServerSocket reservation = new ServerSocket(0)) { port = reservation.getLocalPort(); }
+        onFx(() -> {
+            click(hostStage, "P2P 대전");
+            click(clientStage, "P2P 대전");
+            field(hostStage, "p2p-port").setText(String.valueOf(port));
+            field(clientStage, "p2p-port").setText(String.valueOf(port));
+            button(hostStage, "p2p-host").fire();
+            return null;
+        });
+        await(() -> label(hostStage, "p2p-status").getText().contains("서버 대기"));
+        onFx(() -> { button(clientStage, "p2p-connect").fire(); return null; });
+        await(() -> !button(hostStage, "p2p-ready").isDisabled()
+                && !button(clientStage, "p2p-ready").isDisabled());
+    }
+
+    private void startMatch() throws Exception {
+        onFx(() -> {
+            button(hostStage, "p2p-ready").fire();
+            button(clientStage, "p2p-ready").fire();
+            return null;
+        });
+        await(() -> hostStage.getScene().lookup("#p2p-local-panel") != null
+                && clientStage.getScene().lookup("#p2p-local-panel") != null);
     }
 
     private void captureOptionalPreview() throws Exception {
@@ -172,18 +268,33 @@ class P2pBattleScreenIntegrationTest {
     private static TextField field(Stage stage, String id) { return (TextField) stage.getScene().lookup("#" + id); }
     private static Button button(Stage stage, String id) { return (Button) stage.getScene().lookup("#" + id); }
     private static Label label(Stage stage, String id) { return (Label) stage.getScene().lookup("#" + id); }
+    private static String result(Stage stage) { return label(stage, "p2p-battle-result").getText(); }
+    private static String timeLeft(Stage stage) { return label(stage, "p2p-battle-time-left").getText(); }
+
+    private static long[] scorePair(String result) {
+        int local = result.indexOf("(나 ") + "(나 ".length();
+        int remote = result.indexOf(" : 상대 ");
+        return new long[]{
+            Long.parseLong(result.substring(local, remote)),
+            Long.parseLong(result.substring(remote + " : 상대 ".length(), result.length() - 1))
+        };
+    }
+
     private static void click(Stage stage, String text) {
         stage.getScene().getRoot().applyCss();
         stage.getScene().getRoot().lookupAll(".button").stream().filter(Button.class::isInstance)
                 .map(Button.class::cast).filter(button -> button.getText().equals(text)).findFirst().orElseThrow().fire();
     }
     private static void await(Callable<Boolean> condition) throws Exception {
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        await(condition, 5);
+    }
+    private static void await(Callable<Boolean> condition, int seconds) throws Exception {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(seconds);
         while (System.nanoTime() < deadline) {
             if (onFx(condition)) { return; }
             Thread.sleep(10);
         }
-        fail("양쪽 화면 상태가 5초 내에 갱신되지 않았습니다.");
+        fail("양쪽 화면 상태가 " + seconds + "초 내에 갱신되지 않았습니다.");
     }
     private static <T> T onFx(Callable<T> action) throws Exception {
         FutureTask<T> task = new FutureTask<>(action);
