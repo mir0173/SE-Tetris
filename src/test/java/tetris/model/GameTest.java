@@ -438,6 +438,31 @@ class GameTest {
         assertEquals(GameStatus.PAUSED, game.createSnapshot().getStatus());
     }
 
+    @Test // 게임 상태 게터가 READY, PLAYING, PAUSED를 따르는지 확인하는 테스트
+    void getStatusFollowsGameLifecycle() {
+        // given
+        Game game = newGame(PieceType.O);
+
+        // when / then
+        assertEquals(GameStatus.READY, game.getStatus());
+        game.start();
+        assertEquals(GameStatus.PLAYING, game.getStatus());
+        game.pause();
+        assertEquals(GameStatus.PAUSED, game.getStatus());
+    }
+
+    @Test // 하드 드롭 점수가 스냅샷 점수 게터와 일치하는지 확인하는 테스트
+    void getScoreMatchesSnapshotAfterHardDrop() {
+        // given
+        Game game = startedGame(PieceType.O);
+
+        // when
+        game.handleCommand(GameCommand.HARD_DROP);
+
+        // then
+        assertEquals(game.createSnapshot().getScore(), game.getScore());
+    }
+
     private Game newGame(PieceType... types) {
         return new Game(new Board(BOARD_WIDTH, BOARD_HEIGHT), sequenceGenerator(types), Difficulty.NORMAL, GameMode.NORMAL);
     }

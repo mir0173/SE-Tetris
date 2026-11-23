@@ -62,6 +62,7 @@ public final class RemotePlayer implements Player {
 
     @Override public void receiveGarbageRows(List<int[]> rows) { link.sendAttackRows(rows); }
     @Override public boolean isGameOver() { return snapshot.getStatus() == GameStatus.GAMEOVER; }
+    @Override public GameStatus getStatus() { return snapshot.getStatus(); }
     @Override public long getScore() { return snapshot.getScore(); }
     @Override public void pause() {} // P2P에서는 로컬 일시정지를 허용하지 않음 
     @Override public void resume() {} // P2P에서는 로컬 일시정지를 허용하지 않음 

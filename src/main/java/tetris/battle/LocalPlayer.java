@@ -2,6 +2,7 @@ package tetris.battle;
 
 import tetris.model.Game;
 import tetris.model.GameSnapshot;
+import tetris.model.GameStatus;
 import tetris.controller.GameController;
 
 import java.util.List;
@@ -53,10 +54,17 @@ public class LocalPlayer implements Player {
         return game.isGameOver();
     }
 
+    
     /** 현재 점수를 반환한다. (제한시간 모드에서 승패 정할 때 사용) */
     @Override
     public long getScore() {
-        return game.createSnapshot().getScore();
+        return game.getScore();
+    }
+
+    /** 현재 상태를 반환한다. */
+    @Override
+    public GameStatus getStatus() {
+        return game.getStatus();
     }
 
     /** 게임 일시정지 */

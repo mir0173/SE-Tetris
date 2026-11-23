@@ -1,6 +1,7 @@
 package tetris.battle;
 
 import tetris.model.GameSnapshot;
+import tetris.model.GameStatus;
 import java.util.List;
 
 /**
@@ -9,7 +10,10 @@ import java.util.List;
  * 공격 줄 형식 : 위에서 아래 순서이고, 각 줄의 길이는 보드폭, 채워진 칸은 Board.GARBAGE_CELL
  */
 public interface Player {
-    /** 지금 화면에 그릴 snapshot을 생성한다 */
+    /** 화면에 그릴 상태 사진을 만든다. 
+     * 화면 표시용이며 심판은 판정에 사용하지 않는다. 
+     * 원격 플레이어는 받아 둔 최신 화면 정보를 돌려준다. 
+     */
     GameSnapshot createSnapshot();
 
     /**
@@ -30,6 +34,13 @@ public interface Player {
 
     /** 현재 점수를 반환한다. (제한시간 모드에서 승패 정할 때 사용) */
     long getScore();
+
+    /**
+     * 현재 게임 상태를 반환한다.
+     * 심판이 일시정지와 재개를 맞출 때 사용한다.
+     * 원격 플레이어는 상대가 보내준 최신 상태를 돌려준다.
+     */
+    GameStatus getStatus();
 
     /** 게임 일시정지 */
     void pause();

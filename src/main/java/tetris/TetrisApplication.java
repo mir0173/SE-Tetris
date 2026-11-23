@@ -18,6 +18,8 @@ import java.util.logging.Logger;
 
 import tetris.battle.BattleSettings;
 import tetris.battle.BattleMode;
+import tetris.battle.MatchManager;
+import tetris.battle.MatchResult;
 import tetris.controller.GameController;
 import tetris.model.Board;
 import tetris.model.Game;
@@ -63,6 +65,7 @@ public class TetrisApplication extends Application {
     private GameSettings currentSettings = GameSettings.defaults();
     private P2pLobbyController p2pLobbyController;
     private P2pBattleController p2pBattleController;
+    private MatchManager p2pMatchManager;
     private JavaFxP2pGameView p2pBattleView;
     private RecentPeerAddressRepository recentPeerAddresses;
 
@@ -162,9 +165,12 @@ public class TetrisApplication extends Application {
             p2pLobbyController.close();
             p2pLobbyController = null;
         }
+
     }
 
-    /** 기존 게임을 사용해 상태 송수신을 확인한다. 공통 공격·판정은 T18에서 연결한다. */
+    /** 기존 게임을 사용해 상태 송수신을 확인한다. 공통 공격·판정은 T18에서 연결한다.
+     * T-18 : 심판을 연결해 공격 전달과 승패 판정을 처리한다.
+    */
     private void startP2pBattle(Stage stage, MatchStart start) {
         closeP2pBattle();
         Runnable back = () -> {
@@ -182,8 +188,12 @@ public class TetrisApplication extends Application {
                 new JavaFxGameTimer(Game.getInitialDropInterval()), new JavaFxDelayScheduler(),
                 new JavaFxGameTimer(P2pBattleController.STATE_INTERVAL_MILLIS),
                 p2pLobbyController.getBattleLink(start), view::renderRemote, view::setStatus, back);
+        p2pMatchManager = new MatchManager(p2pBattleController.getLocalPlayer(),
+                p2pBattleController.getRemotePlayer(),
+                result -> showP2pResult(view, result));
         stage.setTitle("P2P 대전, 상태 동기화 확인");
         stage.setScene(view.getScene());
+        p2pMatchManager.start();
         p2pBattleController.start();
     }
 
@@ -193,6 +203,7 @@ public class TetrisApplication extends Application {
             p2pBattleController.close();
             p2pBattleController = null;
         }
+        p2pMatchManager = null;
     }
 
     private void showStartMenu(Stage stage) {
@@ -388,4 +399,17 @@ public class TetrisApplication extends Application {
         Game game = new Game(board, generator, difficulty, mode);
         return game;
     }
+
+    // P2P 대전 결과를 화면에 표시한다. P2P에서 1P = 자기 자신, 2P = 상대
+    private void showP2pResult(JavaFxP2pGameView view, MatchResult result) {
+        String status;
+        String outcome = switch (result.winner()) {
+            case PLAYER_ONE -> "승리";
+            case PLAYER_TWO -> "패배";
+            case DRAW -> "무승부";
+        };
+        status = outcome + " (나 " + result.firstScore() + " : 상대 " + result.secondScore() + ")";
+        view.setStatus(status);
+    }
+
 }
