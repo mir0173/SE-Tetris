@@ -6,11 +6,11 @@ import tetris.battle.BattleSettings;
 
 /** 대기실 전송 메시지 */
 record LobbyMessage(Type type, int version, PeerRole role, long revision,
-        BattleSettings settings, boolean ready, long matchId, BattleMessage battle) {
-    static final int PROTOCOL_VERSION = 2;
+        BattleSettings settings, boolean ready, long matchId, BattleMessage battle, long probeId) {
+    static final int PROTOCOL_VERSION = 3;
 
     enum Type {
-        HELLO, CONFIG, READY, START, START_ACK, START_COMMIT, START_REJECT, BATTLE, RETURN_LOBBY
+        HELLO, CONFIG, READY, START, START_ACK, START_COMMIT, START_REJECT, BATTLE, RETURN_LOBBY, PING, PONG
     }
 
     LobbyMessage {
@@ -44,26 +44,35 @@ record LobbyMessage(Type type, int version, PeerRole role, long revision,
                     Objects.requireNonNull(battle, "battle");
                 }
             }
+            case PING, PONG -> {
+                if (probeId <= 0) {
+                    throw new IllegalArgumentException("연결 확인 번호가 필요합니다.");
+                }
+            }
         }
     }
 
     static LobbyMessage hello(PeerRole role) {
-        return new LobbyMessage(Type.HELLO, PROTOCOL_VERSION, role, 0, null, false, 0, null);
+        return new LobbyMessage(Type.HELLO, PROTOCOL_VERSION, role, 0, null, false, 0, null, 0);
     }
 
     static LobbyMessage config(long revision, BattleSettings settings) {
-        return new LobbyMessage(Type.CONFIG, PROTOCOL_VERSION, null, revision, settings, false, 0, null);
+        return new LobbyMessage(Type.CONFIG, PROTOCOL_VERSION, null, revision, settings, false, 0, null, 0);
     }
 
     static LobbyMessage ready(long revision, boolean ready) {
-        return new LobbyMessage(Type.READY, PROTOCOL_VERSION, null, revision, null, ready, 0, null);
+        return new LobbyMessage(Type.READY, PROTOCOL_VERSION, null, revision, null, ready, 0, null, 0);
     }
 
     static LobbyMessage start(Type type, long revision, long matchId) {
-        return new LobbyMessage(type, PROTOCOL_VERSION, null, revision, null, false, matchId, null);
+        return new LobbyMessage(type, PROTOCOL_VERSION, null, revision, null, false, matchId, null, 0);
     }
 
     static LobbyMessage battle(long revision, long matchId, BattleMessage message) {
-        return new LobbyMessage(Type.BATTLE, PROTOCOL_VERSION, null, revision, null, false, matchId, message);
+        return new LobbyMessage(Type.BATTLE, PROTOCOL_VERSION, null, revision, null, false, matchId, message, 0);
+    }
+
+    static LobbyMessage probe(Type type, long probeId) {
+        return new LobbyMessage(type, PROTOCOL_VERSION, null, 0, null, false, 0, null, probeId);
     }
 }
