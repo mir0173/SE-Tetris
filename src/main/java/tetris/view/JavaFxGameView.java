@@ -100,12 +100,10 @@ public class JavaFxGameView implements GameView {
     private final Canvas holdCanvas;
     private final Canvas garbageCanvas;
 
-    
-
     private final Label scoreLabel = new Label("점수 : 0");
     private final Label intervalLabel = new Label("낙하 간격 : 1000ms");
     private final Label pauseLabel = new Label();
-     private final Label garbageCountLabel = new Label("넘어온 줄: 0");
+    private final Label garbageCountLabel = new Label("넘어온 줄: 0");
 
     private Consumer<GameCommand> commandHandler;
     private boolean pauseKeyHeld;
