@@ -47,7 +47,7 @@ public final class RemotePlayer implements Player {
                 attacks.addAll(message.attackRows());
                 onUpdate.run();
             }
-            case STOP -> {} // 실제 정지 처리는 경기 컨트롤러가 담당
+            default -> { } // 경기 수명 메시지는 대전 컨트롤러에서 처리한다.
         }
     }
 
@@ -62,9 +62,10 @@ public final class RemotePlayer implements Player {
 
     @Override public void receiveGarbageRows(List<int[]> rows) { link.sendAttackRows(rows); }
     @Override public boolean isGameOver() { return snapshot.getStatus() == GameStatus.GAMEOVER; }
+    @Override public GameStatus getStatus() { return snapshot.getStatus(); }
     @Override public long getScore() { return snapshot.getScore(); }
     @Override public void pause() {} // P2P에서는 로컬 일시정지를 허용하지 않음 
     @Override public void resume() {} // P2P에서는 로컬 일시정지를 허용하지 않음 
-    @Override public void stop() { link.sendStop(); }
+    @Override public void stop() { } // 상대 앱은 확정된 RESULT를 받은 뒤 직접 멈춘다.
     @Override public void setOnUpdate(Runnable onUpdate) { this.onUpdate = Objects.requireNonNull(onUpdate); }
 }

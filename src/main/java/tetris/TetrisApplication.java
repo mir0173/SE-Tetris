@@ -118,16 +118,18 @@ public class TetrisApplication extends Application {
         P2pLobbyController controller = new P2pLobbyController(
                 Platform::runLater, state -> {
                     view.render(state);
-                    if (p2pBattleController != null && state.phase() != LobbyState.Phase.STARTED
+                    if (p2pBattleController != null && state.phase() == LobbyState.Phase.IDLE
+                            && p2pBattleController.hasResult()) {
+                        p2pBattleController.peerDisconnected();
+                        p2pBattleView.setStatus(state.message());
+                        p2pBattleView.renderConnectionHealth(null);
+                    } else if (p2pBattleController != null && state.phase() != LobbyState.Phase.STARTED
                             && state.phase() != LobbyState.Phase.STARTING) {
-                        closeP2pBattle();
-                        stage.setScene(view.getScene());
-                        stage.setTitle("P2P 대전");
-                        stage.sizeToScene();
+                        returnFromP2pBattle(stage, view);
                     } else if (p2pBattleView != null) {
                         p2pBattleView.renderConnectionHealth(state.health());
                     }
-                }, start -> startP2pBattle(stage, start),
+                }, start -> startP2pBattle(stage, view, start),
                 new BattleSettings(BattleMode.NORMAL, currentSettings.getDifficulty(), 0), this::rememberPeerAddress);
         p2pLobbyController = controller;
         view.bind(controller, () -> {
@@ -164,27 +166,35 @@ public class TetrisApplication extends Application {
         }
     }
 
-    /** 기존 게임을 사용해 상태 송수신을 확인한다. 공통 공격·판정은 T18에서 연결한다. */
-    private void startP2pBattle(Stage stage, MatchStart start) {
+    private void startP2pBattle(Stage stage, JavaFxP2pLobbyView lobbyView, MatchStart start) {
         closeP2pBattle();
-        Runnable back = () -> {
-            if (p2pBattleController != null) {
-                p2pBattleController.close();
-            }
-            p2pLobbyController.requestReturnToLobby();
-        };
-        JavaFxP2pGameView view = new JavaFxP2pGameView(currentSettings, back);
+        JavaFxP2pGameView view = new JavaFxP2pGameView(currentSettings,
+                () -> p2pBattleController.requestReturnToLobby());
         p2pBattleView = view;
         view.renderConnectionHealth(p2pLobbyController.getState().health());
         GameMode mode = start.settings().mode() == BattleMode.ITEM ? GameMode.ITEM : GameMode.NORMAL;
         Game game = createGame(mode, start.settings().difficulty());
         p2pBattleController = new P2pBattleController(game, view.getLocalView(),
                 new JavaFxGameTimer(Game.getInitialDropInterval()), new JavaFxDelayScheduler(),
-                new JavaFxGameTimer(P2pBattleController.STATE_INTERVAL_MILLIS),
-                p2pLobbyController.getBattleLink(start), view::renderRemote, view::setStatus, back);
-        stage.setTitle("P2P 대전, 상태 동기화 확인");
+                new JavaFxGameTimer(P2pBattleController.STATE_INTERVAL_MILLIS), new JavaFxGameTimer(1_000),
+                p2pLobbyController.getBattleLink(start), start, view::renderRemote, view::setStatus,
+                view::renderResult, view::renderRemainingSeconds, () -> {
+                    if (p2pLobbyController.getState().phase() == LobbyState.Phase.STARTED) {
+                        p2pLobbyController.requestReturnToLobby();
+                    } else {
+                        returnFromP2pBattle(stage, lobbyView);
+                    }
+                });
+        stage.setTitle("P2P 대전");
         stage.setScene(view.getScene());
         p2pBattleController.start();
+    }
+
+    private void returnFromP2pBattle(Stage stage, JavaFxP2pLobbyView view) {
+        closeP2pBattle();
+        stage.setScene(view.getScene());
+        stage.setTitle("P2P 대전");
+        stage.sizeToScene();
     }
 
     private void closeP2pBattle() {
@@ -388,4 +398,5 @@ public class TetrisApplication extends Application {
         Game game = new Game(board, generator, difficulty, mode);
         return game;
     }
+
 }

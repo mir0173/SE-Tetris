@@ -105,6 +105,26 @@ class GameLineClearControllerTest {
     }
 
     @Test
+    void rescheduleLineClearAfterResumeWhenFinishRanWhilePaused() {
+        // given
+        Fixture fixture = fixtureWithSmallBoard();
+        dropTwoPiecesToFillTwoLines(fixture);
+        assertEquals(1, fixture.scheduler.tasks.size());
+
+        // when
+        fixture.view.commandHandler.accept(GameCommand.PAUSE);
+        fixture.scheduler.runNext();
+        int taskCountWhilePaused = fixture.scheduler.tasks.size();
+        fixture.view.commandHandler.accept(GameCommand.PAUSE);
+
+        // then
+        assertEquals(taskCountWhilePaused + 1, fixture.scheduler.tasks.size());
+        fixture.scheduler.runNext();
+        assertEquals(GameStatus.PLAYING, fixture.game.createSnapshot().getStatus());
+        assertEquals(2, fixture.game.getLastClearedLines());
+    }
+
+    @Test
     void restartGravityTimerAfterFinishing() {
         // given
         Fixture fixture = fixtureWithSmallBoard();

@@ -2,8 +2,11 @@ package tetris.network;
 
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 import tetris.battle.LocalPlayer;
+import tetris.battle.MatchManager;
+import tetris.battle.MatchResult;
 import tetris.battle.Player;
 import tetris.controller.DelayScheduler;
 import tetris.controller.GameController;
@@ -13,7 +16,7 @@ import tetris.model.GameCommand;
 import tetris.model.GameSnapshot;
 import tetris.view.GameView;
 
-/** T20 통신 기반 */
+/** P2P 경기의 입력, 상태 교환 및 결과 처리를 연결한다. */
 public final class P2pBattleController implements AutoCloseable {
     public static final long STATE_INTERVAL_MILLIS = 50;
 
@@ -22,33 +25,46 @@ public final class P2pBattleController implements AutoCloseable {
     private final GameTimer stateTimer;
     private final Player localPlayer;
     private final RemotePlayer remotePlayer;
+    private final MatchManager matchManager;
+    private final MatchStart matchStart;
+    private final GameTimer timeLimitTimer;
     private final Consumer<String> onStatus;
-    private Runnable matchObserver = () -> { };
+    private final Consumer<MatchResult> onResult;
+    private final IntConsumer onTimeLeft;
+    private final Runnable onReturnToLobby;
     private GameSnapshot latestState;
     private GameSnapshot publishedState;
+    private MatchResult result;
     private boolean started;
     private boolean closed;
+    private boolean forfeitRequested;
+    private boolean peerReceivedResult;
+    private boolean returnRequested;
+    private boolean disconnected;
 
     public P2pBattleController(Game game, GameView view, GameTimer dropTimer, DelayScheduler delay,
-            GameTimer stateTimer, BattleLink link, Consumer<GameSnapshot> onRemoteSnapshot,
-            Consumer<String> onStatus, Runnable onReturnToLobby) {
+            GameTimer stateTimer, GameTimer timeLimitTimer, BattleLink link, MatchStart matchStart,
+            Consumer<GameSnapshot> onRemoteSnapshot, Consumer<String> onStatus,
+            Consumer<MatchResult> onResult, IntConsumer onTimeLeft, Runnable onReturnToLobby) {
         this.link = Objects.requireNonNull(link, "link");
         this.stateTimer = stateTimer;
+        this.timeLimitTimer = timeLimitTimer;
+        this.matchStart = matchStart;
         this.onStatus = onStatus;
-        remotePlayer = new RemotePlayer(link, game.createSnapshot().getCells()[0].length,
-                game.createSnapshot().getCells().length, onRemoteSnapshot);
+        this.onResult = onResult;
+        this.onTimeLeft = onTimeLeft;
+        this.onReturnToLobby = onReturnToLobby;
+        int[][] cells = game.createSnapshot().getCells();
+        remotePlayer = new RemotePlayer(link, cells[0].length, cells.length, onRemoteSnapshot);
 
-        // 기존 컨트롤러와 화면 사이에서 상태를 받아 별도의 모델 복사를 줄인다.
+        // 렌더링에 쓰는 스냅샷을 경기 상태 전송에도 사용한다.
         GameView bridge = new GameView() {
             @Override
             public void setCommandHandler(Consumer<GameCommand> handler) {
                 view.setCommandHandler(command -> {
-                    if (closed || command == GameCommand.PAUSE) {
-                        return;
-                    }
                     if (command == GameCommand.QUIT_GAME) {
-                        onReturnToLobby.run();
-                    } else {
+                        requestReturnToLobby();
+                    } else if (!closed && result == null && !forfeitRequested && command != GameCommand.PAUSE) {
                         handler.accept(command);
                     }
                 });
@@ -57,19 +73,10 @@ public final class P2pBattleController implements AutoCloseable {
             @Override public void show() { view.show(); }
             @Override public void close() { view.close(); }
         };
-        controller = new GameController(game, bridge, dropTimer, delay, () -> { }, score -> { });
-        localPlayer = new LocalPlayer(game, controller) {
-            @Override
-            public void setOnUpdate(Runnable onUpdate) {
-                // 심판의 관찰자 등록이 상태 송신 연결을 덮어쓰지 않게 분리한다.
-                matchObserver = Objects.requireNonNull(onUpdate, "onUpdate");
-            }
-        };
-        controller.setOnUpdate(() -> {
-            if (!closed) {
-                matchObserver.run();
-            }
-        });
+        controller = new GameController(game, bridge, dropTimer, delay, () -> { },
+                score -> publishPendingState());
+        localPlayer = new LocalPlayer(game, controller);
+        matchManager = new MatchManager(localPlayer, remotePlayer, this::finishAsHost, isHost());
     }
 
     public void start() {
@@ -77,15 +84,57 @@ public final class P2pBattleController implements AutoCloseable {
             return;
         }
         started = true;
-        link.setReceiver(this::receive);
+        matchManager.start();
         controller.start();
+        link.setReceiver(this::receive);
         publishPendingState();
-        stateTimer.start(this::publishPendingState);
+        if (result == null) {
+            stateTimer.start(this::publishPendingState);
+        }
+        if (isHost() && matchStart.settings().timeLimitSeconds() > 0) {
+            matchManager.startTimeLimit(timeLimitTimer, matchStart.settings().timeLimitSeconds(), seconds -> {
+                onTimeLeft.accept(seconds);
+                link.sendTimeLeft(seconds);
+            });
+        }
     }
 
-    /**현재 미완성 부분은 자동 연결하지 않는다. */
-    public Player getLocalPlayer() { return localPlayer; }
-    public RemotePlayer getRemotePlayer() { return remotePlayer; }
+    public boolean hasResult() {
+        return result != null;
+    }
+
+    public void peerDisconnected() {
+        disconnected = true;
+    }
+
+    /** 경기 중에는 기권을 요청하고, 결과 화면에서는 대기실 복귀를 요청한다. */
+    public void requestReturnToLobby() {
+        if (closed || !started) {
+            return;
+        }
+        if (disconnected) {
+            onReturnToLobby.run();
+            return;
+        }
+        if (returnRequested) {
+            return;
+        }
+        if (result != null) {
+            returnRequested = true;
+            if (!isHost() || peerReceivedResult) {
+                onReturnToLobby.run();
+            }
+        } else if (isHost()) {
+            matchManager.forfeit(localPlayer);
+        } else if (!forfeitRequested) {
+            forfeitRequested = true;
+            publishPendingState();
+            stateTimer.stop();
+            localPlayer.stop();
+            onStatus.accept("기권을 요청했습니다. 경기 결과를 기다립니다.");
+            link.sendForfeit();
+        }
+    }
 
     @Override
     public void close() {
@@ -94,12 +143,11 @@ public final class P2pBattleController implements AutoCloseable {
         }
         closed = true;
         stateTimer.stop();
-        matchObserver = () -> { };
-        localPlayer.stop();
+        matchManager.cancel();
     }
 
     private void publishPendingState() {
-        if (!closed && latestState != null && latestState != publishedState) {
+        if (!closed && result == null && latestState != null && latestState != publishedState) {
             link.sendStateIfOpen(latestState);
             publishedState = latestState;
         }
@@ -109,14 +157,59 @@ public final class P2pBattleController implements AutoCloseable {
         if (closed) {
             return;
         }
-        remotePlayer.accept(message);
-        if (message.type() == BattleMessage.Type.ATTACK) {
-            onStatus.accept("상대 공격 데이터 " + message.rowMasks().size() + "줄 수신");
-        } else if (message.type() == BattleMessage.Type.STOP) {
-            localPlayer.stop();
-            publishPendingState();
-            stateTimer.stop();
-            onStatus.accept("상대의 경기 중지 요청을 받았습니다.");
+        if (result != null) {
+            if (isHost() && message.type() == BattleMessage.Type.RESULT_ACK && !peerReceivedResult) {
+                peerReceivedResult = true;
+                if (returnRequested) {
+                    onReturnToLobby.run();
+                }
+            }
+            return;
+        }
+        switch (message.type()) {
+            case STATE, ATTACK -> remotePlayer.accept(message);
+            case FORFEIT -> {
+                requireRole(PeerRole.HOST);
+                matchManager.forfeit(remotePlayer);
+            }
+            case RESULT -> {
+                requireRole(PeerRole.CLIENT);
+                showResult(message.result().swapSides());
+                link.acknowledgeResult();
+            }
+            case TIME_LEFT -> {
+                requireRole(PeerRole.CLIENT);
+                if (matchStart.settings().timeLimitSeconds() == 0
+                        || message.remainingSeconds() > matchStart.settings().timeLimitSeconds()) {
+                    throw new IllegalArgumentException("경기 설정과 남은 시간이 일치하지 않습니다.");
+                }
+                onTimeLeft.accept(message.remainingSeconds());
+            }
+            case RESULT_ACK -> { } // 경기 결과를 보낸 뒤에만 확인을 받는다.
+        }
+    }
+
+    private void finishAsHost(MatchResult outcome) {
+        publishPendingState();
+        if (link.sendResult(outcome)) {
+            showResult(outcome);
+        }
+    }
+
+    private void showResult(MatchResult outcome) {
+        result = outcome;
+        stateTimer.stop();
+        matchManager.cancel();
+        onResult.accept(outcome);
+    }
+
+    private boolean isHost() {
+        return matchStart.role() == PeerRole.HOST;
+    }
+
+    private void requireRole(PeerRole role) {
+        if (matchStart.role() != role) {
+            throw new IllegalArgumentException("상대 역할에서 보낼 수 없는 경기 메시지입니다.");
         }
     }
 }

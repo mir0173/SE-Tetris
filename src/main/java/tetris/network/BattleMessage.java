@@ -4,11 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import tetris.battle.BattleSettings;
+import tetris.battle.MatchResult;
 import tetris.model.Board;
 
 public record BattleMessage(Type type, long sequence, BattleStateData state,
-        int width, List<Integer> rowMasks) {
-    public enum Type { STATE, ATTACK, STOP }
+        int width, List<Integer> rowMasks, MatchResult result, Integer remainingSeconds) {
+    public enum Type { STATE, ATTACK, FORFEIT, RESULT, RESULT_ACK, TIME_LEFT }
 
     public BattleMessage {
         Objects.requireNonNull(type, "type");
@@ -16,8 +18,18 @@ public record BattleMessage(Type type, long sequence, BattleStateData state,
             throw new IllegalArgumentException("메시지 순서 번호가 필요합니다.");
         }
         rowMasks = List.copyOf(rowMasks);
-        if (type == Type.STATE) {
-            Objects.requireNonNull(state, "state");
+        if ((type == Type.STATE) != (state != null)
+                || (type != Type.ATTACK && (width != 0 || !rowMasks.isEmpty()))
+                || (type == Type.RESULT) != (result != null)
+                || (type == Type.TIME_LEFT) != (remainingSeconds != null)) {
+            throw new IllegalArgumentException("경기 메시지의 유형과 내용이 일치하지 않습니다.");
+        }
+        if (result != null && (result.firstScore() < 0 || result.secondScore() < 0)) {
+            throw new IllegalArgumentException("경기 점수는 0 이상이어야 합니다.");
+        }
+        if (remainingSeconds != null
+                && (remainingSeconds < 0 || remainingSeconds > BattleSettings.MAX_TIME_LIMIT_SECONDS)) {
+            throw new IllegalArgumentException("남은 경기 시간이 범위를 벗어났습니다.");
         }
         if (type == Type.ATTACK) {
             if (width <= 0 || width > 30 || rowMasks.isEmpty() || rowMasks.size() > 40) {
@@ -33,7 +45,7 @@ public record BattleMessage(Type type, long sequence, BattleStateData state,
     }
 
     static BattleMessage state(long sequence, BattleStateData state) {
-        return new BattleMessage(Type.STATE, sequence, state, 0, List.of());
+        return new BattleMessage(Type.STATE, sequence, state, 0, List.of(), null, null);
     }
 
     static BattleMessage attack(long sequence, List<int[]> rows) {
@@ -56,7 +68,19 @@ public record BattleMessage(Type type, long sequence, BattleStateData state,
             }
             masks.add(mask);
         }
-        return new BattleMessage(Type.ATTACK, sequence, null, width, masks);
+        return new BattleMessage(Type.ATTACK, sequence, null, width, masks, null, null);
+    }
+
+    static BattleMessage control(Type type, long sequence) {
+        return new BattleMessage(type, sequence, null, 0, List.of(), null, null);
+    }
+
+    static BattleMessage result(long sequence, MatchResult result) {
+        return new BattleMessage(Type.RESULT, sequence, null, 0, List.of(), result, null);
+    }
+
+    static BattleMessage timeLeft(long sequence, int seconds) {
+        return new BattleMessage(Type.TIME_LEFT, sequence, null, 0, List.of(), null, seconds);
     }
 
     public List<int[]> attackRows() {

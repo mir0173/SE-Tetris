@@ -173,8 +173,8 @@ class GameLineClearTest {
         assertCellsEqual(before.getCells(), after.getCells());
     }
 
-    @Test
-    void ignorePauseWhileClearing() {
+    @Test // 줄 삭제 연출 중에도 일시정지할 수 있고, 재개하면 연출 상태로 돌아간다 (T18에서 규칙 변경)
+    void pauseWhileClearingAndResumeToClearing() {
         // given
         Game game = gameWithTwoFullLinesPending();
 
@@ -182,9 +182,29 @@ class GameLineClearTest {
         game.handleCommand(GameCommand.PAUSE);
 
         // then
-        assertFalse(game.isPaused());
+        assertTrue(game.isPaused());
+
+        // when
+        game.handleCommand(GameCommand.PAUSE);
+
+        // then
         assertEquals(GameStatus.CLEARING, game.createSnapshot().getStatus());
     }
+
+    // AI-assisted code start
+    @Test // 줄 삭제 대기 중 일시정지하면 고스트 조각이 숨겨지는지 확인하는 테스트
+    void hideGhostWhilePausedDuringLineClear() {
+        // given
+        Game game = gameWithTwoFullLinesPending();
+
+        // when
+        game.handleCommand(GameCommand.PAUSE);
+
+        // then
+        assertEquals(GameStatus.PAUSED, game.getStatus());
+        assertTrue(game.createSnapshot().getGhostPieceCells().isEmpty());
+    }
+    // AI-assisted code end
 
     @Test
     void ignoreQuitWhileClearing() {
@@ -317,6 +337,43 @@ class GameLineClearTest {
 
         // then
         assertTrue(game.isPaused());
+    }
+
+    @Test // 줄 삭제 연출 중 일시정지하면 삭제가 보류되고 재개 후 정상 삭제되는지 확인하는 테스트
+    void ignoreFinishLineClearWhilePaused() {
+        // given
+        Game game = gameWithTwoFullLinesPending();
+        game.handleCommand(GameCommand.PAUSE);
+
+        // when
+        game.finishLineClear();
+
+        // then
+        assertEquals(GameStatus.PAUSED, game.getStatus());
+        int[][] cells = game.createSnapshot().getCells();
+        assertEquals(SMALL_BOARD_WIDTH, countNonEmptyCells(cells, BOTTOM_ROW));
+        assertEquals(SMALL_BOARD_WIDTH, countNonEmptyCells(cells, BOTTOM_ROW - 1));
+        assertEquals(SMALL_BOARD_WIDTH * 2, countNonEmptyCells(cells));
+    }
+
+    @Test // 줄 삭제 연출 중 일시정지와 재개를 거쳐 삭제를 마무리하는지 확인하는 테스트
+    void finishLineClearAfterResume() {
+        // given
+        Game game = gameWithTwoFullLinesPending();
+        game.handleCommand(GameCommand.PAUSE);
+        game.finishLineClear();
+
+        // when
+        game.handleCommand(GameCommand.PAUSE);
+        game.finishLineClear();
+
+        // then
+        int[][] cells = game.createSnapshot().getCells();
+        assertEquals(0, countNonEmptyCells(cells, BOTTOM_ROW));
+        assertEquals(0, countNonEmptyCells(cells, BOTTOM_ROW - 1));
+        assertEquals(GameStatus.PLAYING, game.getStatus());
+        // 위의 모든 assert를 통과했을 시 아래 출력
+        System.out.println("[REQ3-일시정지] 줄 삭제 연출 중 일시정지 → 삭제 보류, 재개 후 정상 삭제 PASS");
     }
 
     @Test

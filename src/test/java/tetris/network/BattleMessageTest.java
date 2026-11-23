@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import tetris.battle.MatchResult;
 import tetris.model.Board;
 import tetris.model.GameSnapshot;
 import tetris.model.GameStatus;
@@ -72,14 +73,36 @@ class BattleMessageTest {
     @ValueSource(ints = {-1, 0, 31})
     void rejectInvalidAttackWidth(int width) {
         assertThrows(IllegalArgumentException.class,
-                () -> new BattleMessage(BattleMessage.Type.ATTACK, 1, null, width, List.of(1)));
+                () -> new BattleMessage(BattleMessage.Type.ATTACK, 1, null, width, List.of(1), null, null));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {-1, 1_024})
     void rejectBitsOutsideBoard(int mask) {
         assertThrows(IllegalArgumentException.class,
-                () -> new BattleMessage(BattleMessage.Type.ATTACK, 1, null, 10, List.of(mask)));
+                () -> new BattleMessage(BattleMessage.Type.ATTACK, 1, null, 10, List.of(mask), null, null));
+    }
+
+    @Test
+    void roundTripResultAndForfeitWithMatchId() throws Exception {
+        MatchResult outcome = new MatchResult(MatchResult.Winner.PLAYER_TWO,
+                MatchResult.EndReason.STOPPED, 32, 64);
+        for (BattleMessage payload : List.of(BattleMessage.result(1, outcome),
+                BattleMessage.control(BattleMessage.Type.FORFEIT, 2),
+                BattleMessage.control(BattleMessage.Type.RESULT_ACK, 3),
+                BattleMessage.timeLeft(4, 0))) {
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            LobbyMessage original = LobbyMessage.battle(1, 7, payload);
+            MessageCodec.write(new DataOutputStream(bytes), original);
+            assertEquals(original, MessageCodec.read(
+                    new DataInputStream(new ByteArrayInputStream(bytes.toByteArray()))));
+        }
+    }
+
+    @Test
+    void rejectMissingResultAndOutOfRangeTime() {
+        assertThrows(IllegalArgumentException.class, () -> BattleMessage.result(1, null));
+        assertThrows(IllegalArgumentException.class, () -> BattleMessage.timeLeft(1, -1));
     }
 
     @Test
