@@ -25,7 +25,7 @@ public class GameSettings {
     private final Map<GameCommand, String> keyBindings;
     private final boolean colorBlindMode;
     private final Difficulty difficulty;
-    private final BattleKeyBindings battleKeyBindings;
+    private final BattleKeyBindings battleKeyBindings; // AI-assisted (T17)
 
     // AI-assisted code start
     /** 대전 키는 기본값을 쓴다 (대전 키가 생기기 전부터 쓰던 생성자) */
@@ -82,7 +82,10 @@ public class GameSettings {
     public Difficulty getDifficulty() {
         return difficulty;
     }
+
+    // AI-assisted code start
     public BattleKeyBindings getBattleKeyBindings() {
         return battleKeyBindings;
     }
+    // AI-assisted code end
 }
