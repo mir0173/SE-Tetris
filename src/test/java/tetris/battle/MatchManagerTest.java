@@ -3,6 +3,7 @@ package tetris.battle;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import tetris.controller.GameTimer;
 import tetris.model.GameSnapshot;
 import tetris.model.GameStatus;
 
@@ -48,6 +50,222 @@ class MatchManagerTest {
     private static final long SCORE_AFTER_STOP = 900L;
     private static final long FIRST_FORFEIT_SCORE = 1234L;
     private static final long SECOND_FORFEIT_SCORE = 5678L;
+    private static final long TIME_LIMIT_INTERVAL_MILLIS = 1000L;
+    private static final long FIRST_TIME_LIMIT_SCORE = 20L;
+    private static final long SECOND_TIME_LIMIT_SCORE = 10L;
+    private static final int THREE_SECONDS = 3;
+    private static final int FIVE_SECONDS = 5;
+    private static final int TEN_SECONDS = 10;
+    private static final int TWO_SECONDS = 2;
+    private static final int ONE_SECOND = 1;
+    private static final int FOUR_SECONDS = 4;
+    private static final int ZERO_SECONDS = 0;
+
+    // AI-assisted code start
+    @Test // 제한시간 시작과 매 틱에서 남은 초를 알리는지 확인하는 테스트
+    void notifyRemainingSecondsOnStartAndEachTick() {
+        // given: 3초 제한시간과 남은 시간 기록자를 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        FakeTimer timer = new FakeTimer();
+        List<Integer> notifications = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, result -> {
+        });
+
+        // when: 제한시간을 시작한 뒤 두 번 틱한다.
+        manager.startTimeLimit(timer, THREE_SECONDS, notifications::add);
+
+        // then: 시작 알림과 타이머 설정은 3초 상태로 한 번 기록된다.
+        assertEquals(List.of(THREE_SECONDS), notifications);
+        assertEquals(TIME_LIMIT_INTERVAL_MILLIS, timer.lastInterval);
+        assertTrue(timer.running);
+
+        // when: 타이머가 두 번 더 실행된다.
+        timer.tick();
+        timer.tick();
+
+        // then: 남은 시간은 3, 2, 1로 감소한다.
+        assertEquals(List.of(THREE_SECONDS, TWO_SECONDS, ONE_SECOND), notifications);
+    }
+
+    @Test // 제한시간이 0초가 되면 점수로 승자를 판정하는지 확인하는 테스트
+    void finishByTimeWhenTimeRunsOut() {
+        // given: 1P와 2P 점수를 준비하고 3초 제한시간을 시작한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        first.score = FIRST_TIME_LIMIT_SCORE;
+        second.score = SECOND_TIME_LIMIT_SCORE;
+        FakeTimer timer = new FakeTimer();
+        List<Integer> notifications = new ArrayList<>();
+        List<MatchResult> results = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, results::add);
+        manager.startTimeLimit(timer, THREE_SECONDS, notifications::add);
+
+        // when: 제한시간이 0초까지 감소한다.
+        timer.tick();
+        timer.tick();
+        timer.tick();
+
+        // then: 1P 승리와 점수가 한 번 기록되고 타이머는 멈춘다.
+        assertEquals(EXPECTED_ONE_RESULT, results.size());
+        MatchResult result = results.get(0);
+        assertEquals(MatchResult.Winner.PLAYER_ONE, result.winner());
+        assertEquals(MatchResult.EndReason.TIME_UP, result.reason());
+        assertEquals(FIRST_TIME_LIMIT_SCORE, result.firstScore());
+        assertEquals(SECOND_TIME_LIMIT_SCORE, result.secondScore());
+        assertFalse(timer.running);
+        assertEquals(ZERO_SECONDS, notifications.get(notifications.size() - 1));
+        System.out.println("[REQ3-시간] 제한시간 3초 → 0초에 점수 비교, PLAYER_ONE 승리 PASS");
+    }
+
+    @Test // 일시정지 중에는 제한시간이 멈추고 재개 후 감소하는지 확인하는 테스트
+    void stopCountingWhilePaused() {
+        // given: 5초 제한시간을 시작하고 양쪽 갱신을 심판에 등록한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        FakeTimer timer = new FakeTimer();
+        List<Integer> notifications = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, result -> {
+        });
+        manager.start();
+        manager.startTimeLimit(timer, FIVE_SECONDS, notifications::add);
+
+        // when: 1P가 일시정지해 양쪽이 PAUSED 상태가 되고 세 번 틱한다.
+        first.status = GameStatus.PAUSED;
+        first.onUpdate.run();
+        timer.tick();
+        timer.tick();
+        timer.tick();
+
+        // then: 일시정지 중에는 남은 시간 알림이 5초만 유지된다.
+        assertEquals(List.of(FIVE_SECONDS), notifications);
+
+        // when: 1P를 재개 상태로 만들고 한 번 틱한다.
+        first.status = GameStatus.PLAYING;
+        first.onUpdate.run();
+        timer.tick();
+
+        // then: 재개 후 남은 시간은 4초로 감소한다.
+        assertEquals(List.of(FIVE_SECONDS, FOUR_SECONDS), notifications);
+        System.out.println("[REQ3-시간] 일시정지 중 제한시간 멈춤, 재개 후 다시 감소 PASS");
+    }
+
+    @Test // 게임오버로 경기가 끝나면 제한 타이머가 멈추는지 확인하는 테스트
+    void stopTimerWhenMatchEndsByGameOver() {
+        // given: 10초 제한시간과 게임오버 결과 기록자를 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        FakeTimer timer = new FakeTimer();
+        List<Integer> notifications = new ArrayList<>();
+        List<MatchResult> results = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, results::add);
+        manager.start();
+        manager.startTimeLimit(timer, TEN_SECONDS, notifications::add);
+
+        // when: 2P가 게임오버를 알린다.
+        second.status = GameStatus.GAMEOVER;
+        second.onUpdate.run();
+
+        // then: 타이머는 멈추고 기존 게임오버 결과만 한 번 기록된다.
+        assertFalse(timer.running);
+        assertEquals(EXPECTED_ONE_RESULT, results.size());
+
+        // when: 종료 뒤 저장된 타이머 작업을 한 번 더 실행한다.
+        timer.tick();
+
+        // then: 결과와 남은 시간 알림이 추가로 발생하지 않는다.
+        assertEquals(EXPECTED_ONE_RESULT, results.size());
+        assertEquals(List.of(TEN_SECONDS), notifications);
+    }
+
+    @Test // 경기가 무효 취소되면 제한 타이머가 멈추는지 확인하는 테스트
+    void stopTimerWhenCancelled() {
+        // given: 제한시간과 결과 기록자를 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        FakeTimer timer = new FakeTimer();
+        List<MatchResult> results = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, results::add);
+        manager.startTimeLimit(timer, THREE_SECONDS, remaining -> {
+        });
+
+        // when: 경기를 무효 취소한다.
+        manager.cancel();
+
+        // then: 타이머는 멈추고 결과도 없다.
+        assertFalse(timer.running);
+        assertEquals(EXPECTED_NO_CALLS, results.size());
+    }
+
+    @Test // 클라이언트 제한시간 종료가 결과를 만들지 않는지 확인하는 테스트
+    void clientDoesNotFinishWhenTimeRunsOut() {
+        // given: 결과를 판정하지 않는 심판과 2초 제한시간을 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        FakeTimer timer = new FakeTimer();
+        List<Integer> notifications = new ArrayList<>();
+        List<MatchResult> results = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, results::add, false);
+        manager.startTimeLimit(timer, TWO_SECONDS, notifications::add);
+
+        // when: 제한시간을 0초까지 틱한다.
+        timer.tick();
+        timer.tick();
+
+        // then: 0초까지 알리고 타이머를 멈추지만 결과는 없다.
+        assertEquals(List.of(TWO_SECONDS, ONE_SECOND, ZERO_SECONDS), notifications);
+        assertEquals(EXPECTED_NO_CALLS, results.size());
+        assertFalse(timer.running);
+    }
+
+    @Test // 잘못된 제한시간과 중복 시작을 거부하는지 확인하는 테스트
+    void rejectInvalidTimeLimit() {
+        // given: 심판과 가짜 타이머를 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        FakeTimer timer = new FakeTimer();
+        MatchManager manager = new MatchManager(first, second, result -> {
+        });
+
+        // when / then: 0초와 null 입력은 각각 예외를 발생시킨다.
+        assertThrows(IllegalArgumentException.class,
+                () -> manager.startTimeLimit(timer, ZERO_SECONDS, remaining -> {
+                }));
+        assertThrows(NullPointerException.class,
+                () -> manager.startTimeLimit(null, THREE_SECONDS, remaining -> {
+                }));
+        assertThrows(NullPointerException.class,
+                () -> manager.startTimeLimit(timer, THREE_SECONDS, null));
+
+        // when / then: 정상 시작 후 두 번째 시작도 예외를 발생시킨다.
+        manager.startTimeLimit(timer, THREE_SECONDS, remaining -> {
+        });
+        assertThrows(IllegalStateException.class,
+                () -> manager.startTimeLimit(timer, FIVE_SECONDS, remaining -> {
+                }));
+    }
+
+    @Test // 경기 종료 후 제한시간 시작을 무시하는지 확인하는 테스트
+    void ignoreStartTimeLimitAfterMatchEnded() {
+        // given: 1P 게임오버로 이미 끝난 경기와 가짜 타이머를 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        FakeTimer timer = new FakeTimer();
+        List<Integer> notifications = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, result -> {
+        });
+        manager.start();
+        first.status = GameStatus.GAMEOVER;
+        first.onUpdate.run();
+
+        // when: 종료된 경기에서 제한시간 시작을 시도한다.
+        manager.startTimeLimit(timer, THREE_SECONDS, notifications::add);
+
+        // then: 타이머도 시작되지 않고 알림도 없다.
+        assertEquals(EXPECTED_NO_CALLS, timer.startCount);
+        assertTrue(notifications.isEmpty());
+    }
+    // AI-assisted code end
 
     // AI-assisted code start
     @Test // 1P가 기권하면 2P가 승리하고 기권 사유와 점수가 기록되는지 확인하는 테스트
@@ -707,6 +925,38 @@ class MatchManagerTest {
         row[0] = value;
         return row;
     }
+
+    // AI-assisted code start
+    private static class FakeTimer implements GameTimer {
+        private Runnable task;
+        private int startCount;
+        private boolean running;
+        private long lastInterval;
+
+        @Override
+        public void start(Runnable task) {
+            this.task = task;
+            startCount++;
+            running = true;
+        }
+
+        @Override
+        public void stop() {
+            running = false;
+        }
+
+        @Override
+        public void setInterval(long intervalMillis) {
+            lastInterval = intervalMillis;
+        }
+
+        private void tick() {
+            if (task != null) {
+                task.run();
+            }
+        }
+    }
+    // AI-assisted code end
 
     // LocalPlayer가 GameController.refresh()로 MatchManager에 재진입하는 동작을 흉내 낸다.
     private static class FakePlayer implements Player {

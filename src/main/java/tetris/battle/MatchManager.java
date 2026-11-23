@@ -1,9 +1,11 @@
 package tetris.battle;
 
 import tetris.model.GameStatus;
+import tetris.controller.GameTimer;
 
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -12,12 +14,16 @@ import static java.util.Objects.requireNonNull;
  */
 public class MatchManager {
     private static final int MIN_ATTACK_LINES = 2;
+    private static final long TIME_LIMIT_TICK_MILLIS = 1_000L; // 제한 시간을 1초 단위로 샌다.
 
     private final Player firstPlayer;
     private final Player secondPlayer;
-
     private final Consumer<MatchResult> onMatchEnd;
     private final boolean decidesResult; // false일 시 공격 전달만, 승패는 판정하지 않는다. (P2P CLIENT)
+
+    private GameTimer timeLimitTimer; // 제한시간용 타이머, 시간제한 모드가 아니면 null
+    private int remainingSeconds; // 남은 시간
+    private IntConsumer onRemainingSeconds = seconds -> {}; // 남은 시간이 바뀔 때 마다 알릴 동작
     private boolean finished;
     private boolean paused;
     private boolean syncing;
@@ -115,10 +121,60 @@ public class MatchManager {
         }
 
         finished = true;
+        if (timeLimitTimer != null) {
+            timeLimitTimer.stop();
+        }
         firstPlayer.stop();
         secondPlayer.stop();
     }
 
+    /**
+     * 제한 시간 모드에서 시간을 재기 시작한다. 1초마다 남은 시간을 알리고, 0이 되면 finishByTime()으로 결과를 정한다.
+     * 일시정지 중에는 시간이 줄지 않는다.
+     * P2P CLIENT에서는 남은 시간 표시만 하고 경기는 HOST가 끝낸다.
+     * 
+     * @param timer               1초마다 시간을 잴 타이머
+     * @param seconds             제한시간(초), 1 이상
+     * @param onRemainingSeconds 남은 시간이 바뀔 때마다 받을 동작. 시작할 때 한 번 바로 불림.
+     * 
+     * @throws NullPointerException     timer나 onRemainingSeconds가 null일 때
+     * @throws IllegalArgumentException seconds가 1보다 작을 때
+     * @throws IllegalStateException    이미 제한시간을 시작했을 때
+     */
+    public void startTimeLimit(GameTimer timer, int seconds, IntConsumer onRemainingSeconds) {
+        // 예외 처리
+        requireNonNull(timer);
+        requireNonNull(onRemainingSeconds);
+        if (seconds < 1) {
+            throw new IllegalArgumentException("seconds is lower than 1");
+        }
+        if (timeLimitTimer != null) {
+            throw new IllegalStateException("timeLimitTimer is already started");
+        }
+
+        // 게임 종료시 반환
+        if (finished) {
+            return;
+        }
+
+        // 필드 저장
+        timeLimitTimer = timer;
+        remainingSeconds = seconds;
+        this.onRemainingSeconds = onRemainingSeconds;
+
+        // 시작하자마자 한 번 알림 : 화면에 60초를 띄우기 위함
+        onRemainingSeconds.accept(remainingSeconds);
+
+        timer.setInterval(TIME_LIMIT_TICK_MILLIS);
+        timer.start(this::tickTimeLimit);
+
+    }
+
+    /**
+     * 플레이어의 상태가 바뀔 때마다 불린다 (각 플레이어의 갱신 알림).
+     * 공격 줄 전달 → (결과를 정하는 심판이면) 승패 판정 → 일시정지·재개 맞추기 순서로 처리한다.
+     * 경기가 끝났거나 일시정지를 맞추는 중(syncing)에 다시 불리면 무시한다.
+     */
     private void handleUpdate() {
         if (finished || syncing) {
             return;
@@ -185,8 +241,13 @@ public class MatchManager {
 
     }
 
+    // 경기를 끝낸다: 시계를 멈추고, 멈추기 전 점수를 읽은 뒤 두 게임을 멈추고, 결과를 한 번 알린다.
+    // finished를 가장 먼저 true로 두어, stop()에서 되돌아오는 갱신 알림이 무시되게 한다.
     private void finish(MatchResult.Winner winner, MatchResult.EndReason reason) {
         finished = true;
+        if (timeLimitTimer != null) {
+            timeLimitTimer.stop();
+        }
         long firstScore = firstPlayer.getScore();
         long secondScore = secondPlayer.getScore();
         firstPlayer.stop();
@@ -194,5 +255,24 @@ public class MatchManager {
 
         MatchResult result = new MatchResult(winner, reason, firstScore, secondScore);
         onMatchEnd.accept(result);
+    }
+
+    //  1초마다 불린다. 일시정지 중에는 시간을 줄이지 않고, 0이 되면 시간 종료로 끝낸다.
+    private void tickTimeLimit() {
+        if (finished) {
+            timeLimitTimer.stop();
+            return;
+        }
+
+        if (paused) {
+            return;
+        }
+
+        remainingSeconds--;
+        onRemainingSeconds.accept(remainingSeconds);
+        if (remainingSeconds <= 0) {
+            timeLimitTimer.stop();
+            finishByTime();
+        }
     }
 }
