@@ -47,11 +47,11 @@ class MessageCodecTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "null", "{", "{}", "{\"type\":\"UNKNOWN\",\"version\":3}",
-            "{\"type\":\"HELLO\",\"version\":2,\"role\":\"CLIENT\"}",
-            "{\"type\":\"CONFIG\",\"version\":3,\"revision\":1}",
-            "{\"type\":\"CONFIG\",\"version\":3,\"revision\":1,\"settings\":{\"mode\":\"TIME_LIMIT\",\"difficulty\":\"NORMAL\",\"timeLimitSeconds\":0}}",
-            "{\"type\":\"PING\",\"version\":3,\"probeId\":0}"
+            "null", "{", "{}", "{\"type\":\"UNKNOWN\",\"version\":" + LobbyMessage.PROTOCOL_VERSION + "}",
+            "{\"type\":\"HELLO\",\"version\":3,\"role\":\"CLIENT\"}",
+            "{\"type\":\"CONFIG\",\"version\":" + LobbyMessage.PROTOCOL_VERSION + ",\"revision\":1}",
+            "{\"type\":\"CONFIG\",\"version\":" + LobbyMessage.PROTOCOL_VERSION + ",\"revision\":1,\"settings\":{\"mode\":\"TIME_LIMIT\",\"difficulty\":\"NORMAL\",\"timeLimitSeconds\":0}}",
+            "{\"type\":\"PING\",\"version\":" + LobbyMessage.PROTOCOL_VERSION + ",\"probeId\":0}"
     })
     void rejectInvalidJsonOrProtocol(String json) throws Exception {
         byte[] payload = json.getBytes(StandardCharsets.UTF_8);

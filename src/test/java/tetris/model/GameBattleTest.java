@@ -30,7 +30,6 @@ class GameBattleTest {
     private static final int MAX_PENDING_ROWS = 10;
     private static final int DISTINCT_ROW_MARKER_COLUMN = 0;
     private static final int FIRST_ROW_MARKER = 1;
-    private static final int FIRST_DISCARDED_ROW_MARKER = 11;
     private static final int NINE_PENDING_ROWS = 9;
     private static final int ONE_NEW_ROW = 1;
     private static final int THREE_NEW_ROWS = 3;

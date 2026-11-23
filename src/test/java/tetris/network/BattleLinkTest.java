@@ -55,7 +55,7 @@ class BattleLinkTest {
     }
 
     @Test
-    void routeRemotePlayerAttacksAndControlsWithoutRebroadcastingState() {
+    void sendAttacksWithoutEchoingStateOrSendingUnconfirmedStops() {
         List<BattleMessage> outgoing = new ArrayList<>();
         BattleLink link = new BattleLink(Runnable::run, outgoing::add);
         List<Long> renderedScores = new ArrayList<>();
@@ -71,7 +71,7 @@ class BattleLinkTest {
         remote.pause();
         remote.resume();
         remote.stop();
-        assertEquals(List.of(BattleMessage.Type.ATTACK, BattleMessage.Type.STOP),
+        assertEquals(List.of(BattleMessage.Type.ATTACK),
                 outgoing.stream().map(BattleMessage::type).toList());
     }
 

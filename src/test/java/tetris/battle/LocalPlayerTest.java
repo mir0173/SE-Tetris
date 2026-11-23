@@ -130,10 +130,6 @@ class LocalPlayerTest {
             return controller;
         }
 
-        private FakeGameView view() {
-            return view;
-        }
-
         private FakeGameTimer timer() {
             return timer;
         }
@@ -153,11 +149,9 @@ class LocalPlayerTest {
     }
 
     private static class FakeGameView implements GameView {
-        private Consumer<GameCommand> commandHandler;
 
         @Override
         public void setCommandHandler(Consumer<GameCommand> handler) {
-            this.commandHandler = handler;
         }
 
         @Override
