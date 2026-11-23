@@ -25,16 +25,29 @@ public class GameSettings {
     private final Map<GameCommand, String> keyBindings;
     private final boolean colorBlindMode;
     private final Difficulty difficulty;
+    private final BattleKeyBindings battleKeyBindings;
 
+    // AI-assisted code start
+    /** 대전 키는 기본값을 쓴다 (대전 키가 생기기 전부터 쓰던 생성자) */
     public GameSettings(WindowSize windowSize, Map<GameCommand, String> keyBindings, boolean colorBlindMode, Difficulty difficulty) {
+        this(windowSize, keyBindings, colorBlindMode, difficulty, BattleKeyBindings.defaults());
+    }
+
+    public GameSettings(WindowSize windowSize, Map<GameCommand, String> keyBindings, boolean colorBlindMode,
+            Difficulty difficulty, BattleKeyBindings battleKeyBindings) {
         if (difficulty == null) {
             throw new NullPointerException("null difficulty");
+        }
+        if (battleKeyBindings == null) {
+            throw new NullPointerException("null battleKeyBindings");
         }
         this.windowSize = windowSize;
         this.keyBindings = Map.copyOf(keyBindings);
         this.colorBlindMode = colorBlindMode;
         this.difficulty = difficulty;
+        this.battleKeyBindings = battleKeyBindings;
     }
+    // AI-assisted code end
 
     public static Map<GameCommand, String> getDefaultKeyBindings() {
         return DEFAULT_KEY_BINDINGS;
@@ -68,5 +81,8 @@ public class GameSettings {
 
     public Difficulty getDifficulty() {
         return difficulty;
+    }
+    public BattleKeyBindings getBattleKeyBindings() {
+        return battleKeyBindings;
     }
 }
