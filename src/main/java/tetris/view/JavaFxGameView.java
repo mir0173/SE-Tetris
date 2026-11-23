@@ -152,6 +152,12 @@ public class JavaFxGameView implements GameView {
         keyHelpLabel.setText(text);
     }
 
+    /** 키 안내의 보임 여부와 배치 점유 여부를 함께 바꾼다. */
+    public void setKeyHelpVisible(boolean visible) {
+        keyHelpLabel.setVisible(visible);
+        keyHelpLabel.setManaged(visible);
+    }
+
     @Override
     public void setCommandHandler(Consumer<GameCommand> commandHandler) {
         this.commandHandler = commandHandler;

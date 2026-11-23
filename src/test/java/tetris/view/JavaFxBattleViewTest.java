@@ -47,18 +47,15 @@ import tetris.settings.WindowSize;
  * - 보드 두 개를 나란히: #battle-first-panel(1P, 왼쪽), #battle-second-panel(2P, 오른쪽). 각각 createEmbedded 화면
  * - #battle-result: 결과 글자, 결과 전에는 숨김. 형식 "1P 승리 · 게임오버 (1P 1200 : 2P 800)"
  * - #battle-time-left: "남은 시간 m:ss", 시간을 알리기 전에는 숨김 (시간제한 모드에서만 알림)
- * - #battle-back: 경기 중에는 "경기 중단", 결과 뒤에는 "메뉴로" (P2P의 "기권하고 종료" → "대기실로"와 같은 방식)
- * - #battle-rematch "다시 하기", #battle-exit "게임 종료": 결과 뒤에만 보임
+ * - #battle-rematch "다시 하기", #battle-back "메뉴로", #battle-exit "게임 종료": 결과 뒤에만 보임 (경기 중 중단은 ESC)
  * - 키는 창 전체에서 받아 1P / 2P / 공용으로 나눈다. P는 1P 게임에만 보낸다(MatchManager가 2P를 맞춤). ESC는 메뉴로
- * - 창 크기: 980 x 680 x 배율 (P2P와 같음)
+ * - 배치·창 크기·글자 크기·키 안내 같은 화면 모양은 계속 바뀔 수 있으므로 테스트하지 않는다 (직접 보며 조정)
  */
 class JavaFxBattleViewTest {
 
     // AI-assisted code start
     private static final int BOARD_ROWS = 20;
     private static final int BOARD_COLUMNS = 10;
-    private static final double VIEW_WIDTH = 980;
-    private static final double VIEW_HEIGHT = 680;
 
     @BeforeAll
     static void initializeJavaFx() throws Exception {
@@ -128,23 +125,6 @@ class JavaFxBattleViewTest {
     }
 
     @Test
-    void showEachPlayersOwnKeysInKeyHelp() throws Exception {
-        runOnFxThread(() -> {
-            // given
-            Fixture fixture = new Fixture(GameSettings.defaults());
-
-            // when
-            String firstHelp = ((Label) panel(fixture, "battle-first-panel").lookup("#game-key-help")).getText();
-            String secondHelp = ((Label) panel(fixture, "battle-second-panel").lookup("#game-key-help")).getText();
-
-            // then: 기본 홀드 키는 1P D, 2P SLASH
-            assertTrue(firstHelp.contains("D: 홀드"), firstHelp);
-            assertFalse(firstHelp.contains("SLASH"), firstHelp);
-            assertTrue(secondHelp.contains("SLASH: 홀드"), secondHelp);
-        });
-    }
-
-    @Test
     void showSharedKeysInPauseNotice() throws Exception {
         runOnFxThread(() -> {
             // given
@@ -177,7 +157,7 @@ class JavaFxBattleViewTest {
 
     @ParameterizedTest
     @EnumSource(WindowSize.class)
-    void applyWindowSizeLikeP2pView(WindowSize windowSize) throws Exception {
+    void applyWindowSizeToBothBoards(WindowSize windowSize) throws Exception {
         runOnFxThread(() -> {
             // given
             GameSettings settings = new GameSettings(
@@ -188,11 +168,8 @@ class JavaFxBattleViewTest {
             fixture.view.getFirstPlayerView().render(snapshot(0L, GameStatus.PLAYING, new int[BOARD_ROWS][BOARD_COLUMNS]));
             fixture.view.getSecondPlayerView().render(snapshot(0L, GameStatus.PLAYING, new int[BOARD_ROWS][BOARD_COLUMNS]));
 
-            // then
+            // then: 화면 크기 설정(배율)이 두 보드에 모두 적용된다
             double scale = windowSize.getScale();
-            Scene scene = fixture.view.getScene();
-            assertEquals(VIEW_WIDTH * scale, scene.getWidth(), 1.0);
-            assertEquals(VIEW_HEIGHT * scale, scene.getHeight(), 1.0);
             for (String panelId : List.of("battle-first-panel", "battle-second-panel")) {
                 Canvas board = (Canvas) panel(fixture, panelId).lookup("#game-board");
                 assertEquals(20 * scale, board.getGraphicsContext2D().getFont().getSize(), 0.01);
@@ -409,8 +386,7 @@ class JavaFxBattleViewTest {
             assertFalse(label(fixture, "battle-result").isVisible());
             assertFalse(button(fixture, "battle-rematch").isVisible());
             assertFalse(button(fixture, "battle-exit").isVisible());
-            assertTrue(button(fixture, "battle-back").isVisible());
-            assertEquals("경기 중단", button(fixture, "battle-back").getText());
+            assertFalse(button(fixture, "battle-back").isVisible()); // 경기 중 중단은 ESC로만 한다
         });
     }
 
@@ -495,20 +471,6 @@ class JavaFxBattleViewTest {
             assertEquals(1, fixture.rematchCount.get());
             assertEquals(1, fixture.menuCount.get());
             assertEquals(1, fixture.exitCount.get());
-        });
-    }
-
-    @Test
-    void stopMatchWithBackButtonDuringMatch() throws Exception {
-        runOnFxThread(() -> {
-            // given
-            Fixture fixture = new Fixture(GameSettings.defaults());
-
-            // when
-            button(fixture, "battle-back").fire();
-
-            // then
-            assertEquals(1, fixture.menuCount.get());
         });
     }
 

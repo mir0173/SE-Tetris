@@ -8,13 +8,18 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
+import javafx.scene.canvas.Canvas;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import tetris.battle.MatchResult;
 import tetris.model.GameCommand;
 import tetris.model.GameSnapshot;
@@ -28,9 +33,11 @@ import tetris.settings.GameSettings;
  */
 public final class JavaFxBattleView {
     private static final double SPACING = 12;
-    private static final double PADDING = 16;
-    private static final double VIEW_WIDTH = 980;
-    private static final double VIEW_HEIGHT = 680;
+    private static final double PADDING = 12;
+    private static final double PLAYER_GAP = 40; // 1P 정보 칸과 2P 보드 사이 간격
+    private static final String PLAYER_NAME_FONT_FAMILY = "System";
+    private static final double PLAYER_NAME_FONT_SIZE = 28;
+    private static final double PLAYER_NAME_SPACING = 0;
 
     private final PlayerPanel firstPanel;
     private final PlayerPanel secondPanel;
@@ -38,7 +45,7 @@ public final class JavaFxBattleView {
     private final Runnable onReturnToMenu;
     private final Label resultLabel = new Label();
     private final Label timeLeft = new Label();
-    private final Button back = new Button("경기 중단");
+    private final Button back = new Button("메뉴로");
     private final Button rematch = new Button("다시 하기");
     private final Button exit = new Button("게임 종료");
     private final Scene scene;
@@ -62,9 +69,9 @@ public final class JavaFxBattleView {
         resultLabel.setId("battle-result");
         resultLabel.setWrapText(true);
         timeLeft.setId("battle-time-left");
+        // 숨겨도 자리는 남겨 둔다(managed 유지). 창 크기를 내용에 맞추므로, 결과가 나올 때 내용이 창 밖으로 밀리지 않게 한다
         for (Label label : new Label[]{resultLabel, timeLeft}) {
             label.visibleProperty().bind(label.textProperty().isNotEmpty());
-            label.managedProperty().bind(label.visibleProperty());
         }
 
         back.setId("battle-back");
@@ -73,27 +80,31 @@ public final class JavaFxBattleView {
         back.setOnAction(event -> onReturnToMenu.run());
         rematch.setOnAction(event -> onRematch.run());
         exit.setOnAction(event -> onExit.run());
-        for (Button button : new Button[]{rematch, exit}) {
+        // 경기 중 중단은 ESC로만 한다. 버튼 3개는 결과가 나온 뒤에만 보인다 (자리는 처음부터 남겨 둔다)
+        for (Button button : new Button[]{rematch, back, exit}) {
             button.setVisible(false);
-            button.managedProperty().bind(button.visibleProperty());
         }
 
-        HBox boards = new HBox(SPACING,
-                new VBox(SPACING, new Label("1P"), firstPanel.getContent()),
-                new VBox(SPACING, new Label("2P"), secondPanel.getContent()));
-        ScrollPane scroll = new ScrollPane(boards);
-        scroll.setPannable(false);
-        scroll.setFocusTraversable(false);
-        HBox buttons = new HBox(SPACING, rematch, back, exit);
-        VBox root = new VBox(SPACING, resultLabel, timeLeft, scroll, buttons);
-        root.setPadding(new Insets(PADDING));
-
         double scale = settings.getWindowSize().getScale();
-        scene = new Scene(root, VIEW_WIDTH * scale, VIEW_HEIGHT * scale);
+        VBox firstColumn = createPlayerColumn("1P", "battle-first-name", firstPanel, scale);
+        VBox secondColumn = createPlayerColumn("2P", "battle-second-name", secondPanel, scale);
+
+        HBox status = new HBox(SPACING * scale, timeLeft, resultLabel); // 남은 시간과 결과를 한 줄에
+        status.setAlignment(Pos.CENTER);
+        HBox boards = new HBox(PLAYER_GAP * scale, firstColumn, secondColumn);
+        boards.setAlignment(Pos.CENTER);
+        HBox buttons = new HBox(SPACING * scale, rematch, back, exit);
+        buttons.setAlignment(Pos.CENTER);
+        VBox root = new VBox(SPACING * scale, status, boards, buttons);
+        root.setAlignment(Pos.TOP_CENTER);
+        root.setPadding(new Insets(PADDING * scale));
+
+        // 창 크기는 정하지 않는다. stage.sizeToScene()이 내용 크기에 맞춘다
+        scene = new Scene(root);
         scene.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPressed);
         scene.addEventFilter(KeyEvent.KEY_RELEASED, this::handleKeyReleased);
     }
-    
+
     public GameView getFirstPlayerView() {
         return firstPanel;
     }
@@ -122,8 +133,8 @@ public final class JavaFxBattleView {
                 outcome, reason, result.firstScore(), result.secondScore()));
 
         finished = true;
-        back.setText("메뉴로");
         rematch.setVisible(true);
+        back.setVisible(true);
         exit.setVisible(true);
         rematch.requestFocus();
     }
@@ -145,7 +156,7 @@ public final class JavaFxBattleView {
             return;
         }
 
-        // 경기 중: 버튼이 키를 받지 않도록 모두 막는다 (예: 포커스된 '경기 중단' 버튼이 SPACE로 눌리는 것 방지)
+        // 경기 중: 키는 모두 게임 키로만 쓰고 다른 노드로 넘기지 않는다
         event.consume();
         if (route.isEmpty()) {
             return;
@@ -182,6 +193,43 @@ public final class JavaFxBattleView {
         }
     }
 
+    /**
+     * 플레이어 이름("1P"/"2P")을 보드 바로 위 가운데에 둔 세로 묶음을 만든다.
+     * 보드 캔버스의 너비는 첫 render 때 정해지므로, 이름 너비를 숫자가 아니라 캔버스 너비에 묶는다.
+     */
+    private VBox createPlayerColumn(String text, String id, PlayerPanel playerPanel, double scale) {
+        Label name = new Label(text);
+        name.setId(id);
+        name.setFont(Font.font(PLAYER_NAME_FONT_FAMILY, FontWeight.BOLD, PLAYER_NAME_FONT_SIZE * scale));
+        name.setAlignment(Pos.CENTER);
+
+        Canvas board = (Canvas) playerPanel.getContent().lookup("#game-board");
+        name.minWidthProperty().bind(board.widthProperty());
+        name.prefWidthProperty().bind(board.widthProperty());
+        name.maxWidthProperty().bind(board.widthProperty());
+
+        // 패널 자체의 안쪽 여백(1인 화면용)을 없앤다. 바깥 여백과 플레이어 사이 간격은 대전 화면이 정한다
+        Region content = (Region) playerPanel.getContent();
+        content.setPadding(Insets.EMPTY);
+
+        // 보드를 정보 칸과 위쪽 끝에 맞춘다 (가운데 정렬이면 정보 칸이 길 때 보드가 아래로 내려가 이름과 멀어진다)
+        if (content instanceof HBox panelBox) {
+            panelBox.setAlignment(Pos.TOP_LEFT);
+            panelBox.setFillHeight(false); // 보드 영역이 정보 칸 높이만큼 늘어나지 않게 한다
+        }
+        // 정보 칸(보드가 아닌 쪽)의 고정 너비를 풀어 내용 너비만 쓰게 한다 (오른쪽 빈 공간 때문에 좌우 여백이 달라짐)
+        for (Node child : content.getChildrenUnmodifiable()) {
+            if (child != board.getParent() && child instanceof Region sidebar) {
+                sidebar.setMinWidth(Region.USE_COMPUTED_SIZE);
+                sidebar.setPrefWidth(Region.USE_COMPUTED_SIZE);
+            }
+        }
+
+        VBox column = new VBox(PLAYER_NAME_SPACING, name, content);
+        column.setAlignment(Pos.TOP_LEFT);
+        return column;
+    }
+
     /** 플레이어 한 명의 보드. 그리기는 createEmbedded 화면이 하고, 명령은 대전 화면이 나눠 준 것만 받는다. */
     private static final class PlayerPanel implements GameView {
         private final JavaFxGameView board;
@@ -197,7 +245,7 @@ public final class JavaFxBattleView {
                     settings.isColorBlindMode(), settings.getDifficulty(), settings.getBattleKeyBindings());
 
             board = JavaFxGameView.createEmbedded(panelSettings);
-            board.setKeyHelpText(createKeyHelp(playerKeys, sharedKeys));
+            board.setKeyHelpVisible(false);
             board.getContent().setId(id);
             board.getContent().setFocusTraversable(false);
         }
@@ -230,17 +278,6 @@ public final class JavaFxBattleView {
             if (commandHandler != null) {
                 commandHandler.accept(command);
             }
-        }
-
-        private static String createKeyHelp(Map<GameCommand, String> playerKeys, Map<GameCommand, String> sharedKeys) {
-            return playerKeys.get(GameCommand.MOVE_LEFT) + " / " + playerKeys.get(GameCommand.MOVE_RIGHT) + ": 좌우 이동\n"
-                    + playerKeys.get(GameCommand.SOFT_DROP) + ": 아래로\n"
-                    + playerKeys.get(GameCommand.ROTATE_CLOCKWISE) + " / "
-                    + playerKeys.get(GameCommand.ROTATE_COUNTERCLOCKWISE) + ": 회전\n"
-                    + playerKeys.get(GameCommand.HARD_DROP) + ": 하드 드롭\n"
-                    + playerKeys.get(GameCommand.HOLD) + ": 홀드\n"
-                    + sharedKeys.get(GameCommand.PAUSE) + ": 일시정지 · "
-                    + sharedKeys.get(GameCommand.QUIT_GAME) + ": 중단";
         }
     }
 }
