@@ -41,7 +41,8 @@ import tetris.settings.WindowSize;
  * - #battle-duration: 제한시간(초) 10~3600, 처음 값 120. 제한시간 모드일 때만 고를 수 있다
  * - #battle-start "게임 시작": 고른 값으로 BattleSettings를 만들어 넘긴다 (제한시간 모드가 아니면 시간은 0)
  * - #battle-setup-back "뒤로": 메뉴로 돌아간다
- * - Enter = 게임 시작, ESC = 뒤로
+ * - #battle-key-settings "대전 키 설정": 대전 키 설정 화면을 연다
+ * - Enter = 게임 시작 (단, 다른 버튼에 포커스가 있으면 그 버튼을 실행), ESC = 뒤로
  * - 배치·창 크기·키 안내 같은 화면 모양은 계속 바뀔 수 있으므로 테스트하지 않는다 (직접 보며 조정)
  */
 class JavaFxBattleSetupViewTest {
@@ -283,6 +284,56 @@ class JavaFxBattleSetupViewTest {
         });
     }
 
+    // ---------- 대전 키 설정으로 가기 ----------
+
+    @Test
+    void openKeySettingsWithButton() throws Exception {
+        runOnFxThread(() -> {
+            // given
+            Fixture fixture = new Fixture(GameSettings.defaults());
+
+            // when
+            fixture.button("battle-key-settings").fire();
+
+            // then: 키 설정 화면을 열고, 게임을 시작하거나 뒤로 가지 않는다
+            assertEquals(1, fixture.keySettingsCount.get());
+            assertTrue(fixture.started.isEmpty());
+            assertEquals(0, fixture.backCount.get());
+        });
+    }
+
+    @Test
+    void openKeySettingsWithEnterWhenItsButtonIsFocused() throws Exception {
+        runOnFxThread(() -> {
+            // given: 키보드로 '대전 키 설정' 버튼에 포커스를 옮겼다
+            Fixture fixture = new Fixture(GameSettings.defaults());
+            fixture.button("battle-key-settings").requestFocus();
+
+            // when
+            fixture.pressKey(KeyCode.ENTER);
+
+            // then: Enter는 포커스된 버튼을 실행한다 (게임 시작이 아님)
+            assertEquals(1, fixture.keySettingsCount.get());
+            assertTrue(fixture.started.isEmpty());
+        });
+    }
+
+    @Test
+    void goBackWithEnterWhenBackButtonIsFocused() throws Exception {
+        runOnFxThread(() -> {
+            // given
+            Fixture fixture = new Fixture(GameSettings.defaults());
+            fixture.button("battle-setup-back").requestFocus();
+
+            // when
+            fixture.pressKey(KeyCode.ENTER);
+
+            // then
+            assertEquals(1, fixture.backCount.get());
+            assertTrue(fixture.started.isEmpty());
+        });
+    }
+
     // ---------- 생성 ----------
 
     @Test
@@ -291,15 +342,17 @@ class JavaFxBattleSetupViewTest {
             // given
             Consumer<BattleSettings> start = settings -> {
             };
-            Runnable back = () -> {
+            Runnable none = () -> {
             };
 
             // when & then
-            assertThrows(NullPointerException.class, () -> new JavaFxBattleSetupView(null, start, back));
+            assertThrows(NullPointerException.class, () -> new JavaFxBattleSetupView(null, start, none, none));
             assertThrows(NullPointerException.class,
-                    () -> new JavaFxBattleSetupView(GameSettings.defaults(), null, back));
+                    () -> new JavaFxBattleSetupView(GameSettings.defaults(), null, none, none));
             assertThrows(NullPointerException.class,
-                    () -> new JavaFxBattleSetupView(GameSettings.defaults(), start, null));
+                    () -> new JavaFxBattleSetupView(GameSettings.defaults(), start, null, none));
+            assertThrows(NullPointerException.class,
+                    () -> new JavaFxBattleSetupView(GameSettings.defaults(), start, none, null));
         });
     }
 
@@ -307,11 +360,13 @@ class JavaFxBattleSetupViewTest {
 
     private static final class Fixture {
         private final List<BattleSettings> started = new ArrayList<>();
+        private final AtomicInteger keySettingsCount = new AtomicInteger();
         private final AtomicInteger backCount = new AtomicInteger();
         private final JavaFxBattleSetupView view;
 
         private Fixture(GameSettings settings) {
-            view = new JavaFxBattleSetupView(settings, started::add, backCount::incrementAndGet);
+            view = new JavaFxBattleSetupView(settings, started::add, keySettingsCount::incrementAndGet,
+                    backCount::incrementAndGet);
         }
 
         @SuppressWarnings("unchecked")

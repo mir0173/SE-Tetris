@@ -46,6 +46,7 @@ import tetris.view.JavaFxSettingsView;
 import tetris.battle.LocalPlayer;
 import tetris.battle.MatchManager;
 import tetris.settings.BattleKeyBindings;
+import tetris.view.JavaFxBattleKeySettingsView;
 import tetris.view.JavaFxBattleSetupView;
 import tetris.view.JavaFxBattleView;
 import tetris.view.JavaFxP2pLobbyView;
@@ -262,6 +263,7 @@ public class TetrisApplication extends Application {
     private void showBattleSetup(Stage stage) {
         JavaFxBattleSetupView setupView = new JavaFxBattleSetupView(currentSettings,
                 battleSettings -> startLocalBattle(stage, battleSettings),
+                () -> showBattleKeySettings(stage, () -> showBattleSetup(stage)),
                 () -> showStartMenu(stage));
         stage.setTitle("로컬 대전");
         stage.setScene(setupView.getScene());
@@ -332,6 +334,7 @@ public class TetrisApplication extends Application {
                 currentSettings,
                 newSettings -> saveSettings(stage, newSettings),
                 () -> resetScoreboard(stage),
+                () -> showBattleKeySettings(stage, () -> showSettings(stage)), // AI-assisted (T17)
                 () -> showStartMenu(stage));
         stage.setTitle("설정");
         stage.setScene(settingsView.getScene());
@@ -339,6 +342,25 @@ public class TetrisApplication extends Application {
         stage.show();
         settingsView.getScene().getRoot().requestFocus();
     }
+
+    // AI-assisted code start
+    /**
+     * 대전 키 설정 화면을 보인다. 설정 화면과 로컬 대전 모드 선택 화면에서 들어온다.
+     *
+     * @param onBack 뒤로 갈 때 돌아갈 화면을 여는 동작 (들어온 화면)
+     */
+    private void showBattleKeySettings(Stage stage, Runnable onBack) {
+        JavaFxBattleKeySettingsView keySettingsView = new JavaFxBattleKeySettingsView(
+                currentSettings,
+                newSettings -> saveSettings(stage, newSettings),
+                onBack);
+        stage.setTitle("대전 키 설정");
+        stage.setScene(keySettingsView.getScene());
+        stage.sizeToScene();
+        stage.show();
+        keySettingsView.getScene().getRoot().requestFocus();
+    }
+    // AI-assisted code end
 
     private void saveSettings(Stage stage, GameSettings newSettings) {
 

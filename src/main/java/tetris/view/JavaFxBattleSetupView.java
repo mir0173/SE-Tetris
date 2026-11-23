@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 import java.util.Map;
 
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -46,20 +47,32 @@ public final class JavaFxBattleSetupView {
             BattleSettings.DEFAULT_TIME_LIMIT_SECONDS,
             DURATION_STEP_SECONDS);
     private final Button startButton = new Button("게임 시작");
+    private final Button keySettingsButton = new Button("대전 키 설정");
     private final Button backButton = new Button("뒤로");
     private final Consumer<BattleSettings> onStart;
     private final Runnable onBack;
     private final Scene scene;
 
-    public JavaFxBattleSetupView(GameSettings settings, Consumer<BattleSettings> onStart, Runnable onBack) {
+    /**
+     * 모드 선택 화면을 만든다.
+     *
+     * @param settings          현재 설정 (난이도 처음 값과 대전 키 안내에 사용)
+     * @param onStart           게임 시작 시 고른 대전 설정을 받을 동작
+     * @param onOpenKeySettings '대전 키 설정' 버튼을 눌렀을 때 실행할 동작
+     * @param onBack            뒤로 갈 때 실행할 동작
+     */
+    public JavaFxBattleSetupView(GameSettings settings, Consumer<BattleSettings> onStart, Runnable onOpenKeySettings,
+            Runnable onBack) {
         Objects.requireNonNull(settings, "settings");
         this.onStart = Objects.requireNonNull(onStart, "onStart");
+        Objects.requireNonNull(onOpenKeySettings, "onOpenKeySettings");
         this.onBack = Objects.requireNonNull(onBack, "onBack");
 
         modeBox.setId("battle-mode");
         difficultyBox.setId("battle-difficulty");
         durationSpinner.setId("battle-duration");
         startButton.setId("battle-start");
+        keySettingsButton.setId("battle-key-settings");
         backButton.setId("battle-setup-back");
 
         modeBox.getItems().setAll(BattleMode.values());
@@ -82,9 +95,10 @@ public final class JavaFxBattleSetupView {
         keyGuide.setId("battle-key-guide");
 
         startButton.setOnAction(event -> startBattle());
+        keySettingsButton.setOnAction(event -> onOpenKeySettings.run());
         backButton.setOnAction(event -> onBack.run());
 
-        HBox buttonBox = new HBox(SPACING, startButton, backButton);
+        HBox buttonBox = new HBox(SPACING, startButton, keySettingsButton, backButton);
         VBox root = new VBox(SPACING, new Label("로컬 대전"), gridPane,
                 keyGuideTitle, keyGuide, buttonBox);
         root.setPadding(new Insets(PADDING));
@@ -115,7 +129,13 @@ public final class JavaFxBattleSetupView {
         }
         if (event.getCode() == KeyCode.ENTER) {
             event.consume();
-            startBattle();
+            // 다른 버튼에 키보드 포커스가 있으면 그 버튼을 실행하고, 아니면 게임을 시작한다
+            Node focusOwner = scene.getFocusOwner();
+            if (focusOwner == keySettingsButton || focusOwner == backButton) {
+                ((Button) focusOwner).fire();
+            } else {
+                startBattle();
+            }
         } else if (event.getCode() == KeyCode.ESCAPE) {
             event.consume();
             onBack.run();

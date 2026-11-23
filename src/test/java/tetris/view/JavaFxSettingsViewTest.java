@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -27,6 +29,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
 import tetris.model.Difficulty;
 import tetris.model.GameCommand;
+import tetris.settings.BattleKeyBindings;
 import tetris.settings.GameSettings;
 import tetris.settings.WindowSize;
 
@@ -49,13 +52,15 @@ class JavaFxSettingsViewTest {
     private static final int DIFFICULTY_ROW = 2;
     private static final int MOVE_LEFT_ROW = 3;
     private static final int MOVE_RIGHT_ROW = 4;
-    private static final int RESET_DEFAULTS_ROW = 12;
-    private static final int RESET_SCOREBOARD_ROW = 13;
-    private static final int BACK_ROW = 14;
-    private static final int ROW_COUNT = 15;
+    private static final int BATTLE_KEYS_ROW = 12;
+    private static final int RESET_DEFAULTS_ROW = 13;
+    private static final int RESET_SCOREBOARD_ROW = 14;
+    private static final int BACK_ROW = 15;
+    private static final int ROW_COUNT = 16;
 
     private final List<GameSettings> changes = new ArrayList<>();
     private int resetScoreboardCalls;
+    private int battleKeyCalls;
     private int backCalls;
 
     @BeforeAll
@@ -74,6 +79,7 @@ class JavaFxSettingsViewTest {
     void setUp() {
         changes.clear();
         resetScoreboardCalls = 0;
+        battleKeyCalls = 0;
         backCalls = 0;
     }
 
@@ -779,13 +785,119 @@ class JavaFxSettingsViewTest {
         });
     }
 
+    // ---------- 대전 키 설정 줄 (T17) ----------
+
+    @Test
+    void showBattleKeysRowAfterKeyRows() throws Exception {
+        runOnFxThread(() -> {
+            // given
+            JavaFxSettingsView view = createView();
+
+            // when
+            String text = getRowText(view, BATTLE_KEYS_ROW);
+
+            // then
+            assertEquals("대전 키 설정", text);
+        });
+    }
+
+    @Test
+    void openBattleKeySettingsWithEnter() throws Exception {
+        runOnFxThread(() -> {
+            // given
+            JavaFxSettingsView view = createView();
+            moveToRow(view, BATTLE_KEYS_ROW);
+
+            // when
+            pressKey(view, KeyCode.ENTER);
+
+            // then: 대전 키 화면을 연다. 설정 값은 바꾸지 않는다
+            assertEquals(1, battleKeyCalls);
+            assertTrue(changes.isEmpty());
+            assertEquals(0, backCalls);
+        });
+    }
+
+    @Test
+    void ignoreLeftAndRightOnBattleKeysRow() throws Exception {
+        runOnFxThread(() -> {
+            // given
+            JavaFxSettingsView view = createView();
+            moveToRow(view, BATTLE_KEYS_ROW);
+
+            // when
+            pressKey(view, KeyCode.LEFT);
+            pressKey(view, KeyCode.RIGHT);
+
+            // then
+            assertEquals(0, battleKeyCalls);
+            assertTrue(changes.isEmpty());
+        });
+    }
+
+    @Test
+    void keepBattleKeysWhenChangingOtherSettings() throws Exception {
+        runOnFxThread(() -> {
+            // given: 1P 왼쪽 이동을 Q로 바꾼 대전 키
+            JavaFxSettingsView view = createView(settingsWithCustomBattleKey());
+
+            // when: 화면 크기, 색맹 모드, 난이도, 1인 키를 차례로 바꾼다
+            pressKey(view, KeyCode.RIGHT);
+            assertCustomBattleKeyKept(getLastChange());
+            pressKey(view, KeyCode.DOWN);
+            pressKey(view, KeyCode.RIGHT);
+            assertCustomBattleKeyKept(getLastChange());
+            pressKey(view, KeyCode.DOWN);
+            pressKey(view, KeyCode.RIGHT);
+            assertCustomBattleKeyKept(getLastChange());
+            pressKey(view, KeyCode.DOWN);
+            pressKey(view, KeyCode.ENTER);
+            pressKey(view, KeyCode.A);
+
+            // then: 대전 키는 그대로다
+            assertEquals("A", getLastChange().getKeyBindings().get(GameCommand.MOVE_LEFT));
+            assertCustomBattleKeyKept(getLastChange());
+        });
+    }
+
+    @Test
+    void resetBattleKeysWithDefaults() throws Exception {
+        runOnFxThread(() -> {
+            // given
+            JavaFxSettingsView view = createView(settingsWithCustomBattleKey());
+            moveToRow(view, RESET_DEFAULTS_ROW);
+
+            // when: 기본값으로 되돌리기는 대전 키까지 되돌린다
+            pressKey(view, KeyCode.ENTER);
+            pressKey(view, KeyCode.Y);
+
+            // then
+            assertEquals(BattleKeyBindings.defaults().getFirstPlayerKeys(),
+                    getLastChange().getBattleKeyBindings().getFirstPlayerKeys());
+        });
+    }
+
+    private static GameSettings settingsWithCustomBattleKey() {
+        Map<GameCommand, String> first = new EnumMap<>(GameCommand.class);
+        first.putAll(BattleKeyBindings.defaults().getFirstPlayerKeys());
+        first.put(GameCommand.MOVE_LEFT, "Q");
+        BattleKeyBindings battleKeys = new BattleKeyBindings(first,
+                BattleKeyBindings.defaults().getSecondPlayerKeys(), BattleKeyBindings.defaults().getSharedKeys());
+        return new GameSettings(WindowSize.MEDIUM, GameSettings.getDefaultKeyBindings(), false, Difficulty.NORMAL,
+                battleKeys);
+    }
+
+    private static void assertCustomBattleKeyKept(GameSettings settings) {
+        assertEquals("Q", settings.getBattleKeyBindings().getFirstPlayerKeys().get(GameCommand.MOVE_LEFT));
+    }
+
     private JavaFxSettingsView createView() {
         return createView(GameSettings.defaults());
     }
 
     private JavaFxSettingsView createView(GameSettings settings) {
         return new JavaFxSettingsView(settings, changes::add,
-                () -> resetScoreboardCalls++, () -> backCalls++);
+                () -> resetScoreboardCalls++, () -> battleKeyCalls++, () -> backCalls++);
     }
 
     private GameSettings getLastChange() {
