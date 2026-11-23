@@ -79,6 +79,46 @@ public class MatchManager {
         finish(winner, MatchResult.EndReason.TIME_UP);
     }
 
+    /**
+     * 플레이어가 경기를 나갔을 때(기권) 부른다.
+     * 나간 쪽이 지고 이유는 STOPPED. 결과를 정하지 않는 심판이거나 이미 끝났다면 이 메서드를 무시한다.
+     * 
+     * @param leaver 경기를 나간 플레이어(1P 또는 2P)
+     * @throws IllegalArgumentException 두 플레이어중 하나가 아닐 때
+     */
+    public void forfeit(Player leaver) {
+        if (leaver != firstPlayer && leaver != secondPlayer) {
+            throw new IllegalArgumentException("leaver must be one of the two players");
+        }
+
+        if (finished || !decidesResult) {
+            return;
+        }
+
+        MatchResult.Winner winner;
+        if (leaver == firstPlayer) {
+            winner = MatchResult.Winner.PLAYER_TWO;
+        } else {
+            winner = MatchResult.Winner.PLAYER_ONE;
+        }
+        finish(winner, MatchResult.EndReason.STOPPED);
+    }
+
+    /**
+     * 경기를 무효로 끝낸다.
+     * 예 : 메시지 없이 연결 끊김
+     * 두 게임을 멈추지만 결과는 알리지 않는다.
+     */
+    public void cancel() {
+        if (finished) {
+            return;
+        }
+
+        finished = true;
+        firstPlayer.stop();
+        secondPlayer.stop();
+    }
+
     private void handleUpdate() {
         if (finished || syncing) {
             return;

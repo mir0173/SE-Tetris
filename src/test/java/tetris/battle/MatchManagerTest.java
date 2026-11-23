@@ -3,6 +3,7 @@ package tetris.battle;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -45,6 +46,162 @@ class MatchManagerTest {
     private static final long SECOND_GAME_OVER_SCORE = 500L;
     private static final long SCORE_BEFORE_STOP = 700L;
     private static final long SCORE_AFTER_STOP = 900L;
+    private static final long FIRST_FORFEIT_SCORE = 1234L;
+    private static final long SECOND_FORFEIT_SCORE = 5678L;
+
+    // AI-assisted code start
+    @Test // 1P가 기권하면 2P가 승리하고 기권 사유와 점수가 기록되는지 확인하는 테스트
+    void firstPlayerForfeitMakesSecondPlayerWin() {
+        // given: 점수가 다른 양쪽 플레이어와 기권 결과 기록자를 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        first.score = FIRST_FORFEIT_SCORE;
+        second.score = SECOND_FORFEIT_SCORE;
+        List<MatchResult> results = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, results::add);
+
+        // when: 1P의 기권을 심판에 알린다.
+        manager.forfeit(first);
+
+        // then: 2P 승리와 STOPPED 사유가 한 번 기록되고 양쪽이 정지된다.
+        assertEquals(EXPECTED_ONE_RESULT, results.size());
+        MatchResult result = results.get(0);
+        assertEquals(MatchResult.Winner.PLAYER_TWO, result.winner());
+        assertEquals(MatchResult.EndReason.STOPPED, result.reason());
+        assertEquals(FIRST_FORFEIT_SCORE, result.firstScore());
+        assertEquals(SECOND_FORFEIT_SCORE, result.secondScore());
+        assertEquals(EXPECTED_ONE_STOP, first.stopCalls);
+        assertEquals(EXPECTED_ONE_STOP, second.stopCalls);
+        System.out.println("[REQ3-종료] 1P 기권 → 2P 승리, 이유 STOPPED PASS");
+    }
+
+    @Test // 2P가 기권하면 1P가 승리하는지 확인하는 테스트
+    void secondPlayerForfeitMakesFirstPlayerWin() {
+        // given: 기권 결과를 기록하는 심판과 양쪽 플레이어를 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        List<MatchResult> results = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, results::add);
+
+        // when: 2P의 기권을 심판에 알린다.
+        manager.forfeit(second);
+
+        // then: 1P 승리와 STOPPED 사유가 한 번 기록된다.
+        assertEquals(EXPECTED_ONE_RESULT, results.size());
+        MatchResult result = results.get(0);
+        assertEquals(MatchResult.Winner.PLAYER_ONE, result.winner());
+        assertEquals(MatchResult.EndReason.STOPPED, result.reason());
+    }
+
+    @Test // 알 수 없는 플레이어나 null이 기권할 때 거부되는지 확인하는 테스트
+    void rejectForfeitOfUnknownPlayer() {
+        // given: 심판과 경기 참여자가 아닌 가짜 플레이어를 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        MatchManager manager = new MatchManager(first, second, result -> {
+        });
+
+        // when / then: 외부 플레이어와 null 기권 모두 예외를 발생시킨다.
+        assertThrows(IllegalArgumentException.class, () -> manager.forfeit(new FakePlayer()));
+        assertThrows(IllegalArgumentException.class, () -> manager.forfeit(null));
+    }
+
+    @Test // 경기 종료 후 기권을 해도 기존 결과만 유지되는지 확인하는 테스트
+    void ignoreForfeitAfterMatchEnded() {
+        // given: 1P 게임오버로 이미 끝난 경기와 결과 기록자를 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        first.status = GameStatus.GAMEOVER;
+        List<MatchResult> results = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, results::add);
+        manager.start();
+
+        // when: 1P 게임오버로 먼저 경기 종료한 뒤 1P 기권을 다시 알린다.
+        first.onUpdate.run();
+        manager.forfeit(first);
+
+        // then: 기존 게임오버 결과만 정확히 한 번 남는다.
+        assertEquals(EXPECTED_ONE_RESULT, results.size());
+        assertEquals(MatchResult.EndReason.GAME_OVER, results.get(0).reason());
+    }
+
+    @Test // 결과를 판정하지 않는 심판이 기권을 무시하는지 확인하는 테스트
+    void ignoreForfeitWhenNotDecidingResult() {
+        // given: 결과를 판정하지 않는 심판과 양쪽 플레이어를 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        List<MatchResult> results = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, results::add, false);
+
+        // when: 2P의 기권을 심판에 알린다.
+        manager.forfeit(second);
+
+        // then: 결과가 없고 양쪽 모두 정지되지 않는다.
+        assertEquals(EXPECTED_NO_CALLS, results.size());
+        assertEquals(EXPECTED_NO_CALLS, first.stopCalls);
+        assertEquals(EXPECTED_NO_CALLS, second.stopCalls);
+    }
+
+    @Test // 연결 끊김 무효로 양쪽만 정지하고 결과는 만들지 않는지 확인하는 테스트
+    void cancelStopsBothWithoutResult() {
+        // given: 경기를 기록하는 심판과 양쪽 플레이어를 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        List<MatchResult> results = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, results::add);
+        manager.start();
+
+        // when: 경기를 무효로 취소하고 후속 갱신과 시간 종료를 시도한다.
+        manager.cancel();
+        second.status = GameStatus.GAMEOVER;
+        second.onUpdate.run();
+        manager.finishByTime();
+
+        // then: 양쪽은 한 번씩 정지되고 결과는 전달되지 않는다.
+        assertEquals(EXPECTED_ONE_STOP, first.stopCalls);
+        assertEquals(EXPECTED_ONE_STOP, second.stopCalls);
+        assertEquals(EXPECTED_NO_CALLS, results.size());
+        System.out.println("[REQ3-종료] 연결 끊김 무효 → 양쪽 정지, 결과 없음 PASS");
+    }
+
+    @Test // 결과를 판정하지 않는 심판에서도 무효 취소가 양쪽을 정지하는지 확인하는 테스트
+    void cancelWorksWhenNotDecidingResult() {
+        // given: 결과를 판정하지 않는 심판과 양쪽 플레이어를 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        List<MatchResult> results = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, results::add, false);
+        manager.start();
+
+        // when: 경기를 무효로 취소한다.
+        manager.cancel();
+
+        // then: 양쪽은 한 번씩 정지되고 결과는 전달되지 않는다.
+        assertEquals(EXPECTED_ONE_STOP, first.stopCalls);
+        assertEquals(EXPECTED_ONE_STOP, second.stopCalls);
+        assertEquals(EXPECTED_NO_CALLS, results.size());
+    }
+
+    @Test // 이미 종료된 경기에서 무효 취소가 다시 정지하지 않는지 확인하는 테스트
+    void ignoreCancelAfterMatchEnded() {
+        // given: 1P 게임오버로 이미 끝난 경기와 결과 기록자를 준비한다.
+        FakePlayer first = new FakePlayer();
+        FakePlayer second = new FakePlayer();
+        first.status = GameStatus.GAMEOVER;
+        List<MatchResult> results = new ArrayList<>();
+        MatchManager manager = new MatchManager(first, second, results::add);
+        manager.start();
+
+        // when: 1P 게임오버로 먼저 종료한 뒤 경기를 무효로 취소한다.
+        first.onUpdate.run();
+        manager.cancel();
+
+        // then: 양쪽 정지 횟수는 1로 유지되고 기존 결과만 한 번 남는다.
+        assertEquals(EXPECTED_ONE_STOP, first.stopCalls);
+        assertEquals(EXPECTED_ONE_STOP, second.stopCalls);
+        assertEquals(EXPECTED_ONE_RESULT, results.size());
+    }
+    // AI-assisted code end
 
     @Test // 결과를 판정하지 않는 심판이 갱신 공격 행을 상대에게 전달하는지 확인하는 테스트
     void relayAttacksWhenNotDecidingResult() {
