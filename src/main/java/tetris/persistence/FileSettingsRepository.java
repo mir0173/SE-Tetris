@@ -19,6 +19,7 @@ import javafx.scene.input.KeyCode;
 
 import tetris.settings.GameSettings;
 import tetris.settings.WindowSize;
+import tetris.settings.BattleKeyBindings;
 import tetris.model.GameCommand;
 import tetris.model.Difficulty;
 
@@ -83,16 +84,26 @@ public class FileSettingsRepository implements SettingsRepository {
 
     // AI-assisted code start
     private SettingsData createData(GameSettings settings) {
-        Map<String, String> keyBindings = new HashMap<>();
-        for (Map.Entry<GameCommand, String> entry : settings.getKeyBindings().entrySet()) {
-            keyBindings.put(entry.getKey().name(), entry.getValue());
-        }
+        BattleKeyBindings battleKeys = settings.getBattleKeyBindings();
 
         return new SettingsData(
                 settings.getWindowSize(),
-                keyBindings,
+                createKeyNameMap(settings.getKeyBindings()),
                 settings.isColorBlindMode(),
-                settings.getDifficulty());
+                settings.getDifficulty(),
+                new BattleKeyData(
+                        createKeyNameMap(battleKeys.getFirstPlayerKeys()),
+                        createKeyNameMap(battleKeys.getSecondPlayerKeys()),
+                        createKeyNameMap(battleKeys.getSharedKeys())));
+    }
+
+    // 명령 → 키 이름 Map을 JSON에 쓸 문자열 Map으로 바꾼다
+    private Map<String, String> createKeyNameMap(Map<GameCommand, String> keyBindings) {
+        Map<String, String> keyNames = new HashMap<>();
+        for (Map.Entry<GameCommand, String> entry : keyBindings.entrySet()) {
+            keyNames.put(entry.getKey().name(), entry.getValue());
+        }
+        return keyNames;
     }
     // AI-assisted code end
 
@@ -102,7 +113,54 @@ public class FileSettingsRepository implements SettingsRepository {
                 normalizeWindowSize(data.windowSize),
                 normalizeKeyBindings(data.keyBindings),
                 data.colorBlindMode,
-                data.difficulty == null ? GameSettings.getDefaultDifficulty() : data.difficulty);
+                data.difficulty == null ? GameSettings.getDefaultDifficulty() : data.difficulty,
+                createBattleKeyBindings(data.battleKeyBindings));
+    }
+
+    // 저장된 대전 키를 묶음마다 기본값과 합친다. 대전 키가 없는 예전 파일이면 기본값을 쓴다.
+    private BattleKeyBindings createBattleKeyBindings(BattleKeyData data) {
+        BattleKeyBindings defaults = BattleKeyBindings.defaults();
+        if (data == null) {
+            return defaults;
+        }
+
+        return new BattleKeyBindings(
+                normalizeKeyGroup(data.firstPlayer, defaults.getFirstPlayerKeys()),
+                normalizeKeyGroup(data.secondPlayer, defaults.getSecondPlayerKeys()),
+                normalizeKeyGroup(data.shared, defaults.getSharedKeys()));
+    }
+
+    /**
+     * 저장된 키 한 묶음을 기본값과 합친다.
+     * 그 묶음의 명령이 아니거나(다른 묶음 명령, 없는 명령, NONE) 키 이름이 잘못된 항목은 무시하고 기본값을 둔다.
+     */
+    private Map<GameCommand, String> normalizeKeyGroup(Map<String, String> savedKeys,
+            Map<GameCommand, String> defaultKeys) {
+        Map<GameCommand, String> keys = new EnumMap<>(GameCommand.class);
+        keys.putAll(defaultKeys);
+
+        if (savedKeys == null) {
+            return keys;
+        }
+
+        for (Map.Entry<String, String> entry : savedKeys.entrySet()) {
+            if (entry.getKey() == null) {
+                continue;
+            }
+
+            GameCommand command;
+            try {
+                command = GameCommand.valueOf(entry.getKey());
+            } catch (IllegalArgumentException exception) {
+                continue;
+            }
+
+            if (defaultKeys.containsKey(command) && isValidKeyName(entry.getValue())) {
+                keys.put(command, entry.getValue());
+            }
+        }
+
+        return keys;
     }
     // AI-assisted code end
 
@@ -170,13 +228,34 @@ public class FileSettingsRepository implements SettingsRepository {
         private final Map<String, String> keyBindings;
         private final boolean colorBlindMode;
         private final Difficulty difficulty;
+        private final BattleKeyData battleKeyBindings; // AI-assisted
 
-        private SettingsData(WindowSize windowSize, Map<String, String> keyBindings, boolean colorBlindMode, Difficulty difficulty) {
+        // AI-assisted code start
+        private SettingsData(WindowSize windowSize, Map<String, String> keyBindings, boolean colorBlindMode,
+                Difficulty difficulty, BattleKeyData battleKeyBindings) {
             this.windowSize = windowSize;
             this.keyBindings = keyBindings;
             this.colorBlindMode = colorBlindMode;
             this.difficulty = difficulty;
+            this.battleKeyBindings = battleKeyBindings;
+        }
+        // AI-assisted code end
+    }
+
+    // AI-assisted code start
+    // settings.json의 "battleKeyBindings": {"firstPlayer": {...}, "secondPlayer": {...}, "shared": {...}}
+    private static class BattleKeyData {
+        private final Map<String, String> firstPlayer;
+        private final Map<String, String> secondPlayer;
+        private final Map<String, String> shared;
+
+        private BattleKeyData(Map<String, String> firstPlayer, Map<String, String> secondPlayer,
+                Map<String, String> shared) {
+            this.firstPlayer = firstPlayer;
+            this.secondPlayer = secondPlayer;
+            this.shared = shared;
         }
     }
+    // AI-assisted code end
 
 }

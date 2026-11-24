@@ -43,6 +43,12 @@ import tetris.view.JavaFxGameView;
 import tetris.view.JavaFxStartMenuView;
 import tetris.view.JavaFxScoreboardView;
 import tetris.view.JavaFxSettingsView;
+import tetris.battle.LocalPlayer;
+import tetris.battle.MatchManager;
+import tetris.settings.BattleKeyBindings;
+import tetris.view.JavaFxBattleKeySettingsView;
+import tetris.view.JavaFxBattleSetupView;
+import tetris.view.JavaFxBattleView;
 import tetris.view.JavaFxP2pLobbyView;
 import tetris.network.P2pLobbyController;
 import tetris.network.P2pBattleController;
@@ -64,6 +70,7 @@ public class TetrisApplication extends Application {
     private P2pLobbyController p2pLobbyController;
     private P2pBattleController p2pBattleController;
     private JavaFxP2pGameView p2pBattleView;
+    private MatchManager localMatchManager;
     private RecentPeerAddressRepository recentPeerAddresses;
 
     @Override
@@ -85,6 +92,7 @@ public class TetrisApplication extends Application {
     @Override
     public void stop() {
         closeP2pLobby();
+        closeLocalBattle();
     }
 
     /**
@@ -96,15 +104,24 @@ public class TetrisApplication extends Application {
     private GameSettings loadSettings(Stage stage) {
 
         try {
+            // AI-assisted code start
             GameSettings loadedSettings = settingsRepository.load();
             KeyBindingValidator validator = new KeyBindingValidator();
 
             if (validator.hasDuplicate(loadedSettings.getKeyBindings())) {
                 showError(stage, "중복된 키 설정이 있습니다. 기본 키 설정을 사용합니다.");
-                return new GameSettings(loadedSettings.getWindowSize(), GameSettings.getDefaultKeyBindings(),
-                        loadedSettings.isColorBlindMode(), loadedSettings.getDifficulty());
+                loadedSettings = new GameSettings(loadedSettings.getWindowSize(), GameSettings.getDefaultKeyBindings(),
+                        loadedSettings.isColorBlindMode(), loadedSettings.getDifficulty(),
+                        loadedSettings.getBattleKeyBindings());
+            }
+            if (loadedSettings.getBattleKeyBindings().hasDuplicate()) {
+                showError(stage, "중복된 대전 키 설정이 있습니다. 기본 대전 키 설정을 사용합니다.");
+                loadedSettings = new GameSettings(loadedSettings.getWindowSize(), loadedSettings.getKeyBindings(),
+                        loadedSettings.isColorBlindMode(), loadedSettings.getDifficulty(),
+                        BattleKeyBindings.defaults());
             }
             return loadedSettings;
+            // AI-assisted code end
         } catch (IOException exception) {
             showError(stage, "설정을 불러오지 못했습니다. 기본 설정을 사용합니다.");
             return GameSettings.defaults();
@@ -212,6 +229,7 @@ public class TetrisApplication extends Application {
         JavaFxStartMenuView menu = new JavaFxStartMenuView(
                 () -> startNewGame(stage, GameMode.NORMAL),
                 () -> startNewGame(stage, GameMode.ITEM),
+                () -> showBattleSetup(stage),
                 () -> showP2pLobby(stage),
                 () -> showSettings(stage),
                 () -> showScoreboard(stage),
@@ -240,12 +258,83 @@ public class TetrisApplication extends Application {
         controller.start();
     }
 
+    // AI-assisted code start
+    /** 로컬 대전 모드 선택 화면을 보인다 */
+    private void showBattleSetup(Stage stage) {
+        JavaFxBattleSetupView setupView = new JavaFxBattleSetupView(currentSettings,
+                battleSettings -> startLocalBattle(stage, battleSettings),
+                () -> showBattleKeySettings(stage, () -> showBattleSetup(stage)),
+                () -> showStartMenu(stage));
+        stage.setTitle("로컬 대전");
+        stage.setScene(setupView.getScene());
+        stage.sizeToScene();
+        stage.show();
+        setupView.focusStartButton();
+    }
+
+    /**
+     * 한 창에서 두 사람이 키보드를 나눠 쓰는 대전을 시작한다.
+     * 게임·컨트롤러를 두 벌 만들고, MatchManager가 공격 전달·일시정지 맞추기·승패 판정을 맡는다.
+     * 대전 결과는 스코어보드에 기록하지 않는다.
+     */
+    private void startLocalBattle(Stage stage, BattleSettings battleSettings) {
+        closeLocalBattle();
+        JavaFxBattleView view = new JavaFxBattleView(currentSettings,
+                () -> {
+                    closeLocalBattle();
+                    showStartMenu(stage);
+                },
+                () -> startLocalBattle(stage, battleSettings),
+                () -> {
+                    closeLocalBattle();
+                    stage.close();
+                });
+
+        GameMode mode = battleSettings.mode() == BattleMode.ITEM ? GameMode.ITEM : GameMode.NORMAL;
+        Game firstGame = createGame(mode, battleSettings.difficulty());
+        Game secondGame = createGame(mode, battleSettings.difficulty());
+        GameController firstController = createBattleController(firstGame, view.getFirstPlayerView());
+        GameController secondController = createBattleController(secondGame, view.getSecondPlayerView());
+        localMatchManager = new MatchManager(new LocalPlayer(firstGame, firstController),
+                new LocalPlayer(secondGame, secondController), view::renderResult);
+
+        stage.setTitle("로컬 대전");
+        stage.setScene(view.getScene());
+
+        localMatchManager.start();
+        firstController.start();
+        secondController.start();
+        // 보드 크기는 첫 화면을 그릴 때 정해지므로, 게임을 시작한 뒤에 창 크기를 내용에 맞춘다
+        stage.sizeToScene();
+        stage.show();
+        if (battleSettings.mode() == BattleMode.TIME_LIMIT) {
+            localMatchManager.startTimeLimit(new JavaFxGameTimer(1_000), battleSettings.timeLimitSeconds(),
+                    view::renderRemainingSeconds);
+        }
+    }
+
+    // 대전용 컨트롤러. 메뉴 복귀와 게임오버는 MatchManager의 결과로만 처리하므로 아무것도 하지 않는다
+    private GameController createBattleController(Game game, GameView view) {
+        return new GameController(game, view, new JavaFxGameTimer(Game.getInitialDropInterval()),
+                new JavaFxDelayScheduler(), () -> { }, score -> { });
+    }
+
+    // 진행 중인 로컬 대전을 결과 없이 멈춘다. 이미 끝난 경기면 아무 일도 하지 않는다
+    private void closeLocalBattle() {
+        if (localMatchManager != null) {
+            localMatchManager.cancel();
+            localMatchManager = null;
+        }
+    }
+    // AI-assisted code end
+
     private void showSettings(Stage stage) {
 
         JavaFxSettingsView settingsView = new JavaFxSettingsView(
                 currentSettings,
                 newSettings -> saveSettings(stage, newSettings),
                 () -> resetScoreboard(stage),
+                () -> showBattleKeySettings(stage, () -> showSettings(stage)), // AI-assisted (T17)
                 () -> showStartMenu(stage));
         stage.setTitle("설정");
         stage.setScene(settingsView.getScene());
@@ -253,6 +342,25 @@ public class TetrisApplication extends Application {
         stage.show();
         settingsView.getScene().getRoot().requestFocus();
     }
+
+    // AI-assisted code start
+    /**
+     * 대전 키 설정 화면을 보인다. 설정 화면과 로컬 대전 모드 선택 화면에서 들어온다.
+     *
+     * @param onBack 뒤로 갈 때 돌아갈 화면을 여는 동작 (들어온 화면)
+     */
+    private void showBattleKeySettings(Stage stage, Runnable onBack) {
+        JavaFxBattleKeySettingsView keySettingsView = new JavaFxBattleKeySettingsView(
+                currentSettings,
+                newSettings -> saveSettings(stage, newSettings),
+                onBack);
+        stage.setTitle("대전 키 설정");
+        stage.setScene(keySettingsView.getScene());
+        stage.sizeToScene();
+        stage.show();
+        keySettingsView.getScene().getRoot().requestFocus();
+    }
+    // AI-assisted code end
 
     private void saveSettings(Stage stage, GameSettings newSettings) {
 

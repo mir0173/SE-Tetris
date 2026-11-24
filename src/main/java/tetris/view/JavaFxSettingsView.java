@@ -77,7 +77,8 @@ public class JavaFxSettingsView {
     private static final int COLOR_BLIND_ROW = 1;
     private static final int DIFFICULTY_ROW = 2;
     private static final int FIRST_KEY_ROW = 3;
-    private static final int RESET_DEFAULTS_ROW = FIRST_KEY_ROW + KEY_COMMANDS.size();
+    private static final int BATTLE_KEYS_ROW = FIRST_KEY_ROW + KEY_COMMANDS.size(); // AI-assisted (T17)
+    private static final int RESET_DEFAULTS_ROW = BATTLE_KEYS_ROW + 1;
     private static final int RESET_SCOREBOARD_ROW = RESET_DEFAULTS_ROW + 1;
     private static final int BACK_ROW = RESET_SCOREBOARD_ROW + 1;
     private static final int ROW_COUNT = BACK_ROW + 1;
@@ -85,6 +86,7 @@ public class JavaFxSettingsView {
     private static final String WINDOW_SIZE_TEXT = "화면 크기: ";
     private static final String DIFFICULTY_TEXT = "난이도: ";
     private static final String COLOR_BLIND_TEXT = "색맹 모드: ";
+    private static final String BATTLE_KEYS_ROW_TEXT = "대전 키 설정"; // AI-assisted (T17)
     private static final String RESET_DEFAULTS_ROW_TEXT = "기본값으로 되돌리기";
     private static final String RESET_DEFAULTS_CONFIRMATION_TEXT =
         "기본값으로 되돌리기: 정말 되돌리려면 Y, 취소는 ESC";
@@ -116,6 +118,7 @@ public class JavaFxSettingsView {
     private final KeyBindingValidator keyBindingValidator = new KeyBindingValidator();
     private final Consumer<GameSettings> onChange;
     private final Runnable onResetScoreboard;
+    private final Runnable onOpenBattleKeys; // AI-assisted (T17)
     private final Runnable onBack;
 
     private GameSettings settings;
@@ -132,17 +135,20 @@ public class JavaFxSettingsView {
      * @param settings 화면에 표시할 현재 설정
      * @param onChange 설정이 바뀔 때마다 실행할 동작 (새 설정을 받는다)
      * @param onResetScoreboard 스코어보드를 초기화할 때 실행할 동작
+     * @param onOpenBattleKeys 대전 키 설정 화면을 열 때 실행할 동작
      * @param onBack 메뉴로 돌아갈 때 실행할 동작
      */
     public JavaFxSettingsView(
         GameSettings settings,
         Consumer<GameSettings> onChange,
         Runnable onResetScoreboard,
+        Runnable onOpenBattleKeys,
         Runnable onBack
     ) {
         this.settings = settings;
         this.onChange = onChange;
         this.onResetScoreboard = onResetScoreboard;
+        this.onOpenBattleKeys = onOpenBattleKeys;
         this.onBack = onBack;
 
         VBox root = new VBox(ROOT_SPACING);
@@ -282,6 +288,8 @@ public class JavaFxSettingsView {
             changeDifficulty(1);
         } else if (isKeyRow(selectedIndex)) {
             startKeyCapture(startedByKeyboard);
+        } else if (selectedIndex == BATTLE_KEYS_ROW) {
+            onOpenBattleKeys.run();
         } else if (selectedIndex == RESET_DEFAULTS_ROW || selectedIndex == RESET_SCOREBOARD_ROW) {
             startConfirmation();
         } else if (selectedIndex == BACK_ROW) {
@@ -294,17 +302,20 @@ public class JavaFxSettingsView {
 
         int nextIndex = Math.floorMod(settings.getDifficulty().ordinal() + direction, difficulties.length);
 
-        updateSettings(new GameSettings(settings.getWindowSize(), settings.getKeyBindings(), settings.isColorBlindMode(), difficulties[nextIndex]));
+        updateSettings(new GameSettings(settings.getWindowSize(), settings.getKeyBindings(), settings.isColorBlindMode(), difficulties[nextIndex],
+                settings.getBattleKeyBindings()));
     }
 
     private void changeWindowSize(int direction) {
         WindowSize[] sizes = WindowSize.values();
         int nextIndex = Math.floorMod(settings.getWindowSize().ordinal() + direction, sizes.length);
-        updateSettings(new GameSettings(sizes[nextIndex], settings.getKeyBindings(), settings.isColorBlindMode(), settings.getDifficulty()));
+        updateSettings(new GameSettings(sizes[nextIndex], settings.getKeyBindings(), settings.isColorBlindMode(), settings.getDifficulty(),
+                settings.getBattleKeyBindings()));
     }
 
     private void toggleColorBlindMode() {
-        updateSettings(new GameSettings(settings.getWindowSize(), settings.getKeyBindings(), !settings.isColorBlindMode(), settings.getDifficulty()));
+        updateSettings(new GameSettings(settings.getWindowSize(), settings.getKeyBindings(), !settings.isColorBlindMode(), settings.getDifficulty(),
+                settings.getBattleKeyBindings()));
     }
 
     private void changeKeyBinding(GameCommand command, String keyName) {
@@ -315,7 +326,8 @@ public class JavaFxSettingsView {
 
         Map<GameCommand, String> newKeyBindings = new HashMap<>(settings.getKeyBindings());
         newKeyBindings.put(command, keyName);
-        updateSettings(new GameSettings(settings.getWindowSize(), newKeyBindings, settings.isColorBlindMode(), settings.getDifficulty()));
+        updateSettings(new GameSettings(settings.getWindowSize(), newKeyBindings, settings.isColorBlindMode(), settings.getDifficulty(),
+                settings.getBattleKeyBindings()));
     }
 
     private void updateSettings(GameSettings newSettings) {
@@ -412,6 +424,9 @@ public class JavaFxSettingsView {
             GameCommand command = KEY_COMMANDS.get(rowIndex - FIRST_KEY_ROW);
             return createKeyRowText(command, rowIndex == selectedIndex && waitingForKey);
         }
+        if (rowIndex == BATTLE_KEYS_ROW) {
+            return BATTLE_KEYS_ROW_TEXT;
+        }
         if (rowIndex == RESET_DEFAULTS_ROW) {
             return confirmingRow == rowIndex
                 ? RESET_DEFAULTS_CONFIRMATION_TEXT
@@ -447,7 +462,7 @@ public class JavaFxSettingsView {
     }
 
     private boolean isKeyRow(int rowIndex) {
-        return rowIndex >= FIRST_KEY_ROW && rowIndex < RESET_DEFAULTS_ROW;
+        return rowIndex >= FIRST_KEY_ROW && rowIndex < BATTLE_KEYS_ROW;
     }
 
     private void showConflict(GameCommand conflictCommand) {

@@ -23,6 +23,8 @@ import javafx.scene.input.KeyEvent;
 class JavaFxStartMenuViewTest {
 
      // AI-assisted code start
+    private static final int MENU_COUNT = 7; // 일반, 아이템, 로컬 대전, P2P 대전, 설정, 스코어보드, 종료
+
     private JavaFxStartMenuView menu;
     private int[] actionCalls;
 
@@ -41,7 +43,7 @@ class JavaFxStartMenuViewTest {
     @BeforeEach
     void setUp() throws Exception {
         runOnFxThread(() -> {
-            actionCalls = new int[6];
+            actionCalls = new int[MENU_COUNT];
 
             menu = new JavaFxStartMenuView(
                     () -> actionCalls[0]++,
@@ -49,7 +51,8 @@ class JavaFxStartMenuViewTest {
                     () -> actionCalls[2]++,
                     () -> actionCalls[3]++,
                     () -> actionCalls[4]++,
-                    () -> actionCalls[5]++
+                    () -> actionCalls[5]++,
+                    () -> actionCalls[6]++
             );
         });
     }
@@ -70,10 +73,11 @@ class JavaFxStartMenuViewTest {
     @CsvSource({
             "일반 모드 시작, 0",
             "아이템 모드 시작, 1",
-            "P2P 대전, 2",
-            "설정, 3",
-            "스코어보드, 4",
-            "종료, 5"
+            "로컬 대전, 2",
+            "P2P 대전, 3",
+            "설정, 4",
+            "스코어보드, 5",
+            "종료, 6"
     })
     void buttonRunsOnlyItsOwnAction(
             String buttonText,
@@ -82,7 +86,7 @@ class JavaFxStartMenuViewTest {
         runOnFxThread(() -> {
             findButton(buttonText).fire();
 
-            int[] expectedCalls = new int[6];
+            int[] expectedCalls = new int[MENU_COUNT];
             expectedCalls[expectedAction] = 1;
 
             assertArrayEquals(expectedCalls, actionCalls);
@@ -93,7 +97,9 @@ class JavaFxStartMenuViewTest {
     @CsvSource({
             "일반 모드 시작, DOWN, 아이템 모드 시작",
             "아이템 모드 시작, UP, 일반 모드 시작",
-            "아이템 모드 시작, DOWN, P2P 대전",
+            "아이템 모드 시작, DOWN, 로컬 대전",
+            "로컬 대전, DOWN, P2P 대전",
+            "P2P 대전, UP, 로컬 대전",
             "P2P 대전, DOWN, 설정",
             "일반 모드 시작, UP, 종료",
             "종료, DOWN, 일반 모드 시작"
@@ -114,7 +120,7 @@ class JavaFxStartMenuViewTest {
             );
 
             // 이동만 했으므로 메뉴 동작은 실행되지 않아야 한다.
-            assertArrayEquals(new int[6], actionCalls);
+            assertArrayEquals(new int[MENU_COUNT], actionCalls);
         });
     }
 
@@ -122,10 +128,11 @@ class JavaFxStartMenuViewTest {
     @CsvSource({
             "일반 모드 시작, 0",
             "아이템 모드 시작, 1",
-            "P2P 대전, 2",
-            "설정, 3",
-            "스코어보드, 4",
-            "종료, 5"
+            "로컬 대전, 2",
+            "P2P 대전, 3",
+            "설정, 4",
+            "스코어보드, 5",
+            "종료, 6"
     })
     void enterRunsOnlySelectedAction(
             String buttonText,
@@ -136,7 +143,7 @@ class JavaFxStartMenuViewTest {
 
             pressKey(KeyCode.ENTER);
 
-            int[] expectedCalls = new int[6];
+            int[] expectedCalls = new int[MENU_COUNT];
             expectedCalls[expectedAction] = 1;
 
             assertArrayEquals(expectedCalls, actionCalls);

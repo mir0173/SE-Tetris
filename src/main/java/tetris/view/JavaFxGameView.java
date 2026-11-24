@@ -49,6 +49,7 @@ public class JavaFxGameView implements GameView {
     private static final double PAUSE_FONT_SIZE = 16;
     private static final double PAUSE_PADDING = 20;
     private static final int SPAWN_ROTATION = 0;
+    private static final int GARBAGE_PREVIEW_ROWS = 10; // AI-assisted (T17) 넘어온 줄은 최대 10줄까지 대기한다
 
     private static final Color EMPTY_COLOR = Color.BLACK;
     private static final Color CLEARING_BACKGROUND_COLOR = Color.WHITE;
@@ -97,10 +98,12 @@ public class JavaFxGameView implements GameView {
     private final Canvas boardCanvas = new Canvas();
     private final Canvas nextCanvas;
     private final Canvas holdCanvas;
+    private final Canvas garbageCanvas; // AI-assisted (T17)
 
     private final Label scoreLabel = new Label("점수 : 0");
     private final Label intervalLabel = new Label("낙하 간격 : 1000ms");
     private final Label pauseLabel = new Label();
+    private final Label garbageCountLabel = new Label("넘어온 줄: 0"); // AI-assisted (T17)
 
     private Consumer<GameCommand> commandHandler;
     private boolean pauseKeyHeld;
@@ -119,6 +122,7 @@ public class JavaFxGameView implements GameView {
         this.blockFont = Font.font("Monospaced", FontWeight.BOLD, BLOCK_FONT_SIZE * scale);
         this.nextCanvas = new Canvas(PREVIEW_SIZE * scale, PREVIEW_SIZE * scale);
         this.holdCanvas = new Canvas(PREVIEW_SIZE * scale, PREVIEW_SIZE * scale);
+        this.garbageCanvas = new Canvas(PREVIEW_SIZE * scale, PREVIEW_SIZE * scale); // AI-assisted
 
         Text measure = new Text(BLOCK_SYMBOL);
         measure.setFont(blockFont);
@@ -148,6 +152,14 @@ public class JavaFxGameView implements GameView {
         keyHelpLabel.setText(text);
     }
 
+    // AI-assisted code start
+    /** 키 안내의 보임 여부와 배치 점유 여부를 함께 바꾼다. */
+    public void setKeyHelpVisible(boolean visible) {
+        keyHelpLabel.setVisible(visible);
+        keyHelpLabel.setManaged(visible);
+    }
+    // AI-assisted code end
+
     @Override
     public void setCommandHandler(Consumer<GameCommand> commandHandler) {
         this.commandHandler = commandHandler;
@@ -156,6 +168,12 @@ public class JavaFxGameView implements GameView {
     @Override
     public void render(GameSnapshot snapshot) {
         drawBoard(snapshot.getCells(), snapshot.getClearingRows(), snapshot.getGhostPieceCells());
+
+        // AI-assisted code start
+        List<int[]> pendingRows = snapshot.getPendingGarbageRows();
+        drawGarbagePreview(pendingRows);
+        garbageCountLabel.setText("넘어온 줄: " + pendingRows.size());
+        // AI-assisted code end
 
         PieceType nextPiece = snapshot.getNextPieces().isEmpty() ? null : snapshot.getNextPieces().get(0);
         drawPreview(nextCanvas, nextPiece, snapshot.getNextPieceItem());
@@ -191,6 +209,17 @@ public class JavaFxGameView implements GameView {
         scoreLabel.setFont(Font.font(SCORE_FONT_SIZE * scale));
         intervalLabel.setFont(Font.font(Font.getDefault().getSize() * scale));
 
+        // AI-assisted code start
+        garbageCanvas.setId("garbage-preview");
+        garbageCountLabel.setId("garbage-count-label");
+        garbageCountLabel.setFont(Font.font(Font.getDefault().getSize() * scale));
+        boolean showGarbage = !attachToStage; // 공격 줄은 대전 화면(embedded)에서만 받는다
+        garbageCountLabel.setVisible(showGarbage);
+        garbageCountLabel.setManaged(showGarbage);
+        garbageCanvas.setVisible(showGarbage);
+        garbageCanvas.setManaged(showGarbage);
+        // AI-assisted code end
+
         pauseLabel.setText("일시정지\n" + keyBindings.get(GameCommand.PAUSE) + ": 재개\n"
                 + keyBindings.get(GameCommand.QUIT_GAME) + ": 메뉴");
         pauseLabel.setAlignment(Pos.CENTER);
@@ -210,6 +239,8 @@ public class JavaFxGameView implements GameView {
                 nextCanvas,
                 createInformationLabel("홀드"),
                 holdCanvas,
+                garbageCountLabel, // AI-assisted (T17)
+                garbageCanvas, // AI-assisted (T17)
                 createKeyHelp());
 
         sidebar.setPrefWidth(SIDEBAR_WIDTH * scale);
@@ -344,6 +375,41 @@ public class JavaFxGameView implements GameView {
             drawCell(graphics, x, y, symbol, type);
         }
     }
+    
+    // AI-assisted code start
+    /**
+     * 받은 공격 줄을 아래쪽부터 그린다. 목록의 마지막 줄이 맨 아래로, 보드에 쌓일 모양과 같다.
+     * 10줄보다 많으면 아래쪽 10줄만 그린다.
+     */
+    private void drawGarbagePreview(List<int[]> rows) {
+        GraphicsContext graphics = garbageCanvas.getGraphicsContext2D();
+        graphics.setFill(EMPTY_COLOR);
+        graphics.fillRect(0, 0, garbageCanvas.getWidth(), garbageCanvas.getHeight());
+
+        if (rows.isEmpty()) {
+            return;
+        }
+
+        int shownCount = Math.min(rows.size(), GARBAGE_PREVIEW_ROWS);
+        int firstShownIndex = rows.size() - shownCount;
+        double miniCellWidth = garbageCanvas.getWidth() / rows.get(0).length;
+        double miniCellHeight = garbageCanvas.getHeight() / GARBAGE_PREVIEW_ROWS;
+
+        graphics.setFill(GARBAGE_COLOR);
+        for (int index = 0; index < shownCount; index++) {
+            int[] row = rows.get(firstShownIndex + index);
+            int previewRow = GARBAGE_PREVIEW_ROWS - shownCount + index;
+
+            for (int column = 0; column < row.length; column++) {
+                if (row[column] != Board.EMPTY_CELL) {
+                    // 1px씩 빼서 칸 사이에 틈을 두면 구멍 위치가 잘 보인다
+                    graphics.fillRect(column * miniCellWidth, previewRow * miniCellHeight,
+                            miniCellWidth - 1, miniCellHeight - 1);
+                }
+            }
+        }
+    }
+    // AI-assisted code end
 
     private void drawCell(GraphicsContext graphics, double x, double y, String symbol, PieceType type) {
         if (type == null) {

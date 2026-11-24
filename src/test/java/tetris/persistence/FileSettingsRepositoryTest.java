@@ -20,6 +20,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import tetris.model.Difficulty;
 import tetris.model.GameCommand;
+import tetris.settings.BattleKeyBindings;
 import tetris.settings.GameSettings;
 import tetris.settings.WindowSize;
 
@@ -376,6 +377,141 @@ class FileSettingsRepositoryTest {
         assertEquals(
                 "A",
                 loaded.getKeyBindings().get(GameCommand.MOVE_LEFT));
+    }
+
+    // ---------- 대전 키 ----------
+
+    @Test
+    void saveAndLoadBattleKeyBindings() throws IOException {
+        // given: 1P 왼쪽 이동, 2P 홀드, 공용 일시정지를 바꾼 설정
+        BattleKeyBindings battleKeys = new BattleKeyBindings(
+                battleKeysWith(BattleKeyBindings.defaults().getFirstPlayerKeys(), GameCommand.MOVE_LEFT, "Q"),
+                battleKeysWith(BattleKeyBindings.defaults().getSecondPlayerKeys(), GameCommand.HOLD, "SHIFT"),
+                battleKeysWith(BattleKeyBindings.defaults().getSharedKeys(), GameCommand.PAUSE, "BACK_SPACE"));
+        GameSettings settings = new GameSettings(
+                WindowSize.LARGE, GameSettings.getDefaultKeyBindings(), true, Difficulty.HARD, battleKeys);
+
+        // when: 저장하고 프로그램을 다시 실행한 것처럼 불러온다
+        repository.save(settings);
+        GameSettings loaded = new FileSettingsRepository(settingsFile).load();
+
+        // then
+        assertSameBattleKeys(battleKeys, loaded.getBattleKeyBindings());
+        assertSameSettings(settings, loaded);
+    }
+
+    @Test
+    void useDefaultBattleKeysWhenFileHasNoBattleKeys() throws IOException {
+        // given: 대전 키가 생기기 전에 저장된 설정 파일
+        Files.writeString(settingsFile, """
+                {
+                  "windowSize": "LARGE",
+                  "keyBindings": {"MOVE_LEFT": "A"},
+                  "colorBlindMode": true,
+                  "difficulty": "HARD"
+                }
+                """);
+
+        // when
+        GameSettings loaded = repository.load();
+
+        // then: 기존 값은 그대로, 대전 키만 기본값
+        assertSameBattleKeys(BattleKeyBindings.defaults(), loaded.getBattleKeyBindings());
+        assertEquals(WindowSize.LARGE, loaded.getWindowSize());
+        assertEquals(CUSTOM_LEFT_KEY, loaded.getKeyBindings().get(GameCommand.MOVE_LEFT));
+        assertTrue(loaded.isColorBlindMode());
+        assertEquals(Difficulty.HARD, loaded.getDifficulty());
+    }
+
+    @Test
+    void fillMissingBattleCommandsWithDefaultKeys() throws IOException {
+        // given: 1P 왼쪽 이동만 저장되어 있고 2P·공용 항목은 없다
+        Files.writeString(settingsFile, """
+                {
+                  "battleKeyBindings": {
+                    "firstPlayer": {"MOVE_LEFT": "Q"}
+                  }
+                }
+                """);
+
+        // when
+        BattleKeyBindings loaded = repository.load().getBattleKeyBindings();
+
+        // then
+        assertEquals(
+                battleKeysWith(BattleKeyBindings.defaults().getFirstPlayerKeys(), GameCommand.MOVE_LEFT, "Q"),
+                loaded.getFirstPlayerKeys());
+        assertEquals(BattleKeyBindings.defaults().getSecondPlayerKeys(), loaded.getSecondPlayerKeys());
+        assertEquals(BattleKeyBindings.defaults().getSharedKeys(), loaded.getSharedKeys());
+    }
+
+    @Test
+    void replaceInvalidBattleKeyNameWithDefaultKey() throws IOException {
+        // given: 오타 난 키 이름, null 키 이름
+        Files.writeString(settingsFile, """
+                {
+                  "battleKeyBindings": {
+                    "firstPlayer": {"MOVE_LEFT": "LFET", "HOLD": "Q"},
+                    "secondPlayer": {"MOVE_LEFT": null}
+                  }
+                }
+                """);
+
+        // when
+        BattleKeyBindings loaded = repository.load().getBattleKeyBindings();
+
+        // then: 잘못된 것만 기본 키, 올바른 것은 유지
+        assertEquals("F", loaded.getFirstPlayerKeys().get(GameCommand.MOVE_LEFT));
+        assertEquals("Q", loaded.getFirstPlayerKeys().get(GameCommand.HOLD));
+        assertEquals("LEFT", loaded.getSecondPlayerKeys().get(GameCommand.MOVE_LEFT));
+    }
+
+    @Test
+    void ignoreBattleCommandsOutsideTheirGroup() throws IOException {
+        // given: 1P 묶음에 공용 명령·없는 명령·NONE이, 공용 묶음에 플레이어 명령이 들어 있다
+        Files.writeString(settingsFile, """
+                {
+                  "battleKeyBindings": {
+                    "firstPlayer": {"PAUSE": "Q", "REMOVED_COMMAND": "W", "NONE": "E"},
+                    "shared": {"HOLD": "R"}
+                  }
+                }
+                """);
+
+        // when
+        BattleKeyBindings loaded = repository.load().getBattleKeyBindings();
+
+        // then: 묶음에 맞지 않는 항목은 무시하고 기본값을 쓴다
+        assertSameBattleKeys(BattleKeyBindings.defaults(), loaded);
+    }
+
+    @Test
+    void keepBattleKeysWhenOnlySinglePlayerKeysChange() throws IOException {
+        // given: 1인 게임 키만 바꾼 설정 (대전 키는 기본값)
+        GameSettings settings = createCustomSettings();
+
+        // when
+        repository.save(settings);
+        GameSettings loaded = repository.load();
+
+        // then: 두 키 설정은 서로 영향이 없다
+        assertEquals(settings.getKeyBindings(), loaded.getKeyBindings());
+        assertSameBattleKeys(BattleKeyBindings.defaults(), loaded.getBattleKeyBindings());
+    }
+
+    // 기본 키 묶음에서 한 명령만 바꾼 Map
+    private static Map<GameCommand, String> battleKeysWith(Map<GameCommand, String> defaults,
+            GameCommand command, String keyName) {
+        Map<GameCommand, String> keys = new EnumMap<>(GameCommand.class);
+        keys.putAll(defaults);
+        keys.put(command, keyName);
+        return keys;
+    }
+
+    private static void assertSameBattleKeys(BattleKeyBindings expected, BattleKeyBindings actual) {
+        assertEquals(expected.getFirstPlayerKeys(), actual.getFirstPlayerKeys());
+        assertEquals(expected.getSecondPlayerKeys(), actual.getSecondPlayerKeys());
+        assertEquals(expected.getSharedKeys(), actual.getSharedKeys());
     }
 
     private GameSettings createCustomSettings() {
