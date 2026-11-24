@@ -19,10 +19,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import javafx.application.Platform;
+import javafx.geometry.Bounds;
 import javafx.scene.Node;
 import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
@@ -30,6 +33,7 @@ import tetris.model.Board;
 import tetris.model.Difficulty;
 import tetris.model.GameSnapshot;
 import tetris.model.GameStatus;
+import tetris.network.PeerHealth;
 import tetris.settings.GameSettings;
 import tetris.settings.WindowSize;
 
@@ -68,6 +72,40 @@ class JavaFxGameViewGarbagePreviewTest {
     }
 
     // ---------- 보이는 곳 ----------
+
+    @Test
+    void showBothAttackPreviewsInSmallP2pTimeLimitWindowWithoutScrolling() throws Exception {
+        runOnFxThread(() -> {
+            GameSettings settings = new GameSettings(WindowSize.SMALL, GameSettings.getDefaultKeyBindings(),
+                    true, Difficulty.NORMAL);
+            JavaFxP2pGameView view = new JavaFxP2pGameView(settings, () -> { });
+            GameSnapshot pending = snapshotWithPendingRows(List.of(rowWithHoleAt(4), rowWithHoleAt(5)));
+            view.getLocalView().render(pending);
+            view.renderRemote(pending);
+            view.renderRemainingSeconds(10);
+            view.renderConnectionHealth(new PeerHealth(25, false));
+
+            Stage stage = new Stage();
+            try {
+                Scene scene = view.getScene();
+                stage.setScene(scene);
+                stage.show();
+                scene.getRoot().applyCss();
+                scene.getRoot().layout();
+                ScrollPane scroll = (ScrollPane) scene.lookup(".scroll-pane");
+                Node viewport = scroll.lookup(".viewport");
+                Bounds visible = viewport.localToScene(viewport.getBoundsInLocal());
+                for (String panelId : List.of("#p2p-local-panel", "#p2p-remote-panel")) {
+                    Node preview = scene.lookup(panelId).lookup("#garbage-preview");
+                    Bounds bounds = preview.localToScene(preview.getBoundsInLocal());
+                    assertTrue(visible.contains(bounds), panelId + " 공격 줄 미리보기가 창 밖으로 잘립니다.");
+                }
+                System.out.println("[T22 P2P 작은 창] 제한시간·연결 상태와 양쪽 공격 줄 칸이 화면에 모두 표시 PASS");
+            } finally {
+                stage.close();
+            }
+        });
+    }
 
     @Test
     void hideGarbagePreviewInSinglePlayerView() throws Exception {

@@ -45,7 +45,11 @@ public class LocalPlayer implements Player {
      */
     @Override
     public void receiveGarbageRows(List<int[]> garbageRows) {
+        int pendingRows = game.getPendingGarbageRowCount();
         game.receiveGarbageRows(garbageRows);
+        if (game.getPendingGarbageRowCount() != pendingRows) {
+            controller.refreshView();
+        }
     }
 
     /** 이 플레이어가 졌는지 확인한다 */

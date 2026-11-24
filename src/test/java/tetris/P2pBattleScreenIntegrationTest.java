@@ -6,7 +6,10 @@ import java.awt.image.BufferedImage;
 import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -20,6 +23,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
 import javafx.event.Event;
 import javafx.scene.Node;
 import javafx.scene.Parent;
@@ -31,12 +35,15 @@ import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 import tetris.battle.BattleMode;
 import tetris.battle.BattleSettings;
 
 // AI-assisted code start
 @ResourceLock(Resources.SYSTEM_PROPERTIES)
 class P2pBattleScreenIntegrationTest {
+    private static final int SCREEN_LATENCY_LIMIT_MILLIS = 200;
+    private static final int LATENCY_SAMPLES_PER_DIRECTION = 6;
     @TempDir Path data;
     private String previousHome;
     private Stage hostStage;
@@ -81,6 +88,69 @@ class P2pBattleScreenIntegrationTest {
     }
 
     @Test
+    void reflectInputOnBothRemoteScreensWithinLatencyLimitOnLoopback() throws Exception {
+        connectPeers();
+        startMatch();
+        await(() -> label(hostStage, "p2p-battle-health").getText().matches(".*[0-9]+\\s*ms")
+                && label(clientStage, "p2p-battle-health").getText().matches(".*[0-9]+\\s*ms"));
+        List<Double> hostToClient = measureScreenLatency(hostStage, clientStage);
+        List<Double> clientToHost = measureScreenLatency(clientStage, hostStage);
+        double maximum = Math.max(hostToClient.stream().mapToDouble(Double::doubleValue).max().orElseThrow(),
+                clientToHost.stream().mapToDouble(Double::doubleValue).max().orElseThrow());
+        System.out.printf("[T22 화면 지연, 같은 PC] HOST→CLIENT %s ms, CLIENT→HOST %s ms, 최대 %.2f ms (기준 %d ms)%n",
+                hostToClient, clientToHost, maximum, SCREEN_LATENCY_LIMIT_MILLIS);
+        assertTrue(maximum <= SCREEN_LATENCY_LIMIT_MILLIS, "키 입력부터 상대 화면 반영까지 " + maximum + "ms");
+    }
+
+    private List<Double> measureScreenLatency(Stage sender, Stage receiver) throws Exception {
+        List<Double> samples = new ArrayList<>();
+        for (int sample = 0; sample < LATENCY_SAMPLES_PER_DIRECTION; sample++) {
+            CompletableFuture<Double> displayed = new CompletableFuture<>();
+            Label remoteScore = onFx(() -> scoreLabel(receiver, "p2p-remote-panel"));
+            ChangeListener<String> measure = onFx(() -> {
+                Label localScore = scoreLabel(sender, "p2p-local-panel");
+                long initialScore = scoreValue(localScore.getText());
+                Node board = sender.getScene().lookup("#p2p-local-panel");
+                long started = System.nanoTime();
+                Event.fireEvent(board, new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.DOWN,
+                        false, false, false, false));
+                long expected = scoreValue(localScore.getText());
+                assertTrue(expected > initialScore, "소프트드롭 점수가 증가해야 합니다.");
+                ChangeListener<String> listener = (ignored, previous, current) -> {
+                    if (scoreValue(current) >= expected) {
+                        displayed.complete((System.nanoTime() - started) / 1_000_000.0);
+                    }
+                };
+                remoteScore.textProperty().addListener(listener);
+                return listener;
+            });
+            try {
+                samples.add(displayed.get(5, TimeUnit.SECONDS));
+            } finally {
+                onFx(() -> { remoteScore.textProperty().removeListener(measure); return null; });
+            }
+        }
+        return samples;
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void treatWindowCloseAsForfeitAndShowRemainingPlayerResult(boolean hostCloses) throws Exception {
+        connectPeers();
+        startMatch();
+        Stage leaver = hostCloses ? hostStage : clientStage;
+        Stage remaining = hostCloses ? clientStage : hostStage;
+        onFx(() -> {
+            Event.fireEvent(leaver, new WindowEvent(leaver, WindowEvent.WINDOW_CLOSE_REQUEST));
+            return null;
+        });
+        await(() -> !leaver.isShowing() && result(remaining).startsWith("승리 기권"));
+        await(() -> label(remaining, "p2p-battle-status").getText().contains("연결이"));
+        assertTrue(onFx(() -> result(remaining).startsWith("승리 기권")));
+        System.out.printf("[T22 창 닫기] %s 기권, 남은 쪽 승리 표시 유지 PASS%n", hostCloses ? "HOST" : "CLIENT");
+    }
+
+    @Test
     void showBothBoardsTransmitInputAndReturnWithoutReconnecting() throws Exception {
         connectPeers();
         assertEquals("127.0.0.1", Files.readString(data.resolve(".se-tetris/last-peer-ip.txt")).strip());
@@ -106,8 +176,8 @@ class P2pBattleScreenIntegrationTest {
         await(() -> label(hostStage, "p2p-battle-health").getText().matches(".*[0-9]+\\s*ms"));
 
         onFx(() -> { button(clientStage, "p2p-battle-back").fire(); return null; });
-        await(() -> result(hostStage).startsWith("승리 · 기권")
-                && result(clientStage).startsWith("패배 · 기권"));
+        await(() -> result(hostStage).startsWith("승리 기권")
+                && result(clientStage).startsWith("패배 기권"));
         System.out.println(onFx(() -> "[T20 CLIENT 기권] HOST " + result(hostStage) + " / CLIENT " + result(clientStage)));
         onFx(() -> { button(clientStage, "p2p-battle-back").fire(); return null; });
         await(() -> hostStage.getScene().lookup("#p2p-ready") != null
@@ -147,8 +217,8 @@ class P2pBattleScreenIntegrationTest {
             }
             return score(loserStage, "p2p-local-panel");
         });
-        await(() -> result(loserStage).startsWith("패배 · 게임오버")
-                && result(winnerStage).startsWith("승리 · 게임오버"));
+        await(() -> result(loserStage).startsWith("패배 게임오버")
+                && result(winnerStage).startsWith("승리 게임오버"));
         String loss = onFx(() -> result(loserStage));
         String win = onFx(() -> result(winnerStage));
         long winningScore = scorePair(win)[0];
@@ -173,8 +243,8 @@ class P2pBattleScreenIntegrationTest {
         connectPeers();
         startMatch();
         onFx(() -> { button(hostStage, "p2p-battle-back").fire(); return null; });
-        await(() -> result(hostStage).startsWith("패배 · 기권")
-                && result(clientStage).startsWith("승리 · 기권"));
+        await(() -> result(hostStage).startsWith("패배 기권")
+                && result(clientStage).startsWith("승리 기권"));
         onFx(() -> { button(hostStage, "p2p-battle-back").fire(); return null; });
         await(() -> hostStage.getScene().lookup("#p2p-ready") != null
                 && clientStage.getScene().lookup("#p2p-ready") != null);
@@ -208,8 +278,8 @@ class P2pBattleScreenIntegrationTest {
         onFx(() -> {
             assertEquals("남은 시간 0:00", timeLeft(hostStage));
             assertEquals(timeLeft(hostStage), timeLeft(clientStage));
-            assertTrue(result(hostStage).startsWith("승리 · 시간 종료"));
-            assertTrue(result(clientStage).startsWith("패배 · 시간 종료"));
+            assertTrue(result(hostStage).startsWith("승리 시간 종료"));
+            assertTrue(result(clientStage).startsWith("패배 시간 종료"));
             System.out.printf("[T20 화면 제한시간] %s → %s / HOST %s / CLIENT %s PASS%n",
                     startingTime, timeLeft(hostStage), result(hostStage), result(clientStage));
             return null;
@@ -260,9 +330,14 @@ class P2pBattleScreenIntegrationTest {
     }
 
     private static long score(Stage stage, String panelId) {
+        return scoreValue(scoreLabel(stage, panelId).getText());
+    }
+    private static Label scoreLabel(Stage stage, String panelId) {
         Parent panel = (Parent) stage.getScene().lookup("#" + panelId);
         panel.applyCss();
-        String text = ((Label) panel.lookup("#score-label")).getText();
+        return (Label) panel.lookup("#score-label");
+    }
+    private static long scoreValue(String text) {
         return Long.parseLong(text.substring(text.indexOf(':') + 1).strip());
     }
     private static TextField field(Stage stage, String id) { return (TextField) stage.getScene().lookup("#" + id); }

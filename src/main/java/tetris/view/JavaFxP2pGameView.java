@@ -3,11 +3,13 @@ package tetris.view;
 import java.util.Locale;
 
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import tetris.battle.MatchResult;
 import tetris.model.GameSnapshot;
@@ -58,7 +60,10 @@ public final class JavaFxP2pGameView {
         ScrollPane scroll = new ScrollPane(boards);
         scroll.setPannable(false);
         scroll.setFocusTraversable(false);
-        VBox root = new VBox(SPACING, resultLabel, timeLeft, remoteStatus, status, health, scroll, back);
+        HBox header = new HBox(SPACING, remoteStatus, timeLeft, health);
+        header.setAlignment(Pos.CENTER_LEFT);
+        VBox root = new VBox(SPACING, header, resultLabel, status, scroll, back);
+        VBox.setVgrow(scroll, Priority.ALWAYS);
         root.setPadding(new Insets(PADDING));
         scene = new Scene(root, 980 * settings.getWindowSize().getScale(),
                 680 * settings.getWindowSize().getScale());
