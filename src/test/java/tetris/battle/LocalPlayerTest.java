@@ -41,6 +41,8 @@ class LocalPlayerTest {
         // when
         GameSnapshot snapshot = player.createSnapshot();
         int[] garbageRow = garbageRow();
+        int[] matchUpdates = {0};
+        player.setOnUpdate(() -> matchUpdates[0]++);
         player.receiveGarbageRows(List.of(garbageRow));
 
         // then
@@ -49,8 +51,12 @@ class LocalPlayerTest {
         assertFalse(player.isGameOver());
         assertEquals(snapshot.getStatus(), player.createSnapshot().getStatus());
         assertEquals(EXPECTED_ONE_PENDING_ROW, fixture.game().getPendingGarbageRowCount());
+        assertEquals(EXPECTED_ONE_PENDING_ROW, fixture.view.lastSnapshot.getPendingGarbageRows().size());
+        assertEquals(0, matchUpdates[0]);
+        assertTrue(fixture.timer().running);
         assertTrue(player.takeAttackRows().isEmpty());
         assertEquals(fixture.game().createSnapshot().getScore(), player.getScore());
+        System.out.println("[T22 공격 미리보기] 받는 즉시 렌더링·추가 판정 호출 없음 PASS");
     }
 
     @Test // LocalPlayer의 일시정지와 재개 및 종료가 게임과 타이머에 반영되는지 확인하는 테스트
@@ -149,6 +155,7 @@ class LocalPlayerTest {
     }
 
     private static class FakeGameView implements GameView {
+        private GameSnapshot lastSnapshot;
 
         @Override
         public void setCommandHandler(Consumer<GameCommand> handler) {
@@ -156,6 +163,7 @@ class LocalPlayerTest {
 
         @Override
         public void render(GameSnapshot snapshot) {
+            lastSnapshot = snapshot;
         }
 
         @Override

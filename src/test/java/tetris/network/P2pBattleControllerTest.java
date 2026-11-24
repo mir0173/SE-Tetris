@@ -59,13 +59,18 @@ class P2pBattleControllerTest {
         Fixture fixture = new Fixture();
         fixture.controller.start();
         fixture.link.receive(BattleMessage.state(1, BattleStateData.fromSnapshot(BattleMessageTest.snapshot(777))));
-        fixture.link.receive(BattleMessage.attack(2, List.of(new int[10], new int[10])));
         fixture.stateTimer.fire();
         assertEquals(List.of(777L), fixture.remoteScores);
         assertEquals(1, fixture.outgoing.size());
+        fixture.link.receive(BattleMessage.attack(2, List.of(new int[10], new int[10])));
         assertEquals(2, fixture.game.getPendingGarbageRowCount());
+        assertEquals(2, fixture.view.lastSnapshot.getPendingGarbageRows().size());
+        fixture.stateTimer.fire();
+        assertEquals(List.of(BattleMessage.Type.STATE, BattleMessage.Type.STATE),
+                fixture.outgoing.stream().map(BattleMessage::type).toList());
+        assertEquals(2, fixture.outgoing.getLast().state().pendingRows().size());
         fixture.controller.close();
-        System.out.println("[T20 공격 수신] 상대 점수 표시·상태 재전송 없음·공통 공격 규칙 적용 PASS");
+        System.out.println("[T22 공격 수신] 상대 상태 재전송 없음·내 공격 대기열 즉시 표시 및 동기화 PASS");
     }
 
     @Test
@@ -174,8 +179,9 @@ class P2pBattleControllerTest {
 
     private static final class FakeView implements GameView {
         private Consumer<GameCommand> command;
+        private GameSnapshot lastSnapshot;
         @Override public void setCommandHandler(Consumer<GameCommand> command) { this.command = command; }
-        @Override public void render(GameSnapshot snapshot) { }
+        @Override public void render(GameSnapshot snapshot) { lastSnapshot = snapshot; }
         @Override public void show() { }
         @Override public void close() { }
     }

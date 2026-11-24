@@ -135,11 +135,16 @@ public class TetrisApplication extends Application {
         P2pLobbyController controller = new P2pLobbyController(
                 Platform::runLater, state -> {
                     view.render(state);
-                    if (p2pBattleController != null && state.phase() == LobbyState.Phase.IDLE
-                            && p2pBattleController.hasResult()) {
-                        p2pBattleController.peerDisconnected();
-                        p2pBattleView.setStatus(state.message());
-                        p2pBattleView.renderConnectionHealth(null);
+                    if (p2pBattleController != null && state.phase() == LobbyState.Phase.IDLE) {
+                        if (p2pBattleController.peerDisconnected()) {
+                            return;
+                        }
+                        if (p2pBattleController.hasResult()) {
+                            p2pBattleView.setStatus(state.message());
+                            p2pBattleView.renderConnectionHealth(null);
+                        } else {
+                            returnFromP2pBattle(stage, view);
+                        }
                     } else if (p2pBattleController != null && state.phase() != LobbyState.Phase.STARTED
                             && state.phase() != LobbyState.Phase.STARTING) {
                         returnFromP2pBattle(stage, view);
@@ -204,11 +209,20 @@ public class TetrisApplication extends Application {
                 });
         stage.setTitle("P2P 대전");
         stage.setScene(view.getScene());
+        stage.setOnCloseRequest(event -> {
+            event.consume();
+            p2pBattleController.requestWindowClose(() -> {
+                stage.setOnCloseRequest(null);
+                closeP2pLobby();
+                stage.close();
+            });
+        });
         p2pBattleController.start();
     }
 
     private void returnFromP2pBattle(Stage stage, JavaFxP2pLobbyView view) {
         closeP2pBattle();
+        stage.setOnCloseRequest(null);
         stage.setScene(view.getScene());
         stage.setTitle("P2P 대전");
         stage.sizeToScene();

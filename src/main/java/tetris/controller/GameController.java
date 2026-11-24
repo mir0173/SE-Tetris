@@ -77,6 +77,13 @@ public class GameController {
         synchronizeState();
     }
 
+    /** 모델의 현재 상태를 다시 그린다. 판정이나 타이머는 갱신하지 않는다. */
+    public void refreshView() {
+        if (started && !terminalHandled) {
+            view.render(game.createSnapshot());
+        }
+    }
+
     /**
      * onUpdate 필드를 설정한다.
      */

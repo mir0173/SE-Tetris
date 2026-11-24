@@ -11,13 +11,14 @@ if (-not (Test-Path -LiteralPath $jpackagePath)) {
 
 Push-Location -LiteralPath $projectRoot
 try {
+    $pom = [xml](Get-Content -LiteralPath (Join-Path $projectRoot 'pom.xml') -Raw)
     & .\mvnw.cmd clean verify
     if ($LASTEXITCODE -ne 0) { throw 'Maven verification failed.' }
 
     $packageArguments = @(
         '--type', 'app-image',
         '--name', 'SE-Tetris',
-        '--app-version', '0.2.0',
+        '--app-version', $pom.project.version,
         '--vendor', 'SE-Tetris Team',
         '--description', 'Text-based Tetris game',
         '--input', 'target\app',

@@ -41,6 +41,7 @@ public final class P2pBattleController implements AutoCloseable {
     private boolean peerReceivedResult;
     private boolean returnRequested;
     private boolean disconnected;
+    private Runnable closeWindowAfterResult;
 
     public P2pBattleController(Game game, GameView view, GameTimer dropTimer, DelayScheduler delay,
             GameTimer stateTimer, GameTimer timeLimitTimer, BattleLink link, MatchStart matchStart,
@@ -103,8 +104,20 @@ public final class P2pBattleController implements AutoCloseable {
         return result != null;
     }
 
-    public void peerDisconnected() {
+    /** 상대 연결이 끝났음을 반영하고 대기 중인 창 닫기 요청이 있으면 처리한다. */
+    public boolean peerDisconnected() {
         disconnected = true;
+        return completeWindowClose();
+    }
+
+    /** 경기 중 창 닫기는 기권으로 처리하고 결과가 전달될 때까지 연결을 유지한다. */
+    public void requestWindowClose(Runnable closeWindow) {
+        closeWindowAfterResult = Objects.requireNonNull(closeWindow, "closeWindow");
+        if (closed || disconnected || (hasResult() && (!isHost() || peerReceivedResult))) {
+            completeWindowClose();
+        } else if (!hasResult()) {
+            requestReturnToLobby();
+        }
     }
 
     /** 경기 중에는 기권을 요청하고, 결과 화면에서는 대기실 복귀를 요청한다. */
@@ -160,7 +173,7 @@ public final class P2pBattleController implements AutoCloseable {
         if (result != null) {
             if (isHost() && message.type() == BattleMessage.Type.RESULT_ACK && !peerReceivedResult) {
                 peerReceivedResult = true;
-                if (returnRequested) {
+                if (!completeWindowClose() && returnRequested) {
                     onReturnToLobby.run();
                 }
             }
@@ -176,6 +189,7 @@ public final class P2pBattleController implements AutoCloseable {
                 requireRole(PeerRole.CLIENT);
                 showResult(message.result().swapSides());
                 link.acknowledgeResult();
+                completeWindowClose();
             }
             case TIME_LEFT -> {
                 requireRole(PeerRole.CLIENT);
@@ -201,6 +215,16 @@ public final class P2pBattleController implements AutoCloseable {
         stateTimer.stop();
         matchManager.cancel();
         onResult.accept(outcome);
+    }
+
+    private boolean completeWindowClose() {
+        Runnable closeWindow = closeWindowAfterResult;
+        if (closeWindow == null) {
+            return false;
+        }
+        closeWindowAfterResult = null;
+        closeWindow.run();
+        return true;
     }
 
     private boolean isHost() {
