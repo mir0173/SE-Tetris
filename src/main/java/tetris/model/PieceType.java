@@ -21,8 +21,8 @@ public enum PieceType {
             { 1, 1 }
     }),
     T(3, true, true, new int[][] {
-            { 1, 1, 1 },
             { 0, 1, 0 },
+            { 1, 1, 1 },
             { 0, 0, 0 }
     }),
     S(4, true, true, new int[][] {

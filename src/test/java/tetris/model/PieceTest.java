@@ -140,8 +140,8 @@ class PieceTest {
     void calculateAbsolutePositionsFromOrigin() {
         Piece block = new Piece(PieceType.T, 0, 5, 3);
         Set<Position> expected = Set.of(
-                new Position(5, 3), new Position(5, 4),
-                new Position(5, 5), new Position(6, 4)
+                new Position(5, 4), new Position(6, 3),
+                new Position(6, 4), new Position(6, 5)
         );
 
         assertEquals(expected, Set.copyOf(block.getAbsolutePositions()));

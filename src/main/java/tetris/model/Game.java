@@ -190,16 +190,8 @@ public class Game {
         switch (command) {
             case MOVE_LEFT -> tryReplace(currentPiece.move(0, -1));
             case MOVE_RIGHT -> tryReplace(currentPiece.move(0, 1));
-            case ROTATE_CLOCKWISE -> {
-                if (currentPiece.canRotate()) {
-                    tryReplace(currentPiece.rotateClockwise());
-                }
-            }
-            case ROTATE_COUNTERCLOCKWISE -> {
-                if (currentPiece.canRotate()) {
-                    tryReplace(currentPiece.rotateCounterClockwise());
-                }
-            }
+            case ROTATE_CLOCKWISE -> rotate(true);
+            case ROTATE_COUNTERCLOCKWISE -> rotate(false);
             case SOFT_DROP -> {
                 if (softDrop()) {
                     softDropCells++;
@@ -358,6 +350,22 @@ public class Game {
         }
         pendingAttackRows.clear();
         return List.copyOf(attackRows);
+    }
+
+    /** 제자리 회전이 막히면 회전 전 상태의 SRS 보정 후보를 차례로 검사한다. */
+    private void rotate(boolean clockwise) {
+        if (!currentPiece.canRotate()) {
+            return;
+        }
+        Piece rotated = clockwise ? currentPiece.rotateClockwise() : currentPiece.rotateCounterClockwise();
+        if (tryReplace(rotated)) {
+            return;
+        }
+        for (Position offset : SrsWallKick.offsetsFor(currentPiece.type(), currentPiece.rotation(), clockwise)) {
+            if (tryReplace(rotated.move(offset.row(), offset.column()))) {
+                return;
+            }
+        }
     }
 
     // 후보가 놓일 수 있으면 현재 블록을 교체하고 true, 아니면 그대로 두고 false

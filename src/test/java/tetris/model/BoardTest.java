@@ -307,14 +307,14 @@ class BoardTest {
 
         board.lock(Piece.spawn(PieceType.T, BOARD_WIDTH));
 
-        assertEquals(CELL_ID_T, board.getCell(0, 3));
         assertEquals(CELL_ID_T, board.getCell(0, 4));
-        assertEquals(CELL_ID_T, board.getCell(0, 5));
+        assertEquals(CELL_ID_T, board.getCell(1, 3));
         assertEquals(CELL_ID_T, board.getCell(1, 4));
-        assertFalse(board.isEmpty(0, 3));
+        assertEquals(CELL_ID_T, board.getCell(1, 5));
         assertFalse(board.isEmpty(0, 4));
-        assertFalse(board.isEmpty(0, 5));
+        assertFalse(board.isEmpty(1, 3));
         assertFalse(board.isEmpty(1, 4));
+        assertFalse(board.isEmpty(1, 5));
     }
 
     @Test
@@ -344,10 +344,10 @@ class BoardTest {
         board.lock(block);
 
         assertThrows(IllegalArgumentException.class, () -> board.lock(block));
-        assertEquals(CELL_ID_T, board.getCell(0, 3));
         assertEquals(CELL_ID_T, board.getCell(0, 4));
-        assertEquals(CELL_ID_T, board.getCell(0, 5));
+        assertEquals(CELL_ID_T, board.getCell(1, 3));
         assertEquals(CELL_ID_T, board.getCell(1, 4));
+        assertEquals(CELL_ID_T, board.getCell(1, 5));
     }
 
     @Test
@@ -447,7 +447,7 @@ class BoardTest {
 
         assertEquals(previousValue, clearedValue);
         assertEquals(Board.EMPTY_CELL, board.getCell(target.row(), target.column()));
-        assertEquals(PieceType.T.getCellId(), board.getCell(ITEM_ROW, ITEM_COLUMN + 1));
+        assertEquals(PieceType.T.getCellId(), board.getCell(ITEM_ROW + 1, ITEM_COLUMN + 1));
         assertEquals(Board.EMPTY_CELL, board.getCell(ITEM_ROW - 1, ITEM_COLUMN));
     }
 
@@ -1013,9 +1013,9 @@ class BoardTest {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
         board.lock(Piece.spawn(PieceType.T, BOARD_WIDTH));
         int[][] copy = board.copyCells();
-        copy[0][3] = Board.EMPTY_CELL;
+        copy[0][4] = Board.EMPTY_CELL;
 
-        assertEquals(CELL_ID_T, board.getCell(0, 3));
+        assertEquals(CELL_ID_T, board.getCell(0, 4));
     }
 
     @Test
@@ -1023,11 +1023,11 @@ class BoardTest {
         Board board = new Board(BOARD_WIDTH, BOARD_HEIGHT);
         int[][] copy = board.copyCellsWith(Piece.spawn(PieceType.T, BOARD_WIDTH));
 
-        assertEquals(CELL_ID_T, copy[0][3]);
         assertEquals(CELL_ID_T, copy[0][4]);
-        assertEquals(CELL_ID_T, copy[0][5]);
+        assertEquals(CELL_ID_T, copy[1][3]);
         assertEquals(CELL_ID_T, copy[1][4]);
-        assertOnlyTCells(copy, 0, 3, 1, 4);
+        assertEquals(CELL_ID_T, copy[1][5]);
+        assertOnlyTCells(copy, 1, 3, 0, 4);
     }
 
     @Test
@@ -1046,7 +1046,7 @@ class BoardTest {
 
         int[][] copy = board.copyCellsWith(new Piece(PieceType.O, 0, 3, 7));
 
-        assertEquals(CELL_ID_T, copy[0][3]);
+        assertEquals(CELL_ID_T, copy[0][4]);
         assertEquals(CELL_ID_O, copy[3][7]);
         assertEquals(CELL_ID_O, copy[3][8]);
         assertEquals(CELL_ID_O, copy[4][7]);
