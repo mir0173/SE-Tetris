@@ -64,6 +64,21 @@ final class PuyoBoard {
         }
     }
 
+    /** 아래가 비어 있는 블록을 각각 한 칸씩 내린다. */
+    boolean advanceGravityOneRow() {
+        boolean moved = false;
+        for (int row = HEIGHT - 2; row >= 0; row--) {
+            for (int col = 0; col < WIDTH; col++) {
+                if (cells[row][col] != 0 && cells[row + 1][col] == 0) {
+                    cells[row + 1][col] = cells[row][col];
+                    cells[row][col] = 0;
+                    moved = true;
+                }
+            }
+        }
+        return moved;
+    }
+
     Clear findClear() {
         Set<Position> visited = new HashSet<>();
         Set<Position> clearing = new HashSet<>();

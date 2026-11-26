@@ -22,7 +22,10 @@ import tetris.model.PuyoDisplay.PairColors;
 /** 색 블록 쌍의 이동, 연쇄, 점수 및 방해 블록을 처리한다. */
 public final class PuyoGame implements ControlledGame {
     private static final long DROP_INTERVAL = 800L;
-    private static final long LOCK_DELAY = 260L;
+    private static final long LOCK_DELAY = 533L; // 60fps에서 32프레임에 해당하는 시간
+    private static final long HIGHLIGHT_DELAY = 480L;
+    private static final long FALL_STEP_DELAY = 75L;
+    private static final long SETTLE_DELAY = 150L;
     private static final int NEXT_PAIR_COUNT = 3;
     private static final int POINTS_PER_GARBAGE = 70;
     private static final int[] CHAIN_BONUS = {
@@ -45,6 +48,7 @@ public final class PuyoGame implements ControlledGame {
     private GameStatus beforePause;
     private Pair active;
     private Set<Position> clearing = Set.of();
+    private ClearPhase clearPhase;
     private long lockSequence;
     private long lockId;
     private long score;
@@ -70,6 +74,19 @@ public final class PuyoGame implements ControlledGame {
     @Override public GameStatus getStatus() { return status; }
     @Override public long getScore() { return score + dropBonus; }
     @Override public long getPendingLockDelayId() { return lockId; }
+    @Override public boolean isLockDelayRunning() { return status == GameStatus.PLAYING && isGrounded(); }
+
+    @Override
+    public long clearStepDelayMillis(long defaultDelayMillis) {
+        if (status != GameStatus.CLEARING) {
+            return defaultDelayMillis;
+        }
+        return switch (clearPhase) {
+            case HIGHLIGHT -> HIGHLIGHT_DELAY;
+            case FALL -> FALL_STEP_DELAY;
+            case SETTLE -> SETTLE_DELAY;
+        };
+    }
     @Override public int getPendingGarbageRowCount() { return pendingGarbage; }
     @Override public boolean isPaused() { return status == GameStatus.PAUSED; }
     @Override public boolean isGameOver() { return status == GameStatus.GAMEOVER; }
@@ -101,6 +118,9 @@ public final class PuyoGame implements ControlledGame {
                 case SOFT_DROP -> {
                     if (move(1, 0)) {
                         dropBonus += 2;
+                    }
+                    if (isGrounded()) {
+                        lock();
                     }
                 }
                 case HARD_DROP -> {
@@ -148,7 +168,7 @@ public final class PuyoGame implements ControlledGame {
 
     @Override
     public boolean finishLockDelay(long id) {
-        if (id == 0 || lockId != id || status != GameStatus.PLAYING) {
+        if (id == 0 || lockId != id || !isLockDelayRunning()) {
             return false;
         }
         lock();
@@ -160,12 +180,21 @@ public final class PuyoGame implements ControlledGame {
         if (status != GameStatus.CLEARING) {
             return;
         }
-        for (Position cell : clearing) {
-            board.set(cell.row(), cell.column(), 0);
+        switch (clearPhase) {
+            case HIGHLIGHT -> {
+                for (Position cell : clearing) {
+                    board.set(cell.row(), cell.column(), 0);
+                }
+                clearing = Set.of();
+                clearPhase = ClearPhase.FALL;
+            }
+            case FALL -> {
+                if (!board.advanceGravityOneRow()) {
+                    clearPhase = ClearPhase.SETTLE;
+                }
+            }
+            case SETTLE -> checkChain();
         }
-        clearing = Set.of();
-        board.settle();
-        checkChain();
     }
 
     @Override
@@ -264,11 +293,14 @@ public final class PuyoGame implements ControlledGame {
                 || board.blocked(child.row(), child.column());
     }
 
+    private boolean isGrounded() {
+        return active != null && collides(new Pair(active.row() + 1, active.column(),
+                active.rotation(), active.colors()));
+    }
+
     private void updateLockDelay() {
-        if (active == null || !collides(new Pair(active.row() + 1, active.column(),
-                active.rotation(), active.colors()))) {
-            lockId = 0;
-        } else if (lockId == 0) {
+        // 같은 쌍이 다시 공중에 떠도 ID를 유지해 이미 쓴 착지 시간이 초기화되지 않게 한다.
+        if (lockId == 0 && isGrounded()) {
             lockId = ++lockSequence;
         }
     }
@@ -299,6 +331,7 @@ public final class PuyoGame implements ControlledGame {
 
         chain++;
         clearing = clear.cells();
+        clearPhase = ClearPhase.HIGHLIGHT;
         int erased = clear.groups().stream().mapToInt(Integer::intValue).sum();
         int groupBonus = clear.groups().stream()
                 .mapToInt(size -> size < GROUP_BONUS.length ? GROUP_BONUS[size] : 10).sum();
@@ -344,6 +377,8 @@ public final class PuyoGame implements ControlledGame {
         pendingGarbage = 0;
         return true;
     }
+
+    private enum ClearPhase { HIGHLIGHT, FALL, SETTLE }
 
     private record Pair(int row, int column, int rotation, PairColors colors) {
         Position child() {

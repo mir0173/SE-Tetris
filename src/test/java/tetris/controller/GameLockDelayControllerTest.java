@@ -1,6 +1,7 @@
 package tetris.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Comparator;
@@ -21,6 +22,7 @@ import tetris.model.GameStatus;
 import tetris.model.Piece;
 import tetris.model.PieceType;
 import tetris.model.TetrominoGenerator;
+import tetris.puyo.PuyoGame;
 import tetris.view.GameView;
 
 // AI-assisted code start
@@ -29,26 +31,26 @@ class GameLockDelayControllerTest {
     private static final int BOARD_HEIGHT = 20;
 
     @Test
-    void retainFloorKickButLockAtOriginalDeadline() {
+    void restartDelayAfterSuccessfulFloorKick() {
         Fixture fixture = new Fixture(PieceType.T);
         fixture.dropToFloor();
+        long initialLock = fixture.game.getPendingLockDelayId();
         fixture.clock.advanceBy(200);
         fixture.input(GameCommand.ROTATE_CLOCKWISE);
         assertEquals(PieceType.T.getCellId(), fixture.game.createSnapshot().getCells()[17][3]);
-        fixture.input(GameCommand.MOVE_LEFT);
-        fixture.input(GameCommand.MOVE_RIGHT);
-        fixture.clock.advanceBy(299);
+        assertTrue(fixture.game.getPendingLockDelayId() > initialLock);
+        fixture.clock.advanceBy(499);
         assertEquals(0, fixture.game.getLockedPieceCount());
 
         fixture.clock.advanceBy(1);
 
         assertEquals(1, fixture.game.getLockedPieceCount());
         assertEquals(PieceType.T.getCellId(), fixture.board.getCell(17, 3));
-        System.out.println("[락 지연 월킥] 착지 후 회전·이동 가능, 500ms 만료에 고정 PASS");
+        System.out.println("[테트리스 락 지연] 월킥 성공 후 500ms를 새로 세어 고정 PASS");
     }
 
     @Test
-    void restartDelayOnlyAfterMovingOffLedgeAndLandingAgain() {
+    void startResetDelayOnRelandingAfterSuccessfulMove() {
         Fixture fixture = new Fixture(PieceType.O);
         fixture.board.lock(new Piece(PieceType.SLOW, 0, 10, 4));
         fixture.drop(8);
@@ -56,13 +58,85 @@ class GameLockDelayControllerTest {
         assertTrue(firstContact > 0);
         fixture.clock.advanceBy(200);
         fixture.input(GameCommand.MOVE_RIGHT);
-        assertEquals(0, fixture.game.getPendingLockDelayId());
+        assertFalse(fixture.game.isLockDelayRunning());
+        long reset = fixture.game.getPendingLockDelayId();
+        assertTrue(reset > firstContact);
         fixture.clock.advanceBy(300);
         assertEquals(0, fixture.game.getLockedPieceCount());
 
         fixture.drop(10);
-        assertTrue(fixture.game.getPendingLockDelayId() > firstContact);
+        assertEquals(reset, fixture.game.getPendingLockDelayId());
+        assertTrue(fixture.game.isLockDelayRunning());
         fixture.clock.advanceBy(499);
+        assertEquals(0, fixture.game.getLockedPieceCount());
+        fixture.clock.advanceBy(1);
+        assertEquals(1, fixture.game.getLockedPieceCount());
+    }
+
+    @Test
+    void allowExactlyFifteenGroundedMovesToResetTheDeadline() {
+        Fixture fixture = new Fixture(PieceType.O);
+        fixture.dropToFloor();
+        long lockId = fixture.game.getPendingLockDelayId();
+        for (int used = 0; used < 15; used++) {
+            fixture.clock.advanceBy(400);
+            fixture.input(used % 2 == 0 ? GameCommand.MOVE_LEFT : GameCommand.MOVE_RIGHT);
+            long next = fixture.game.getPendingLockDelayId();
+            assertTrue(next > lockId);
+            lockId = next;
+        }
+
+        fixture.clock.advanceBy(400);
+        fixture.input(GameCommand.MOVE_RIGHT);
+        assertEquals(lockId, fixture.game.getPendingLockDelayId());
+        fixture.clock.advanceBy(99);
+        assertEquals(0, fixture.game.getLockedPieceCount());
+        fixture.clock.advanceBy(1);
+        assertEquals(1, fixture.game.getLockedPieceCount());
+        System.out.println("[테트리스 락 지연] 15회 리셋, 16번째 이동 뒤 기존 만료 시각에 고정 PASS");
+
+        fixture.dropToFloor();
+        long newPieceLock = fixture.game.getPendingLockDelayId();
+        fixture.input(GameCommand.MOVE_LEFT);
+        assertTrue(fixture.game.getPendingLockDelayId() > newPieceLock);
+    }
+
+    @Test
+    void blockedMoveCannotExtendTheDeadline() {
+        Fixture fixture = new Fixture(PieceType.O);
+        for (int column = 0; column < BOARD_WIDTH; column++) {
+            fixture.input(GameCommand.MOVE_LEFT);
+        }
+        fixture.dropToFloor();
+        long lockId = fixture.game.getPendingLockDelayId();
+        fixture.clock.advanceBy(400);
+        fixture.input(GameCommand.MOVE_LEFT);
+
+        assertEquals(lockId, fixture.game.getPendingLockDelayId());
+        fixture.clock.advanceBy(100);
+        assertEquals(1, fixture.game.getLockedPieceCount());
+    }
+
+    @Test
+    void keepTheSpentResetBudgetWhenMovingOffALedge() {
+        Fixture fixture = new Fixture(PieceType.O);
+        fixture.board.lock(new Piece(PieceType.SLOW, 0, 10, 4));
+        fixture.drop(8);
+        for (int used = 0; used < 15; used++) {
+            fixture.input(GameCommand.ROTATE_CLOCKWISE);
+        }
+        fixture.clock.advanceBy(200);
+        long lockId = fixture.game.getPendingLockDelayId();
+        fixture.input(GameCommand.MOVE_RIGHT);
+        assertFalse(fixture.game.isLockDelayRunning());
+        assertEquals(lockId, fixture.game.getPendingLockDelayId());
+
+        fixture.clock.advanceBy(800);
+        fixture.drop(10);
+        fixture.input(GameCommand.MOVE_RIGHT);
+        assertTrue(fixture.game.isLockDelayRunning());
+        assertEquals(lockId, fixture.game.getPendingLockDelayId());
+        fixture.clock.advanceBy(299);
         assertEquals(0, fixture.game.getLockedPieceCount());
         fixture.clock.advanceBy(1);
         assertEquals(1, fixture.game.getLockedPieceCount());
@@ -142,6 +216,58 @@ class GameLockDelayControllerTest {
         assertEquals(GameStatus.PLAYING, fixture.game.getStatus());
         assertEquals(2, fixture.game.getLastClearedLines());
         assertEquals(1, fixture.game.getLockedPieceCount());
+    }
+
+    @Test
+    void puyoCountsOnlyGroundedTimeAcrossMovementAndRelanding() {
+        PuyoGame game = new PuyoGame(1);
+        ManualClock clock = new ManualClock();
+        GameView view = new GameView() {
+            @Override public void setCommandHandler(Consumer<GameCommand> handler) { }
+            @Override public void render(GameSnapshot snapshot) { }
+            @Override public void show() { }
+            @Override public void close() { }
+        };
+        GameTimer timer = new GameTimer() {
+            @Override public void start(Runnable action) { }
+            @Override public void stop() { }
+            @Override public void setInterval(long intervalMillis) { }
+        };
+        GameController controller = new GameController(game, view, timer, clock, () -> { }, score -> { },
+                clock::nanoTime);
+        controller.start();
+
+        game.handleCommand(GameCommand.HARD_DROP);
+        for (int row = 0; row < 9; row++) {
+            game.tick();
+        }
+        controller.refresh();
+        long id = game.getPendingLockDelayId();
+        assertTrue(id > 0);
+        clock.advanceBy(100);
+        game.handleCommand(GameCommand.ROTATE_CLOCKWISE);
+        controller.refresh();
+        clock.advanceBy(100);
+        game.handleCommand(GameCommand.ROTATE_COUNTERCLOCKWISE);
+        controller.refresh();
+        game.handleCommand(GameCommand.MOVE_LEFT);
+        controller.refresh();
+        assertFalse(game.isLockDelayRunning());
+        assertEquals(id, game.getPendingLockDelayId());
+
+        clock.advanceBy(800);
+        assertEquals(id, game.getPendingLockDelayId());
+        game.tick();
+        game.tick();
+        controller.refresh();
+        assertTrue(game.isLockDelayRunning());
+        clock.advanceBy(332);
+        assertEquals(id, game.getPendingLockDelayId());
+
+        clock.advanceBy(1);
+
+        assertEquals(0, game.getPendingLockDelayId());
+        System.out.println("[뿌요 고정] 첫 착지 200ms, 공중 800ms 제외, 재착지 333ms 후 고정 PASS");
     }
 
     private static final class Fixture implements GameView {

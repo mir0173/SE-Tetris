@@ -46,10 +46,29 @@ class PuyoGameTest {
         assertEquals(1, game.createSnapshot().getPuyo().chain());
         assertEquals(6, game.createSnapshot().getPuyo().clearing().size());
         assertTrue(game.takeAttackRows().isEmpty());
+        assertEquals(480, game.clearStepDelayMillis(200));
+        game.finishLineClear();
+
+        assertEquals(1, game.createSnapshot().getPuyo().chain());
+        assertTrue(game.createSnapshot().getPuyo().clearing().isEmpty());
+        assertEquals(2, game.createSnapshot().getCells()[9][2]);
+        assertEquals(75, game.clearStepDelayMillis(200));
+        game.finishLineClear();
+        assertEquals(2, game.createSnapshot().getCells()[10][2]);
+        game.finishLineClear();
+        assertEquals(2, game.createSnapshot().getCells()[11][2]);
+        assertTrue(game.takeAttackRows().isEmpty());
+        game.finishLineClear();
+
+        assertEquals(150, game.clearStepDelayMillis(200));
+        assertEquals(1, game.createSnapshot().getPuyo().chain());
         game.finishLineClear();
 
         assertEquals(2, game.createSnapshot().getPuyo().chain());
         assertEquals(4, game.createSnapshot().getPuyo().clearing().size());
+        assertEquals(480, game.clearStepDelayMillis(200));
+        game.finishLineClear();
+        game.finishLineClear();
         game.finishLineClear();
 
         assertEquals(GameStatus.PLAYING, game.getStatus());
@@ -95,6 +114,23 @@ class PuyoGameTest {
         game.resume();
         assertTrue(game.finishLockDelay(lock));
         assertFalse(game.finishLockDelay(lock));
+    }
+
+    @Test
+    void softDropLocksOnContactWithoutWaiting() {
+        PuyoGame game = new PuyoGame(1);
+        game.start();
+        for (int row = 0; row < PuyoBoard.HEIGHT - 2; row++) {
+            game.tick();
+        }
+        assertEquals(0, game.getPendingLockDelayId());
+        assertEquals(0, game.createSnapshot().getCells()[11][2]);
+
+        game.handleCommand(GameCommand.SOFT_DROP);
+
+        assertEquals(0, game.getPendingLockDelayId());
+        assertTrue(game.createSnapshot().getCells()[11][2] > 0);
+        assertTrue(game.createSnapshot().getCells()[0][2] > 0);
     }
 
     @Test

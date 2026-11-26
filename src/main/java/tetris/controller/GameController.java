@@ -177,7 +177,8 @@ public class GameController {
             stopTimer();
             if (!lineClearScheduled) {
                 lineClearScheduled = true;
-                delayScheduler.runAfter(calculateLineClearDelay(snapshot.getDropInterval()), this::finishLineClear);
+                long defaultDelay = calculateLineClearDelay(snapshot.getDropInterval());
+                delayScheduler.runAfter(game.clearStepDelayMillis(defaultDelay), this::finishLineClear);
             }
             return;
         }
@@ -216,7 +217,7 @@ public class GameController {
             lockDelay = new LockDelay(id, game.lockDelayMillis());
         }
         LockDelay pending = lockDelay;
-        if (game.isPaused()) {
+        if (!game.isLockDelayRunning()) {
             if (pending.attempt != null) {
                 long elapsed = nanoTime.getAsLong() - pending.attempt.startedAtNanos();
                 pending.remainingNanos = Math.max(0, pending.remainingNanos - elapsed);

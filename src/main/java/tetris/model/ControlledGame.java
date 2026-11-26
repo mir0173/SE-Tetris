@@ -18,7 +18,10 @@ public interface ControlledGame {
     long getScore();
     GameSnapshot createSnapshot();
     void finishLineClear();
+    default long clearStepDelayMillis(long defaultDelayMillis) { return defaultDelayMillis; }
     long getPendingLockDelayId();
+    /** 현재 고정 대기의 남은 시간이 줄어드는 상태인지 반환한다. */
+    default boolean isLockDelayRunning() { return !isPaused(); }
     boolean finishLockDelay(long id);
     default long lockDelayMillis() { return 500L; }
     List<int[]> takeAttackRows();
