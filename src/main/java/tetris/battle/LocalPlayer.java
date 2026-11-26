@@ -1,6 +1,7 @@
 package tetris.battle;
 
-import tetris.model.Game;
+import tetris.model.ControlledGame;
+import tetris.model.GameKind;
 import tetris.model.GameSnapshot;
 import tetris.model.GameStatus;
 import tetris.controller.GameController;
@@ -11,16 +12,21 @@ import static java.util.Objects.requireNonNull;
 // 내 PC의 Game을 대전 플레이어로 감싼다.
 public class LocalPlayer implements Player {
 
-    private final Game game;
+    private final ControlledGame game;
     private final GameController controller;
 
     // 생성할 때 game과 controller는 서로 연결된 상태로 매개변수로 들어온다고 가정한다.
-    public LocalPlayer(Game game, GameController controller) {
+    public LocalPlayer(ControlledGame game, GameController controller) {
         requireNonNull(game);
         requireNonNull(controller);
 
         this.game = game;
         this.controller = controller;
+    }
+
+    @Override
+    public GameKind gameKind() {
+        return game.kind();
     }
 
     /** 지금 화면에 그릴 snapshot을 생성한다 */

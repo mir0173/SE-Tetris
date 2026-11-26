@@ -11,7 +11,7 @@ import tetris.battle.Player;
 import tetris.controller.DelayScheduler;
 import tetris.controller.GameController;
 import tetris.controller.GameTimer;
-import tetris.model.Game;
+import tetris.model.ControlledGame;
 import tetris.model.GameCommand;
 import tetris.model.GameSnapshot;
 import tetris.view.GameView;
@@ -43,7 +43,7 @@ public final class P2pBattleController implements AutoCloseable {
     private boolean disconnected;
     private Runnable closeWindowAfterResult;
 
-    public P2pBattleController(Game game, GameView view, GameTimer dropTimer, DelayScheduler delay,
+    public P2pBattleController(ControlledGame game, GameView view, GameTimer dropTimer, DelayScheduler delay,
             GameTimer stateTimer, GameTimer timeLimitTimer, BattleLink link, MatchStart matchStart,
             Consumer<GameSnapshot> onRemoteSnapshot, Consumer<String> onStatus,
             Consumer<MatchResult> onResult, IntConsumer onTimeLeft, Runnable onReturnToLobby) {
@@ -56,7 +56,10 @@ public final class P2pBattleController implements AutoCloseable {
         this.onTimeLeft = onTimeLeft;
         this.onReturnToLobby = onReturnToLobby;
         int[][] cells = game.createSnapshot().getCells();
-        remotePlayer = new RemotePlayer(link, cells[0].length, cells.length, onRemoteSnapshot);
+        if (game.kind() != matchStart.settings().gameKind()) {
+            throw new IllegalArgumentException("게임 종류가 대기실 설정과 다릅니다.");
+        }
+        remotePlayer = new RemotePlayer(link, game.kind(), cells[0].length, cells.length, onRemoteSnapshot);
 
         // 렌더링에 쓰는 스냅샷을 경기 상태 전송에도 사용한다.
         GameView bridge = new GameView() {

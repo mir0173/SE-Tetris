@@ -18,6 +18,7 @@ import javafx.scene.layout.VBox;
 import tetris.battle.BattleMode;
 import tetris.battle.BattleSettings;
 import tetris.model.Difficulty;
+import tetris.model.GameKind;
 import tetris.network.LobbyState;
 import tetris.network.MatchStart;
 import tetris.network.P2pLobbyController;
@@ -37,6 +38,7 @@ public final class JavaFxP2pLobbyView {
     private final Button readyButton = new Button("게임 시작");
     private final Button resetButton = new Button("대기실로 돌아가기");
     private final Button backButton = new Button("메뉴로");
+    private final ComboBox<GameKind> gameBox = new ComboBox<>();
     private final ComboBox<BattleMode> modeBox = new ComboBox<>();
     private final ComboBox<Difficulty> difficultyBox = new ComboBox<>();
     private final Spinner<Integer> durationSpinner = new Spinner<>(
@@ -59,6 +61,8 @@ public final class JavaFxP2pLobbyView {
         connectButton.setId("p2p-connect");
         readyButton.setId("p2p-ready");
         modeBox.setId("p2p-mode");
+        gameBox.setId("p2p-game");
+        gameBox.getItems().setAll(GameKind.values());
         difficultyBox.setId("p2p-difficulty");
         durationSpinner.setId("p2p-duration");
         statusLabel.setId("p2p-status");
@@ -88,6 +92,7 @@ public final class JavaFxP2pLobbyView {
         fields.addRow(2, new Label("대전 모드"), modeBox);
         fields.addRow(3, new Label("난이도"), difficultyBox);
         fields.addRow(4, new Label("제한시간(초)"), durationSpinner);
+        fields.addRow(5, new Label("게임 종류"), gameBox);
 
         VBox root = new VBox(SPACING, new Label("P2P 대전"), ipLabel,
                 fields, new HBox(SPACING, hostButton, connectButton), statusLabel, healthLabel,
@@ -95,6 +100,7 @@ public final class JavaFxP2pLobbyView {
                 new HBox(SPACING, cancelButton, backButton));
         root.setPadding(new Insets(PADDING));
         scene = new Scene(root, WIDTH, HEIGHT);
+        gameBox.valueProperty().addListener((observable, previous, current) -> updateSettings());
         modeBox.valueProperty().addListener((observable, previous, current) -> updateSettings());
         difficultyBox.valueProperty().addListener((observable, previous, current) -> updateSettings());
         durationSpinner.valueProperty().addListener((observable, previous, current) -> updateSettings());
@@ -124,6 +130,11 @@ public final class JavaFxP2pLobbyView {
     public void render(LobbyState state) {
         rendering = true;
         try {
+            gameBox.setValue(state.settings().gameKind());
+            var modes = BattleSettings.modesFor(state.settings().gameKind());
+            if (!modeBox.getItems().equals(modes)) {
+                modeBox.getItems().setAll(modes);
+            }
             modeBox.setValue(state.settings().mode());
             difficultyBox.setValue(state.settings().difficulty());
             if (state.settings().mode() == BattleMode.TIME_LIMIT) {
@@ -138,7 +149,8 @@ public final class JavaFxP2pLobbyView {
             connectButton.setDisable(!idle);
             cancelButton.setDisable(idle);
             modeBox.setDisable(!hostCanConfigure);
-            difficultyBox.setDisable(!hostCanConfigure);
+            gameBox.setDisable(!hostCanConfigure);
+            difficultyBox.setDisable(!hostCanConfigure || state.settings().gameKind() == GameKind.PUYO);
             durationSpinner.setDisable(!hostCanConfigure || state.settings().mode() != BattleMode.TIME_LIMIT);
             readyButton.setDisable(state.phase() != LobbyState.Phase.CONNECTED);
             readyButton.setText(state.localReady() ? "준비 취소" : "게임 시작");
@@ -167,8 +179,14 @@ public final class JavaFxP2pLobbyView {
         if (rendering || controller == null || modeBox.getValue() == null || difficultyBox.getValue() == null) {
             return;
         }
-        runAction(() -> controller.updateSettings(new BattleSettings(modeBox.getValue(), difficultyBox.getValue(),
-                modeBox.getValue() == BattleMode.TIME_LIMIT ? durationSpinner.getValue() : 0)));
+        GameKind game = gameBox.getValue();
+        if (game == null) {
+            return;
+        }
+        BattleMode selected = modeBox.getValue();
+        BattleMode mode = BattleSettings.modesFor(game).contains(selected) ? selected : BattleMode.NORMAL;
+        runAction(() -> controller.updateSettings(new BattleSettings(mode, difficultyBox.getValue(),
+                mode == BattleMode.TIME_LIMIT ? durationSpinner.getValue() : 0, game)));
     }
 
     private int readPort() {

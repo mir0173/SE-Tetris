@@ -22,7 +22,9 @@ import org.junit.jupiter.api.parallel.Resources;
 
 import javafx.application.Platform;
 import javafx.event.Event;
+import javafx.scene.Parent;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
@@ -32,6 +34,7 @@ import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 
+import tetris.model.GameKind;
 import tetris.persistence.FileScoreRepository;
 import tetris.persistence.FileSettingsRepository;
 import tetris.settings.WindowSize;
@@ -203,6 +206,47 @@ class TetrisApplicationIntegrationTest {
             return null;
         });
         System.out.println("[P2P 통합] 기존 시작 메뉴 → P2P 대기실 → 시작 메뉴 복귀 PASS");
+    }
+
+    @Test
+    void startPuyoAndReturnToMenu() throws Exception {
+        onFx(() -> {
+            clickButton("뿌요 모드 시작");
+            assertTrue(hasLabel("연쇄: 0"));
+            pressKey(KeyCode.SPACE);
+            assertTrue(displayedScore() > 0);
+            pressKey(KeyCode.P);
+            assertTrue(stage.getScene().lookup("#pause-label").isVisible());
+            pressKey(KeyCode.ESCAPE);
+            assertEquals("Tetris", stage.getTitle());
+            return null;
+        });
+    }
+
+    @Test
+    void startLocalPuyoForBothPlayersAndRouteKeysSeparately() throws Exception {
+        onFx(() -> {
+            clickButton("로컬 대전");
+            var gameBox = (ComboBox<?>) stage.getScene().lookup("#battle-game");
+            gameBox.getSelectionModel().select(gameBox.getItems().indexOf(GameKind.PUYO));
+            var modeBox = (ComboBox<?>) stage.getScene().lookup("#battle-mode");
+            assertFalse(modeBox.getItems().contains(tetris.battle.BattleMode.ITEM));
+            clickButton("게임 시작");
+            Parent first = (Parent) stage.getScene().lookup("#battle-first-panel");
+            Parent second = (Parent) stage.getScene().lookup("#battle-second-panel");
+            assertTrue(first.lookup("#puyo-chain").isVisible());
+            assertTrue(second.lookup("#puyo-chain").isVisible());
+
+            pressKey(KeyCode.S);
+            assertFalse(((Label) first.lookup("#score-label")).getText().endsWith(": 0"));
+            assertEquals("점수: 0", ((Label) second.lookup("#score-label")).getText());
+            pressKey(KeyCode.PERIOD);
+            assertFalse(((Label) second.lookup("#score-label")).getText().endsWith(": 0"));
+            pressKey(KeyCode.ESCAPE);
+            assertEquals("Tetris", stage.getTitle());
+            return null;
+        });
+        System.out.println("[로컬 뿌요] 양쪽 뿌요 선택, 각각 하드드롭, 메뉴 복귀 PASS");
     }
 
     private void clickButton(String text) {

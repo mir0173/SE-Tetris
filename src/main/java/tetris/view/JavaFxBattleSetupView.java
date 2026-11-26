@@ -19,6 +19,7 @@ import javafx.scene.layout.VBox;
 import tetris.battle.BattleMode;
 import tetris.battle.BattleSettings;
 import tetris.model.GameCommand;
+import tetris.model.GameKind;
 import tetris.model.Difficulty;
 import tetris.settings.BattleKeyBindings;
 import tetris.settings.GameSettings;
@@ -39,6 +40,7 @@ public final class JavaFxBattleSetupView {
     private static final String HOLD_LABEL = "홀드";
     private static final String ROTATE_COUNTERCLOCKWISE_LABEL = "반시계 방향 회전";
 
+    private final ComboBox<GameKind> gameBox = new ComboBox<>();
     private final ComboBox<BattleMode> modeBox = new ComboBox<>();
     private final ComboBox<Difficulty> difficultyBox = new ComboBox<>();
     private final Spinner<Integer> durationSpinner = new Spinner<>(
@@ -69,6 +71,9 @@ public final class JavaFxBattleSetupView {
         this.onBack = Objects.requireNonNull(onBack, "onBack");
 
         modeBox.setId("battle-mode");
+        gameBox.setId("battle-game");
+        gameBox.getItems().setAll(GameKind.values());
+        gameBox.setValue(GameKind.TETRIS);
         difficultyBox.setId("battle-difficulty");
         durationSpinner.setId("battle-duration");
         startButton.setId("battle-start");
@@ -79,6 +84,13 @@ public final class JavaFxBattleSetupView {
         difficultyBox.getItems().setAll(Difficulty.values());
         modeBox.setValue(BattleMode.NORMAL);
         difficultyBox.setValue(settings.getDifficulty());
+        gameBox.valueProperty().addListener((ignored, previous, kind) -> {
+            BattleMode selected = modeBox.getValue();
+            var available = BattleSettings.modesFor(kind);
+            modeBox.getItems().setAll(available);
+            modeBox.setValue(selected != null && available.contains(selected) ? selected : BattleMode.NORMAL);
+        });
+        difficultyBox.disableProperty().bind(gameBox.valueProperty().isEqualTo(GameKind.PUYO));
 
         durationSpinner.disableProperty().bind(
                 modeBox.valueProperty().isNotEqualTo(BattleMode.TIME_LIMIT));
@@ -89,6 +101,7 @@ public final class JavaFxBattleSetupView {
         gridPane.addRow(0, new Label("대전 모드"), modeBox);
         gridPane.addRow(1, new Label("난이도"), difficultyBox);
         gridPane.addRow(2, new Label("제한시간(초)"), durationSpinner);
+        gridPane.addRow(3, new Label("게임 종류"), gameBox);
 
         Label keyGuideTitle = new Label(KEY_GUIDE_TITLE);
         GridPane keyGuide = createKeyGuide(settings.getBattleKeyBindings());
@@ -120,11 +133,11 @@ public final class JavaFxBattleSetupView {
         int timeLimitSeconds = mode == BattleMode.TIME_LIMIT
                 ? durationSpinner.getValue()
                 : 0;
-        onStart.accept(new BattleSettings(mode, difficulty, timeLimitSeconds));
+        onStart.accept(new BattleSettings(mode, difficulty, timeLimitSeconds, gameBox.getValue()));
     }
 
     private void handleKeyPressed(KeyEvent event) {
-        if (modeBox.isShowing() || difficultyBox.isShowing()) {
+        if (modeBox.isShowing() || difficultyBox.isShowing() || gameBox.isShowing()) {
             return;
         }
         if (event.getCode() == KeyCode.ENTER) {

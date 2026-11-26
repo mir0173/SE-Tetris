@@ -13,9 +13,10 @@ import java.util.HashSet;
 
 import static java.util.Objects.requireNonNull;
 
-public class Game {
+public class Game implements ControlledGame {
     private static final long INITIAL_SCORE = 0L;
     private static final long INITIAL_DROP_INTERVAL = 1_000L;
+    private static final int MAX_LOCK_DELAY_RESETS = 15;
     private static final int LINES_PER_LEVEL = 5;
     private static final int LINES_PER_ITEM_SPAWN = 10;
     private static final int PIECES_PER_LEVEL = 15;
@@ -60,7 +61,8 @@ public class Game {
     private long currentPieceScore; // 지금 블록이 스폰된 뒤 얻은 점수 합계
     private long slowTimeLeft; // 남은 속도 저하 시간
     private long lockDelaySequence;
-    private long pendingLockDelayId; // 0이면 고정 대기 중인 블록이 없다.
+    private long pendingLockDelayId; // 0이면 고정 대기를 시작하지 않았다.
+    private int lockDelayResets; // 현재 블록에서 사용한 이동·회전 리셋 횟수
     private List<Integer> pendingClearRows = List.of(); // 삭제 대기 중인 줄 번호, 없으면 빈 목록
     private final Deque<int[]> pendingGarbageRows = new ArrayDeque<>(); // 상대에게서 받아 아직 보드에 넣지 않은 공격 줄
     private final List<int[]> pendingAttackRows = new ArrayList<>(); // 상대에게 보낼 공격줄 (심판이 꺼내감)
@@ -189,11 +191,13 @@ public class Game {
         long previousLockedPieceCount = lockedPieceCount;
         long previousSpawnedPieceCount = spawnedPieceCount;
 
+        boolean canResetDelay = lockDelayResets < MAX_LOCK_DELAY_RESETS && isLockDelayRunning();
+        boolean repositioned = false;
         switch (command) {
-            case MOVE_LEFT -> tryReplace(currentPiece.move(0, -1));
-            case MOVE_RIGHT -> tryReplace(currentPiece.move(0, 1));
-            case ROTATE_CLOCKWISE -> rotate(true);
-            case ROTATE_COUNTERCLOCKWISE -> rotate(false);
+            case MOVE_LEFT -> repositioned = tryReplace(currentPiece.move(0, -1));
+            case MOVE_RIGHT -> repositioned = tryReplace(currentPiece.move(0, 1));
+            case ROTATE_CLOCKWISE -> repositioned = rotate(true);
+            case ROTATE_COUNTERCLOCKWISE -> repositioned = rotate(false);
             case SOFT_DROP -> {
                 if (softDrop()) {
                     softDropCells++;
@@ -205,6 +209,10 @@ public class Game {
             }
         }
 
+        if (canResetDelay && repositioned) {
+            lockDelayResets++;
+            pendingLockDelayId = ++lockDelaySequence;
+        }
         updateLockDelay();
         updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
     }
@@ -345,14 +353,22 @@ public class Game {
         updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
     }
 
-    /** 현재 착지의 고정 대기 ID를 반환한다. 대기 중인 착지가 없으면 0이다. */
+    /** 현재 블록의 고정 대기 ID를 반환한다. 아직 시작하지 않았으면 0이다. */
+    @Override
     public long getPendingLockDelayId() {
         return pendingLockDelayId;
     }
 
-    /** 현재 착지와 일치하는 타이머가 끝난 경우에만 블록을 고정한다. */
+    @Override
+    public boolean isLockDelayRunning() {
+        return status == GameStatus.PLAYING && currentPiece != null && usesLockDelay()
+                && !board.canPlace(currentPiece.move(1, 0));
+    }
+
+    /** 현재 블록의 타이머가 바닥에 닿은 상태에서 끝나면 고정한다. */
+    @Override
     public boolean finishLockDelay(long id) {
-        if (status != GameStatus.PLAYING || id == 0 || pendingLockDelayId != id) {
+        if (id == 0 || pendingLockDelayId != id || !isLockDelayRunning()) {
             return false;
         }
         long previousDropCells = getTotalDropCells();
@@ -364,9 +380,8 @@ public class Game {
     }
 
     private void updateLockDelay() {
-        if (status != GameStatus.PLAYING || !usesLockDelay() || board.canPlace(currentPiece.move(1, 0))) {
-            pendingLockDelayId = 0;
-        } else if (pendingLockDelayId == 0) {
+        // 바닥에서 떨어져도 같은 블록의 남은 시간과 리셋 횟수를 보존한다.
+        if (pendingLockDelayId == 0 && isLockDelayRunning()) {
             pendingLockDelayId = ++lockDelaySequence;
         }
     }
@@ -391,19 +406,20 @@ public class Game {
     }
 
     /** 제자리 회전이 막히면 회전 전 상태의 SRS 보정 후보를 차례로 검사한다. */
-    private void rotate(boolean clockwise) {
+    private boolean rotate(boolean clockwise) {
         if (!currentPiece.canRotate()) {
-            return;
+            return false;
         }
         Piece rotated = clockwise ? currentPiece.rotateClockwise() : currentPiece.rotateCounterClockwise();
         if (tryReplace(rotated)) {
-            return;
+            return true;
         }
         for (Position offset : SrsWallKick.offsetsFor(currentPiece.type(), currentPiece.rotation(), clockwise)) {
             if (tryReplace(rotated.move(offset.row(), offset.column()))) {
-                return;
+                return true;
             }
         }
+        return false;
     }
 
     // 후보가 놓일 수 있으면 현재 블록을 교체하고 true, 아니면 그대로 두고 false
@@ -559,6 +575,7 @@ public class Game {
     // 주어진 종류를 스폰 위치에 놓음. 놓을 수 없으면 게임오버
     private void spawn(PieceType type, Item item) {
         pendingLockDelayId = 0;
+        lockDelayResets = 0;
         Piece candidate = Piece.spawn(type, item, board.getWidth());
         if (!board.canPlace(candidate)) {
             status = GameStatus.GAMEOVER;

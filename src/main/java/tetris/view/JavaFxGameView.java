@@ -9,6 +9,7 @@ import javafx.geometry.Pos;
 import javafx.geometry.VPos;
 import javafx.geometry.Bounds;
 import javafx.scene.Scene;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -29,6 +30,8 @@ import tetris.model.Board;
 import tetris.model.GameCommand;
 import tetris.model.GameSnapshot;
 import tetris.model.GameStatus;
+import tetris.model.PuyoDisplay;
+import tetris.model.PuyoDisplay.PairColors;
 import tetris.model.Item;
 import tetris.model.ItemType;
 import tetris.model.Position;
@@ -85,6 +88,12 @@ public class JavaFxGameView implements GameView {
             Map.entry(PieceType.SPECIAL_I, Color.web("#FFFFFF")), // 기호가 구분을 도와줌
             Map.entry(PieceType.SPECIAL_BLOCK, Color.web("#B8A6FF")));
 
+    private static final List<Color> PUYO_COLORS = List.of(
+            Color.web("#EF4444"), Color.web("#22C55E"), Color.web("#3B82F6"), Color.web("#FACC15"));
+    private static final List<Color> PUYO_ACCESSIBLE_COLORS = List.of(
+            Color.web("#D55E00"), Color.web("#009E73"), Color.web("#56B4E9"), Color.web("#F0E442"));
+    private static final List<String> PUYO_ACCESSIBLE_SYMBOLS = List.of("A", "B", "C", "D");
+
     private final double scale;
     private final Font blockFont;
     private final double cellWidth;
@@ -100,6 +109,8 @@ public class JavaFxGameView implements GameView {
     private final Canvas holdCanvas;
     private final Canvas garbageCanvas; // AI-assisted (T17)
 
+    private final Label holdLabel;
+    private final Label chainLabel = new Label();
     private final Label scoreLabel = new Label("점수 : 0");
     private final Label intervalLabel = new Label("낙하 간격 : 1000ms");
     private final Label pauseLabel = new Label();
@@ -107,6 +118,7 @@ public class JavaFxGameView implements GameView {
 
     private Consumer<GameCommand> commandHandler;
     private boolean pauseKeyHeld;
+    private boolean puyoKeysApplied;
     private Parent content;
     private Label keyHelpLabel;
 
@@ -119,6 +131,7 @@ public class JavaFxGameView implements GameView {
         this.keyBindings = Map.copyOf(settings.getKeyBindings());
         this.colorBlindMode = settings.isColorBlindMode();
         this.scale = settings.getWindowSize().getScale();
+        this.holdLabel = createInformationLabel("홀드");
         this.blockFont = Font.font("Monospaced", FontWeight.BOLD, BLOCK_FONT_SIZE * scale);
         this.nextCanvas = new Canvas(PREVIEW_SIZE * scale, PREVIEW_SIZE * scale);
         this.holdCanvas = new Canvas(PREVIEW_SIZE * scale, PREVIEW_SIZE * scale);
@@ -167,21 +180,64 @@ public class JavaFxGameView implements GameView {
 
     @Override
     public void render(GameSnapshot snapshot) {
-        drawBoard(snapshot.getCells(), snapshot.getClearingRows(), snapshot.getGhostPieceCells());
+        PuyoDisplay puyo = snapshot.getPuyo();
+        drawBoard(snapshot.getCells(), snapshot.getClearingRows(), snapshot.getGhostPieceCells(), puyo);
 
-        // AI-assisted code start
-        List<int[]> pendingRows = snapshot.getPendingGarbageRows();
-        drawGarbagePreview(pendingRows);
-        garbageCountLabel.setText("넘어온 줄: " + pendingRows.size());
-        // AI-assisted code end
-
-        PieceType nextPiece = snapshot.getNextPieces().isEmpty() ? null : snapshot.getNextPieces().get(0);
-        drawPreview(nextCanvas, nextPiece, snapshot.getNextPieceItem());
-        drawPreview(holdCanvas, snapshot.getHeldPiece(), snapshot.getHeldPieceItem());
+        if (puyo == null) {
+            List<int[]> pendingRows = snapshot.getPendingGarbageRows();
+            drawGarbagePreview(pendingRows);
+            garbageCountLabel.setText("넘어온 줄: " + pendingRows.size());
+            PieceType nextPiece = snapshot.getNextPieces().isEmpty() ? null : snapshot.getNextPieces().getFirst();
+            drawPreview(nextCanvas, nextPiece, snapshot.getNextPieceItem());
+            drawPreview(holdCanvas, snapshot.getHeldPiece(), snapshot.getHeldPieceItem());
+        } else {
+            renderPuyoSidebar(puyo);
+        }
 
         scoreLabel.setText("점수: " + snapshot.getScore());
         intervalLabel.setText("낙하 간격: " + snapshot.getDropInterval() + "ms");
         pauseLabel.setVisible(snapshot.getStatus() == GameStatus.PAUSED);
+    }
+
+    private void renderPuyoSidebar(PuyoDisplay puyo) {
+        holdLabel.setVisible(false);
+        holdCanvas.setVisible(false);
+        garbageCanvas.setVisible(false);
+        chainLabel.setText("연쇄: " + puyo.chain());
+        chainLabel.setVisible(true);
+        garbageCountLabel.setText("방해 블록: " + puyo.pendingGarbage());
+        if (!puyoKeysApplied) {
+            String holdHelp = keyBindings.get(GameCommand.HOLD) + ": 홀드";
+            keyHelpLabel.setText(keyHelpLabel.getText().replace(holdHelp + "\n", ""));
+            puyoKeysApplied = true;
+        }
+
+        GraphicsContext graphics = nextCanvas.getGraphicsContext2D();
+        graphics.setFill(EMPTY_COLOR);
+        graphics.fillRect(0, 0, nextCanvas.getWidth(), nextCanvas.getHeight());
+        int count = puyo.nextPairs().size();
+        for (int index = 0; index < count; index++) {
+            PairColors pair = puyo.nextPairs().get(index);
+            double x = (index + 0.5) * nextCanvas.getWidth() / count - cellWidth / 2;
+            double y = nextCanvas.getHeight() / 2;
+            drawPuyoCell(graphics, pair.child(), false, x, y - cellHeight);
+            drawPuyoCell(graphics, pair.pivot(), false, x, y);
+        }
+    }
+
+    private void drawPuyoCell(GraphicsContext graphics, int value, boolean clearing, double x, double y) {
+        if (value == Board.EMPTY_CELL) {
+            return;
+        }
+        boolean garbage = value == Board.GARBAGE_CELL;
+        String symbol = garbage ? "#" : colorBlindMode ? PUYO_ACCESSIBLE_SYMBOLS.get(value - 1) : BLOCK_SYMBOL;
+        Color color = garbage ? GARBAGE_COLOR : (colorBlindMode ? PUYO_ACCESSIBLE_COLORS : PUYO_COLORS).get(value - 1);
+        if (clearing) {
+            graphics.setFill(CLEARING_BACKGROUND_COLOR);
+            graphics.fillRect(x, y, cellWidth, cellHeight);
+            color = CLEARING_SYMBOL_COLOR;
+        }
+        drawSymbol(graphics, symbol, color, x, y);
     }
 
     @Override
@@ -217,7 +273,7 @@ public class JavaFxGameView implements GameView {
         garbageCountLabel.setVisible(showGarbage);
         garbageCountLabel.setManaged(showGarbage);
         garbageCanvas.setVisible(showGarbage);
-        garbageCanvas.setManaged(showGarbage);
+        garbageCanvas.managedProperty().bind(garbageCanvas.visibleProperty());
         // AI-assisted code end
 
         pauseLabel.setText("일시정지\n" + keyBindings.get(GameCommand.PAUSE) + ": 재개\n"
@@ -230,6 +286,12 @@ public class JavaFxGameView implements GameView {
         pauseLabel.setVisible(false);
         pauseLabel.setMouseTransparent(true);
 
+        chainLabel.setId("puyo-chain");
+        chainLabel.setVisible(false);
+        for (Node collapsible : List.of(holdLabel, holdCanvas, chainLabel)) {
+            collapsible.managedProperty().bind(collapsible.visibleProperty());
+        }
+
         StackPane boardArea = new StackPane(boardCanvas, pauseLabel);
         VBox sidebar = new VBox(
                 SIDEBAR_SPACING * scale,
@@ -237,8 +299,9 @@ public class JavaFxGameView implements GameView {
                 intervalLabel,
                 createInformationLabel("다음 블록"),
                 nextCanvas,
-                createInformationLabel("홀드"),
+                holdLabel,
                 holdCanvas,
+                chainLabel,
                 garbageCountLabel, // AI-assisted (T17)
                 garbageCanvas, // AI-assisted (T17)
                 createKeyHelp());
@@ -290,7 +353,8 @@ public class JavaFxGameView implements GameView {
         return label;
     }
 
-    private void drawBoard(int[][] cells, List<Integer> clearingRows, Map<Position, Integer> ghostPieceCells) {
+    private void drawBoard(int[][] cells, List<Integer> clearingRows, Map<Position, Integer> ghostPieceCells,
+            PuyoDisplay puyo) {
         int rows = cells.length;
         int cols = rows == 0 ? 0 : cells[0].length;
 
@@ -314,6 +378,11 @@ public class JavaFxGameView implements GameView {
 
                 double x = (col + 1) * cellWidth;
                 double y = (row + 1) * cellHeight;
+
+                if (puyo != null) {
+                    drawPuyoCell(graphics, cells[row][col], puyo.clearing().contains(new Position(row, col)), x, y);
+                    continue;
+                }
 
                 // 쓰래기 칸: 모양이 따로 없으므로 findType 전에 처리
                 if (cells[row][col] == Board.GARBAGE_CELL) {

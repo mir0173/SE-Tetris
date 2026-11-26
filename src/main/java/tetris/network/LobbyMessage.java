@@ -7,7 +7,7 @@ import tetris.battle.BattleSettings;
 /** 대기실 전송 메시지 */
 record LobbyMessage(Type type, int version, PeerRole role, long revision,
         BattleSettings settings, boolean ready, long matchId, BattleMessage battle, long probeId) {
-    static final int PROTOCOL_VERSION = 4;
+    static final int PROTOCOL_VERSION = 5;
 
     enum Type {
         HELLO, CONFIG, READY, START, START_ACK, START_COMMIT, START_REJECT, BATTLE, RETURN_LOBBY, PING, PONG

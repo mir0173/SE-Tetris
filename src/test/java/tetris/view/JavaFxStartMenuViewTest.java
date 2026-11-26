@@ -23,7 +23,7 @@ import javafx.scene.input.KeyEvent;
 class JavaFxStartMenuViewTest {
 
      // AI-assisted code start
-    private static final int MENU_COUNT = 7; // 일반, 아이템, 로컬 대전, P2P 대전, 설정, 스코어보드, 종료
+    private static final int MENU_COUNT = 8; // 일반, 아이템, 뿌요, 로컬 대전, P2P 대전, 설정, 스코어보드, 종료
 
     private JavaFxStartMenuView menu;
     private int[] actionCalls;
@@ -48,6 +48,7 @@ class JavaFxStartMenuViewTest {
             menu = new JavaFxStartMenuView(
                     () -> actionCalls[0]++,
                     () -> actionCalls[1]++,
+                    () -> actionCalls[7]++,
                     () -> actionCalls[2]++,
                     () -> actionCalls[3]++,
                     () -> actionCalls[4]++,
@@ -73,6 +74,7 @@ class JavaFxStartMenuViewTest {
     @CsvSource({
             "일반 모드 시작, 0",
             "아이템 모드 시작, 1",
+            "뿌요 모드 시작, 7",
             "로컬 대전, 2",
             "P2P 대전, 3",
             "설정, 4",
@@ -97,7 +99,8 @@ class JavaFxStartMenuViewTest {
     @CsvSource({
             "일반 모드 시작, DOWN, 아이템 모드 시작",
             "아이템 모드 시작, UP, 일반 모드 시작",
-            "아이템 모드 시작, DOWN, 로컬 대전",
+            "아이템 모드 시작, DOWN, 뿌요 모드 시작",
+            "뿌요 모드 시작, DOWN, 로컬 대전",
             "로컬 대전, DOWN, P2P 대전",
             "P2P 대전, UP, 로컬 대전",
             "P2P 대전, DOWN, 설정",
@@ -128,6 +131,7 @@ class JavaFxStartMenuViewTest {
     @CsvSource({
             "일반 모드 시작, 0",
             "아이템 모드 시작, 1",
+            "뿌요 모드 시작, 7",
             "로컬 대전, 2",
             "P2P 대전, 3",
             "설정, 4",

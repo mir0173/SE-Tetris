@@ -7,13 +7,16 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 import tetris.battle.Player;
+import tetris.model.GameKind;
 import tetris.model.GameSnapshot;
+import tetris.model.PuyoDisplay;
 import tetris.model.GameStatus;
 
 /** 상대 PC의 상태를 보관한다.*/
 public final class RemotePlayer implements Player {
     private final BattleLink link;
     private final Consumer<GameSnapshot> onSnapshot;
+    private final GameKind kind;
     private final int width;
     private final int height;
     private final List<int[]> attacks = new ArrayList<>();
@@ -21,19 +24,28 @@ public final class RemotePlayer implements Player {
     private Runnable onUpdate = () -> { };
 
     public RemotePlayer(BattleLink link, int width, int height, Consumer<GameSnapshot> onSnapshot) {
+        this(link, GameKind.TETRIS, width, height, onSnapshot);
+    }
+
+    RemotePlayer(BattleLink link, GameKind kind, int width, int height, Consumer<GameSnapshot> onSnapshot) {
         this.link = Objects.requireNonNull(link, "link");
+        this.kind = kind;
         this.onSnapshot = Objects.requireNonNull(onSnapshot, "onSnapshot");
         this.width = width;
         this.height = height;
-        snapshot = new GameSnapshot(new int[height][width], List.of(), null, 0, GameStatus.READY,
-                1_000, null, null, List.of(), Map.of(), List.of());
+        snapshot = kind == GameKind.PUYO
+                ? GameSnapshot.puyo(new int[height][width], 0, GameStatus.READY, 800,
+                        new PuyoDisplay(List.of(), java.util.Set.of(), 0, 0))
+                : new GameSnapshot(new int[height][width], List.of(), null, 0, GameStatus.READY,
+                        1_000, null, null, List.of(), Map.of(), List.of());
     }
 
     public void accept(BattleMessage message) {
         switch (message.type()) {
             case STATE -> {
                 int[][] cells = message.state().cells();
-                if (cells.length != height || cells[0].length != width) {
+                if (cells.length != height || cells[0].length != width
+                        || (message.state().puyo() != null) != (kind == GameKind.PUYO)) {
                     throw new IllegalArgumentException("상대 보드 크기가 경기 설정과 다릅니다.");
                 }
                 snapshot = message.state().toSnapshot();
@@ -41,7 +53,7 @@ public final class RemotePlayer implements Player {
                 onUpdate.run();
             }
             case ATTACK -> {
-                if (message.width() != snapshot.getCells()[0].length) {
+                if (message.width() != width) {
                     throw new IllegalArgumentException("상대 공격 줄 폭이 보드와 다릅니다.");
                 }
                 attacks.addAll(message.attackRows());
@@ -50,6 +62,8 @@ public final class RemotePlayer implements Player {
             default -> { } // 경기 수명 메시지는 대전 컨트롤러에서 처리한다.
         }
     }
+
+    @Override public GameKind gameKind() { return kind; }
 
     @Override public GameSnapshot createSnapshot() { return snapshot; }
 

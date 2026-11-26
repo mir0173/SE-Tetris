@@ -6,6 +6,7 @@ import java.util.ArrayList;
 
 public class GameSnapshot {
 
+    private final PuyoDisplay puyo;
     private final int[][] cells;
     private final List<PieceType> nextPieces;
     private final PieceType heldPiece; // 홀드가 없으면 null
@@ -30,6 +31,21 @@ public class GameSnapshot {
             List<Integer> clearingRows,
             Map<Position, Integer> ghostPieceCells,
             List<int[]> pendingGarbageRows) {
+        this(cells, nextPieces, heldPiece, score, status, dropInterval, nextPieceItem, heldPieceItem,
+                clearingRows, ghostPieceCells, pendingGarbageRows, null);
+    }
+
+    public static GameSnapshot puyo(int[][] cells, long score, GameStatus status, long dropInterval,
+            PuyoDisplay display) {
+        return new GameSnapshot(cells, List.of(), null, score, status, dropInterval, null, null,
+                List.of(), Map.of(), List.of(), java.util.Objects.requireNonNull(display));
+    }
+
+    private GameSnapshot(int[][] cells, List<PieceType> nextPieces, PieceType heldPiece, long score,
+            GameStatus status, long dropInterval, Item nextPieceItem, Item heldPieceItem,
+            List<Integer> clearingRows, Map<Position, Integer> ghostPieceCells, List<int[]> pendingGarbageRows,
+            PuyoDisplay puyo) {
+        this.puyo = puyo;
         this.cells = copyCells(cells);
         this.nextPieces = List.copyOf(nextPieces);
         this.heldPiece = heldPiece;
@@ -41,6 +57,10 @@ public class GameSnapshot {
         this.clearingRows = List.copyOf(clearingRows);
         this.ghostPieceCells = Map.copyOf(ghostPieceCells);
         this.pendingGarbageRows = copyRows(pendingGarbageRows);
+    }
+
+    public PuyoDisplay getPuyo() {
+        return puyo;
     }
 
     public int[][] getCells() {
