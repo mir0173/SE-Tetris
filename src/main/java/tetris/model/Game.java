@@ -59,6 +59,8 @@ public class Game {
     private long totalClearedLines;
     private long currentPieceScore; // 지금 블록이 스폰된 뒤 얻은 점수 합계
     private long slowTimeLeft; // 남은 속도 저하 시간
+    private long lockDelaySequence;
+    private long pendingLockDelayId; // 0이면 고정 대기 중인 블록이 없다.
     private List<Integer> pendingClearRows = List.of(); // 삭제 대기 중인 줄 번호, 없으면 빈 목록
     private final Deque<int[]> pendingGarbageRows = new ArrayDeque<>(); // 상대에게서 받아 아직 보드에 넣지 않은 공격 줄
     private final List<int[]> pendingAttackRows = new ArrayList<>(); // 상대에게 보낼 공격줄 (심판이 꺼내감)
@@ -162,7 +164,7 @@ public class Game {
      */
     public void handleCommand(GameCommand command) {
         if (command == GameCommand.QUIT_GAME && (status == GameStatus.PLAYING || status == GameStatus.PAUSED)) {
-            status = GameStatus.QUIT;
+            stop();
             return;
         }
 
@@ -203,6 +205,7 @@ public class Game {
             }
         }
 
+        updateLockDelay();
         updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
     }
 
@@ -231,6 +234,7 @@ public class Game {
             gravityDropCells++;
         }
 
+        updateLockDelay();
         // 점수, 레벨, 속도 계산
         updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
     }
@@ -258,6 +262,7 @@ public class Game {
      */
     public void stop() {
         if (!isGameOver() && !isQuit()) {
+            pendingLockDelayId = 0;
             status = GameStatus.QUIT;
         }
     }
@@ -340,6 +345,39 @@ public class Game {
         updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
     }
 
+    /** 현재 착지의 고정 대기 ID를 반환한다. 대기 중인 착지가 없으면 0이다. */
+    public long getPendingLockDelayId() {
+        return pendingLockDelayId;
+    }
+
+    /** 현재 착지와 일치하는 타이머가 끝난 경우에만 블록을 고정한다. */
+    public boolean finishLockDelay(long id) {
+        if (status != GameStatus.PLAYING || id == 0 || pendingLockDelayId != id) {
+            return false;
+        }
+        long previousDropCells = getTotalDropCells();
+        long previousLockedPieceCount = lockedPieceCount;
+        long previousSpawnedPieceCount = spawnedPieceCount;
+        land();
+        updateProgress(previousDropCells, previousLockedPieceCount, previousSpawnedPieceCount);
+        return true;
+    }
+
+    private void updateLockDelay() {
+        if (status != GameStatus.PLAYING || !usesLockDelay() || board.canPlace(currentPiece.move(1, 0))) {
+            pendingLockDelayId = 0;
+        } else if (pendingLockDelayId == 0) {
+            pendingLockDelayId = ++lockDelaySequence;
+        }
+    }
+
+    private boolean usesLockDelay() {
+        Item item = currentPiece.item();
+        return currentPiece.type() != PieceType.HEAVY_WEIGHT
+                && (item == null || item.type() != ItemType.LINE_CLEAR);
+    }
+
+
     /**
      * 상대에게 보낼 공격 줄을 꺼낸다. 앞이 위쪽 줄
      */
@@ -414,10 +452,11 @@ public class Game {
     private boolean softDrop() {
         if (tryReplace(currentPiece.move(1, 0))) {
             return true;
-        } else {
-            land();
-            return false;
         }
+        if (!usesLockDelay()) {
+            land();
+        }
+        return false;
     }
 
     // 바닥까지 한번에 내린 뒤 바로 고정
@@ -519,12 +558,14 @@ public class Game {
 
     // 주어진 종류를 스폰 위치에 놓음. 놓을 수 없으면 게임오버
     private void spawn(PieceType type, Item item) {
+        pendingLockDelayId = 0;
         Piece candidate = Piece.spawn(type, item, board.getWidth());
         if (!board.canPlace(candidate)) {
             status = GameStatus.GAMEOVER;
             return;
         }
         currentPiece = candidate;
+        updateLockDelay();
     }
 
     // 현재 블록을 홀드하거나 홀드된 블록과 바꾼다. 블록 하나당 한번만 가능하다.
@@ -620,6 +661,7 @@ public class Game {
 
     // 블록이 더 내려갈 수 없을 때 아이템 효과에 첫 착지를 알리고, 드릴이 시작되지 않았으면 고정한다.
     private void land() {
+        pendingLockDelayId = 0;
         if (currentPiece.item() != null && !drilling) {
             currentPiece.item().type().getItemEffect().handleFirstLanding(context);
         }

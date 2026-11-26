@@ -1,6 +1,8 @@
 package tetris.controller;
 
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.LongSupplier;
 
 import tetris.model.Game;
 import tetris.model.GameCommand;
@@ -15,11 +17,13 @@ import tetris.view.GameView;
 public class GameController {
     public static final long MIN_LINE_CLEAR_DELAY_MILLIS = 100L; // 줄 삭제 연출 후 마무리까지 기다릴 최소 시간(밀리초)
     public static final long MAX_LINE_CLEAR_DELAY_MILLIS = 200L; // 줄 삭제 연출 후 마무리까지 기다릴 최대 시간(밀리초)
+    private static final long LOCK_DELAY_MILLIS = 500L;
 
     private final Game game; // 게임 모델
     private final GameView view; // 게임 화면
     private final GameTimer timer; // 블록을 떨어트리는 게임 타이머
-    private final DelayScheduler delayScheduler; // 줄 삭제 연출 후 마무리를 예약하는 장치
+    private final DelayScheduler delayScheduler; // 블록 고정과 줄 삭제 연출 후 마무리를 예약하는 장치
+    private final LongSupplier nanoTime;
     private final Runnable onReturnToMenu; // 사용자가 게임을 종료했을 때 실행할 동작
     private final Consumer<Long> onGameOver;
 
@@ -28,6 +32,7 @@ public class GameController {
     private boolean started;
     private boolean terminalHandled;
     private boolean lineClearScheduled; // 삭제 마무리를 예약했는지 여부
+    private LockDelay lockDelay;
     private Runnable onUpdate = () -> {}; // 화면을 갱신할 때마다 실행할 동작 (대전에서 MatchManager가 등록)
 
     /**
@@ -36,16 +41,22 @@ public class GameController {
      * @param game           진행할 게임
      * @param view           게임을 표시할 화면
      * @param timer          자동 낙하에 사용할 타이머
-     * @param delayScheduler 줄 삭제 연출 후 마무리를 예약하는 장치
+     * @param delayScheduler 블록 고정과 줄 삭제 연출 후 마무리를 예약하는 장치
      * @param onReturnToMenu 게임 종료(QUIT) 시 실행할 동작
      * @param onGameOver     게임 오버 시 최종 점수를 받을 동작
      */
     public GameController(Game game, GameView view, GameTimer timer, DelayScheduler delayScheduler,
             Runnable onReturnToMenu, Consumer<Long> onGameOver) {
+        this(game, view, timer, delayScheduler, onReturnToMenu, onGameOver, System::nanoTime);
+    }
+
+    GameController(Game game, GameView view, GameTimer timer, DelayScheduler delayScheduler,
+            Runnable onReturnToMenu, Consumer<Long> onGameOver, LongSupplier nanoTime) {
         this.game = game;
         this.view = view;
         this.timer = timer;
         this.delayScheduler = delayScheduler;
+        this.nanoTime = nanoTime;
         this.onReturnToMenu = onReturnToMenu;
         this.onGameOver = onGameOver;
     }
@@ -148,6 +159,7 @@ public class GameController {
         // (1) 게임종료 || 게임오버시 타이머 정지, 끝 처리 표시 후 콜백을 부른다.
         // terminalHandled 가 true일 시 tick/키입력/refresh는 모두 무시된다.
         if (game.isQuit() || game.isGameOver()) {
+            lockDelay = null;
             stopTimer();
             terminalHandled = true;
             if (game.isGameOver()) {
@@ -161,6 +173,7 @@ public class GameController {
         // (2) 줄 삭제 연출중일 시 블록이 떨어지지 않게 타이머 정지
         // 연출 시간이 지난 뒤 finishLineClear로 실제 삭제하도록 한번만 예약한다.
         if (snapshot.getStatus() == GameStatus.CLEARING) {
+            lockDelay = null;
             stopTimer();
             if (!lineClearScheduled) {
                 lineClearScheduled = true;
@@ -169,9 +182,10 @@ public class GameController {
             return;
         }
 
-        // (3) 일시정지 시 타이머만 끄기, 재개시 이후에 다시 켜짐
+        // (3) 일시정지 시 낙하를 멈추고 고정 대기 시간을 보존한다.
         if (game.isPaused()) {
             stopTimer();
+            synchronizeLockDelay();
             return;
         }
 
@@ -189,6 +203,52 @@ public class GameController {
             timer.start(this::handleTick);
             timerRunning = true;
         }
+        synchronizeLockDelay();
+    }
+
+    private void synchronizeLockDelay() {
+        long id = game.getPendingLockDelayId();
+        if (id == 0) {
+            lockDelay = null;
+            return;
+        }
+        if (lockDelay == null || lockDelay.id != id) {
+            lockDelay = new LockDelay(id);
+        }
+        LockDelay pending = lockDelay;
+        if (game.isPaused()) {
+            if (pending.attempt != null) {
+                long elapsed = nanoTime.getAsLong() - pending.attempt.startedAtNanos();
+                pending.remainingNanos = Math.max(0, pending.remainingNanos - elapsed);
+                pending.attempt = null;
+            }
+            return;
+        }
+        if (pending.attempt != null) {
+            return;
+        }
+        LockAttempt attempt = new LockAttempt(nanoTime.getAsLong());
+        pending.attempt = attempt;
+        long delayMillis = Math.max(1, Math.ceilDiv(pending.remainingNanos, TimeUnit.MILLISECONDS.toNanos(1)));
+        delayScheduler.runAfter(delayMillis, () -> {
+            if (lockDelay == pending && pending.attempt == attempt && game.finishLockDelay(pending.id)) {
+                lockDelay = null;
+                synchronizeState();
+            }
+        });
+    }
+
+    private static final class LockDelay {
+        private final long id;
+        private long remainingNanos = TimeUnit.MILLISECONDS.toNanos(LOCK_DELAY_MILLIS);
+        private LockAttempt attempt;
+
+        private LockDelay(long id) {
+            this.id = id;
+        }
+    }
+
+    private record LockAttempt(long startedAtNanos) {
     }
 
     private void finishLineClear() {
