@@ -95,7 +95,7 @@ class GameTest {
                 game.createSnapshot(),
                 Map.of(
                         "1,3", CELL_ID_I, "1,4", CELL_ID_I, "1,5", CELL_ID_I, "1,6", CELL_ID_I,
-                        "18,3", CELL_ID_T, "18,4", CELL_ID_T, "18,5", CELL_ID_T, "19,4", CELL_ID_T));
+                        "18,4", CELL_ID_T, "19,3", CELL_ID_T, "19,4", CELL_ID_T, "19,5", CELL_ID_T));
     }
 
     @Test
@@ -155,13 +155,13 @@ class GameTest {
     }
 
     @Test
-    void ignoreRotationOutsideRightWall() {
+    void kickRotatedIBlockAwayFromRightWall() {
         Game game = startedGame(PieceType.I);
         game.handleCommand(GameCommand.ROTATE_CLOCKWISE);
         repeatCommand(game, GameCommand.MOVE_RIGHT, 5);
         game.handleCommand(GameCommand.ROTATE_CLOCKWISE);
 
-        assertCells(game.createSnapshot(), Set.of("0,9", "1,9", "2,9", "3,9"), CELL_ID_I);
+        assertCells(game.createSnapshot(), Set.of("2,6", "2,7", "2,8", "2,9"), CELL_ID_I);
     }
 
     @Test
@@ -337,7 +337,7 @@ class GameTest {
         assertCellIds(
                 game.createSnapshot(),
                 Map.of(
-                        "0,3", CELL_ID_T, "0,4", CELL_ID_T, "0,5", CELL_ID_T, "1,4", CELL_ID_T,
+                        "0,4", CELL_ID_T, "1,3", CELL_ID_T, "1,4", CELL_ID_T, "1,5", CELL_ID_T,
                         "19,3", CELL_ID_I, "19,4", CELL_ID_I, "19,5", CELL_ID_I, "19,6", CELL_ID_I));
     }
 

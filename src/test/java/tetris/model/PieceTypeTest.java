@@ -60,8 +60,8 @@ class PieceTypeTest {
     @Test
     void returnTShapeAtRotationZero() {
         Set<Position> expected = Set.of(
-                new Position(0, 0), new Position(0, 1),
-                new Position(0, 2), new Position(1, 1)
+                new Position(0, 1), new Position(1, 0),
+                new Position(1, 1), new Position(1, 2)
         );
 
         assertEquals(expected, Set.copyOf(PieceType.T.getCellsAt(0)));
@@ -70,8 +70,8 @@ class PieceTypeTest {
     @Test
     void returnTShapeAtRotationOne() {
         Set<Position> expected = Set.of(
-                new Position(0, 2), new Position(1, 2),
-                new Position(2, 2), new Position(1, 1)
+                new Position(0, 1), new Position(1, 1),
+                new Position(1, 2), new Position(2, 1)
         );
 
         assertEquals(expected, Set.copyOf(PieceType.T.getCellsAt(1)));
