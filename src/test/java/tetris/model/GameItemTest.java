@@ -8,8 +8,11 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.function.BooleanSupplier;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 class GameItemTest {
@@ -126,6 +129,24 @@ class GameItemTest {
 
         assertEquals(normalInterval, game.createSnapshot().getDropInterval());
         assertTrue(game.getLockedPieceCount() > ITEM_SPAWN_LINE_COUNT);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ItemType.class, names = {"LINE_CLEAR", "HEAVY_WEIGHT"})
+    void keepImmediateLandingEffectsWithoutStartingLockDelay(ItemType item) {
+        Game game = prepareItemAfterTenLines(item).game();
+        if (item == ItemType.LINE_CLEAR) {
+            game.handleCommand(GameCommand.ROTATE_CLOCKWISE);
+        }
+        BooleanSupplier landed = item == ItemType.LINE_CLEAR
+                ? () -> game.getStatus() == GameStatus.CLEARING
+                : () -> game.createSnapshot().getDropInterval() == DRILL_DROP_INTERVAL;
+        for (int tick = 0; tick < BOARD_HEIGHT && !landed.getAsBoolean(); tick++) {
+            game.tick();
+            assertEquals(0, game.getPendingLockDelayId());
+        }
+        assertTrue(landed.getAsBoolean());
+        System.out.printf("[락 지연 아이템] %s 기본 착지 효과 유지 PASS%n", item);
     }
 
     @Test

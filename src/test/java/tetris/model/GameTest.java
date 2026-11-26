@@ -227,23 +227,33 @@ class GameTest {
     }
 
     @Test
-    void lockWhenSoftDropReachesFloor() {
+    void waitForLockDelayWhenSoftDropReachesFloor() {
         Game game = startedGame(PieceType.O);
         repeatCommand(game, GameCommand.SOFT_DROP, BOARD_HEIGHT - 2);
+        long lockId = game.getPendingLockDelayId();
         long dropsBeforeLock = game.getSoftDropCells();
         game.handleCommand(GameCommand.SOFT_DROP);
 
+        assertTrue(lockId > 0);
+        assertEquals(lockId, game.getPendingLockDelayId());
+        assertEquals(0, game.getLockedPieceCount());
+        assertTrue(game.finishLockDelay(lockId));
         assertEquals(1, game.getLockedPieceCount());
         assertEquals(dropsBeforeLock, game.getSoftDropCells());
     }
 
     @Test
-    void lockWhenTickReachesFloor() {
+    void waitForLockDelayWhenGravityReachesFloor() {
         Game game = startedGame(PieceType.O);
         repeatTick(game, BOARD_HEIGHT - 2);
+        long lockId = game.getPendingLockDelayId();
         long dropsBeforeLock = game.getGravityDropCells();
         game.tick();
 
+        assertTrue(lockId > 0);
+        assertEquals(lockId, game.getPendingLockDelayId());
+        assertEquals(0, game.getLockedPieceCount());
+        assertTrue(game.finishLockDelay(lockId));
         assertEquals(1, game.getLockedPieceCount());
         assertEquals(dropsBeforeLock, game.getGravityDropCells());
     }
