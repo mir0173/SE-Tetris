@@ -6,7 +6,9 @@ import java.util.List;
 import java.util.Objects;
 
 import tetris.model.Board;
+import tetris.model.GameKind;
 import tetris.model.GameSnapshot;
+import tetris.model.PuyoDisplay;
 import tetris.model.GameStatus;
 import tetris.model.Item;
 import tetris.model.ItemType;
@@ -16,7 +18,14 @@ import tetris.model.Position;
 /** 전송 전용 상태*/
 public record BattleStateData(int[][] cells, List<PieceType> nextPieces, PieceType heldPiece,
         long score, GameStatus status, long dropInterval, Item nextItem, Item heldItem,
-        List<Integer> clearingRows, List<GhostCell> ghostCells, List<int[]> pendingRows) {
+        List<Integer> clearingRows, List<GhostCell> ghostCells, List<int[]> pendingRows, PuyoDisplay puyo) {
+    public BattleStateData(int[][] cells, List<PieceType> nextPieces, PieceType heldPiece,
+            long score, GameStatus status, long dropInterval, Item nextItem, Item heldItem,
+            List<Integer> clearingRows, List<GhostCell> ghostCells, List<int[]> pendingRows) {
+        this(cells, nextPieces, heldPiece, score, status, dropInterval, nextItem, heldItem,
+                clearingRows, ghostCells, pendingRows, null);
+    }
+
     private static final int MAX_WIDTH = 30;
     private static final int MAX_HEIGHT = 40;
 
@@ -55,6 +64,20 @@ public record BattleStateData(int[][] cells, List<PieceType> nextPieces, PieceTy
             throw new IllegalArgumentException("대기 줄 정보가 너무 많습니다.");
         }
         pendingRows = copyRows(pendingRows, width);
+        if (puyo != null) {
+            if (width != GameKind.PUYO.width() || cells.length != GameKind.PUYO.height()
+                    || !nextPieces.isEmpty() || heldPiece != null || nextItem != null || heldItem != null
+                    || !clearingRows.isEmpty() || !ghostCells.isEmpty() || !pendingRows.isEmpty()) {
+                throw new IllegalArgumentException("뿌요 상태가 경기 규칙과 일치하지 않습니다.");
+            }
+            for (int[] row : cells) {
+                for (int cell : row) {
+                    if (cell != Board.GARBAGE_CELL && (cell < 0 || cell > PuyoDisplay.COLOR_COUNT)) {
+                        throw new IllegalArgumentException("잘못된 뿌요 셀입니다.");
+                    }
+                }
+            }
+        }
     }
 
     public static BattleStateData fromSnapshot(GameSnapshot snapshot) {
@@ -63,10 +86,14 @@ public record BattleStateData(int[][] cells, List<PieceType> nextPieces, PieceTy
                 .toList();
         return new BattleStateData(snapshot.getCells(), snapshot.getNextPieces(), snapshot.getHeldPiece(),
                 snapshot.getScore(), snapshot.getStatus(), snapshot.getDropInterval(), snapshot.getNextPieceItem(),
-                snapshot.getHeldPieceItem(), snapshot.getClearingRows(), ghosts, snapshot.getPendingGarbageRows());
+                snapshot.getHeldPieceItem(), snapshot.getClearingRows(), ghosts, snapshot.getPendingGarbageRows(),
+                snapshot.getPuyo());
     }
 
     public GameSnapshot toSnapshot() {
+        if (puyo != null) {
+            return GameSnapshot.puyo(cells, score, status, dropInterval, puyo);
+        }
         HashMap<Position, Integer> ghosts = new HashMap<>();
         for (GhostCell ghost : ghostCells) {
             ghosts.put(new Position(ghost.row(), ghost.column()), ghost.value());

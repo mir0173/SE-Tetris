@@ -14,6 +14,7 @@ import tetris.battle.BattleSettings;
 import tetris.battle.MatchResult;
 import tetris.controller.GameTimer;
 import tetris.model.*;
+import tetris.puyo.PuyoGame;
 import tetris.view.GameView;
 
 // AI-assisted code start
@@ -147,6 +148,29 @@ class P2pBattleControllerTest {
         assertTrue(fixture.dropTimer.stopped);
         assertTrue(fixture.timeLimitTimer.stopped);
         assertTrue(fixture.results.isEmpty());
+    }
+
+    @Test
+    void applySinglePuyoAttackPacketWithoutTetrisLineMinimum() throws Exception {
+        PuyoGame game = new PuyoGame(1);
+        FakeView view = new FakeView();
+        List<BattleMessage> outgoing = new ArrayList<>();
+        BattleLink link = new BattleLink(Runnable::run, outgoing::add);
+        BattleSettings settings = new BattleSettings(BattleMode.NORMAL, Difficulty.NORMAL, 0, GameKind.PUYO);
+        P2pBattleController controller = new P2pBattleController(game, view, new FakeTimer(), (delay, action) -> { },
+                new FakeTimer(), new FakeTimer(), link, new MatchStart(1, PeerRole.HOST, settings),
+                snapshot -> { }, text -> { }, result -> { }, seconds -> { }, () -> { });
+        controller.start();
+        try {
+            int[] packet = {Board.GARBAGE_CELL, Board.GARBAGE_CELL, 0, 0, 0, 0};
+            link.receive(BattleMessage.attack(1, List.of(packet)));
+            assertEquals(2, game.getPendingGarbageRowCount());
+            assertEquals(2, view.lastSnapshot.getPuyo().pendingGarbage());
+            assertNotNull(outgoing.getFirst().state().puyo());
+            assertEquals(6, outgoing.getFirst().state().cells()[0].length);
+        } finally {
+            controller.close();
+        }
     }
 
     private static final class Fixture {

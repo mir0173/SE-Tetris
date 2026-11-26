@@ -20,7 +20,10 @@ import tetris.battle.BattleSettings;
 import tetris.battle.BattleMode;
 import tetris.controller.GameController;
 import tetris.model.Board;
+import tetris.model.ControlledGame;
 import tetris.model.Game;
+import tetris.model.GameKind;
+import tetris.puyo.PuyoGame;
 import tetris.model.GameConfig;
 import tetris.model.GameMode;
 import tetris.model.Difficulty;
@@ -62,8 +65,6 @@ import tetris.view.JavaFxP2pGameView;
 public class TetrisApplication extends Application {
 
     private static final Logger LOGGER = Logger.getLogger(TetrisApplication.class.getName());
-    private static final int BOARD_WIDTH = 10;
-    private static final int BOARD_HEIGHT = 20;
     private SettingsRepository settingsRepository;
     private ScoreRepository scoreRepository;
     private GameSettings currentSettings = GameSettings.defaults();
@@ -194,8 +195,7 @@ public class TetrisApplication extends Application {
                 () -> p2pBattleController.requestReturnToLobby());
         p2pBattleView = view;
         view.renderConnectionHealth(p2pLobbyController.getState().health());
-        GameMode mode = start.settings().mode() == BattleMode.ITEM ? GameMode.ITEM : GameMode.NORMAL;
-        Game game = createGame(mode, start.settings().difficulty());
+        ControlledGame game = createBattleGame(start.settings(), start.matchId());
         p2pBattleController = new P2pBattleController(game, view.getLocalView(),
                 new JavaFxGameTimer(Game.getInitialDropInterval()), new JavaFxDelayScheduler(),
                 new JavaFxGameTimer(P2pBattleController.STATE_INTERVAL_MILLIS), new JavaFxGameTimer(1_000),
@@ -243,6 +243,7 @@ public class TetrisApplication extends Application {
         JavaFxStartMenuView menu = new JavaFxStartMenuView(
                 () -> startNewGame(stage, GameMode.NORMAL),
                 () -> startNewGame(stage, GameMode.ITEM),
+                () -> startPuyoGame(stage),
                 () -> showBattleSetup(stage),
                 () -> showP2pLobby(stage),
                 () -> showSettings(stage),
@@ -269,6 +270,22 @@ public class TetrisApplication extends Application {
         GameController controller = new GameController(game, view, timer, new JavaFxDelayScheduler(),
                 () -> showStartMenu(stage),
                 score -> Platform.runLater(() -> handleGameOver(stage, score, mode, difficulty)));
+        controller.start();
+    }
+
+    private void startPuyoGame(Stage stage) {
+        PuyoGame game = new PuyoGame(new Random().nextLong());
+        GameController controller = new GameController(game, new JavaFxGameView(stage, currentSettings),
+                new JavaFxGameTimer(Game.getInitialDropInterval()), new JavaFxDelayScheduler(),
+                () -> showStartMenu(stage), score -> Platform.runLater(() -> {
+                    Alert result = new Alert(Alert.AlertType.INFORMATION);
+                    result.initOwner(stage);
+                    result.setTitle("뿌요 게임 종료");
+                    result.setHeaderText("최종 점수: " + score);
+                    result.showAndWait();
+                    showStartMenu(stage);
+                }));
+        stage.setTitle("SE Tetris - 뿌요");
         controller.start();
     }
 
@@ -304,9 +321,9 @@ public class TetrisApplication extends Application {
                     stage.close();
                 });
 
-        GameMode mode = battleSettings.mode() == BattleMode.ITEM ? GameMode.ITEM : GameMode.NORMAL;
-        Game firstGame = createGame(mode, battleSettings.difficulty());
-        Game secondGame = createGame(mode, battleSettings.difficulty());
+        long seed = new Random().nextLong();
+        ControlledGame firstGame = createBattleGame(battleSettings, seed);
+        ControlledGame secondGame = createBattleGame(battleSettings, seed);
         GameController firstController = createBattleController(firstGame, view.getFirstPlayerView());
         GameController secondController = createBattleController(secondGame, view.getSecondPlayerView());
         localMatchManager = new MatchManager(new LocalPlayer(firstGame, firstController),
@@ -327,8 +344,16 @@ public class TetrisApplication extends Application {
         }
     }
 
+    private ControlledGame createBattleGame(BattleSettings settings, long seed) {
+        if (settings.gameKind() == GameKind.PUYO) {
+            return new PuyoGame(seed);
+        }
+        GameMode mode = settings.mode() == BattleMode.ITEM ? GameMode.ITEM : GameMode.NORMAL;
+        return createGame(mode, settings.difficulty());
+    }
+
     // 대전용 컨트롤러. 메뉴 복귀와 게임오버는 MatchManager의 결과로만 처리하므로 아무것도 하지 않는다
-    private GameController createBattleController(Game game, GameView view) {
+    private GameController createBattleController(ControlledGame game, GameView view) {
         return new GameController(game, view, new JavaFxGameTimer(Game.getInitialDropInterval()),
                 new JavaFxDelayScheduler(), () -> { }, score -> { });
     }
@@ -514,7 +539,7 @@ public class TetrisApplication extends Application {
 
     // 모드와 난이도에 맞는 새 게임을 만든다
     private Game createGame(GameMode mode, Difficulty difficulty) {
-        GameConfig config = new GameConfig(BOARD_WIDTH, BOARD_HEIGHT);
+        GameConfig config = new GameConfig(GameKind.TETRIS.width(), GameKind.TETRIS.height());
         Board board = new Board(config.getBoardWidth(), config.getBoardHeight());
         TetrominoGenerator generator = new TetrominoGenerator(new Random(), difficulty.createWeights());
         Game game = new Game(board, generator, difficulty, mode);

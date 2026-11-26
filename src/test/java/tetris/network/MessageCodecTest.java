@@ -48,7 +48,7 @@ class MessageCodecTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "null", "{", "{}", "{\"type\":\"UNKNOWN\",\"version\":" + LobbyMessage.PROTOCOL_VERSION + "}",
-            "{\"type\":\"HELLO\",\"version\":3,\"role\":\"CLIENT\"}",
+            "{\"type\":\"HELLO\",\"version\":4,\"role\":\"CLIENT\"}",
             "{\"type\":\"CONFIG\",\"version\":" + LobbyMessage.PROTOCOL_VERSION + ",\"revision\":1}",
             "{\"type\":\"CONFIG\",\"version\":" + LobbyMessage.PROTOCOL_VERSION + ",\"revision\":1,\"settings\":{\"mode\":\"TIME_LIMIT\",\"difficulty\":\"NORMAL\",\"timeLimitSeconds\":0}}",
             "{\"type\":\"PING\",\"version\":" + LobbyMessage.PROTOCOL_VERSION + ",\"probeId\":0}"

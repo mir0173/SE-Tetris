@@ -4,6 +4,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 
+import tetris.model.ControlledGame;
 import tetris.model.Game;
 import tetris.model.GameCommand;
 import tetris.model.GameSnapshot;
@@ -17,9 +18,8 @@ import tetris.view.GameView;
 public class GameController {
     public static final long MIN_LINE_CLEAR_DELAY_MILLIS = 100L; // 줄 삭제 연출 후 마무리까지 기다릴 최소 시간(밀리초)
     public static final long MAX_LINE_CLEAR_DELAY_MILLIS = 200L; // 줄 삭제 연출 후 마무리까지 기다릴 최대 시간(밀리초)
-    private static final long LOCK_DELAY_MILLIS = 500L;
 
-    private final Game game; // 게임 모델
+    private final ControlledGame game; // 게임 모델
     private final GameView view; // 게임 화면
     private final GameTimer timer; // 블록을 떨어트리는 게임 타이머
     private final DelayScheduler delayScheduler; // 블록 고정과 줄 삭제 연출 후 마무리를 예약하는 장치
@@ -45,12 +45,12 @@ public class GameController {
      * @param onReturnToMenu 게임 종료(QUIT) 시 실행할 동작
      * @param onGameOver     게임 오버 시 최종 점수를 받을 동작
      */
-    public GameController(Game game, GameView view, GameTimer timer, DelayScheduler delayScheduler,
+    public GameController(ControlledGame game, GameView view, GameTimer timer, DelayScheduler delayScheduler,
             Runnable onReturnToMenu, Consumer<Long> onGameOver) {
         this(game, view, timer, delayScheduler, onReturnToMenu, onGameOver, System::nanoTime);
     }
 
-    GameController(Game game, GameView view, GameTimer timer, DelayScheduler delayScheduler,
+    GameController(ControlledGame game, GameView view, GameTimer timer, DelayScheduler delayScheduler,
             Runnable onReturnToMenu, Consumer<Long> onGameOver, LongSupplier nanoTime) {
         this.game = game;
         this.view = view;
@@ -213,7 +213,7 @@ public class GameController {
             return;
         }
         if (lockDelay == null || lockDelay.id != id) {
-            lockDelay = new LockDelay(id);
+            lockDelay = new LockDelay(id, game.lockDelayMillis());
         }
         LockDelay pending = lockDelay;
         if (game.isPaused()) {
@@ -240,11 +240,12 @@ public class GameController {
 
     private static final class LockDelay {
         private final long id;
-        private long remainingNanos = TimeUnit.MILLISECONDS.toNanos(LOCK_DELAY_MILLIS);
+        private long remainingNanos;
         private LockAttempt attempt;
 
-        private LockDelay(long id) {
+        private LockDelay(long id, long delayMillis) {
             this.id = id;
+            remainingNanos = TimeUnit.MILLISECONDS.toNanos(delayMillis);
         }
     }
 

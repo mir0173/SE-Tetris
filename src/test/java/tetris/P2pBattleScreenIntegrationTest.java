@@ -38,6 +38,7 @@ import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 import tetris.battle.BattleMode;
 import tetris.battle.BattleSettings;
+import tetris.model.GameKind;
 
 // AI-assisted code start
 @ResourceLock(Resources.SYSTEM_PROPERTIES)
@@ -286,6 +287,45 @@ class P2pBattleScreenIntegrationTest {
         });
     }
 
+    @Test
+    void synchronizePuyoChoiceAndBothPuyoScreensOverLoopback() throws Exception {
+        connectPeers();
+        onFx(() -> {
+            ComboBox<?> gameBox = (ComboBox<?>) hostStage.getScene().lookup("#p2p-game");
+            gameBox.getSelectionModel().select(gameBox.getItems().indexOf(GameKind.PUYO));
+            return null;
+        });
+        await(() -> GameKind.PUYO.equals(((ComboBox<?>) clientStage.getScene().lookup("#p2p-game")).getValue()));
+        assertTrue(onFx(() -> clientStage.getScene().lookup("#p2p-game").isDisabled()));
+        startMatch();
+        await(() -> displaysPuyo(hostStage, "p2p-local-panel") && displaysPuyo(hostStage, "p2p-remote-panel")
+                && displaysPuyo(clientStage, "p2p-local-panel") && displaysPuyo(clientStage, "p2p-remote-panel"));
+
+        long hostScore = hardDropPuyo(hostStage);
+        long clientScore = hardDropPuyo(clientStage);
+        assertTrue(hostScore > 0);
+        assertTrue(clientScore > 0);
+        await(() -> score(clientStage, "p2p-remote-panel") == hostScore
+                && score(hostStage, "p2p-remote-panel") == clientScore);
+        onFx(() -> { button(clientStage, "p2p-battle-back").fire(); return null; });
+        await(() -> result(hostStage).startsWith("승리 기권") && result(clientStage).startsWith("패배 기권"));
+        System.out.printf("[P2P 뿌요] 양쪽 보드와 점수 동기화 %d:%d, 기권 처리 PASS%n", hostScore, clientScore);
+    }
+
+    private static boolean displaysPuyo(Stage stage, String panelId) {
+        Parent panel = (Parent) stage.getScene().lookup("#" + panelId);
+        return panel.lookup("#puyo-chain").isVisible();
+    }
+
+    private static long hardDropPuyo(Stage stage) throws Exception {
+        return onFx(() -> {
+            Node board = stage.getScene().lookup("#p2p-local-panel");
+            Event.fireEvent(board, new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.SPACE,
+                    false, false, false, false));
+            return score(stage, "p2p-local-panel");
+        });
+    }
+
     private void connectPeers() throws Exception {
         int port;
         try (ServerSocket reservation = new ServerSocket(0)) { port = reservation.getLocalPort(); }
@@ -299,8 +339,14 @@ class P2pBattleScreenIntegrationTest {
         });
         await(() -> label(hostStage, "p2p-status").getText().contains("서버 대기"));
         onFx(() -> { button(clientStage, "p2p-connect").fire(); return null; });
-        await(() -> !button(hostStage, "p2p-ready").isDisabled()
-                && !button(clientStage, "p2p-ready").isDisabled());
+        try {
+            await(() -> !button(hostStage, "p2p-ready").isDisabled()
+                    && !button(clientStage, "p2p-ready").isDisabled());
+        } catch (AssertionError failure) {
+            String statuses = onFx(() -> "HOST " + label(hostStage, "p2p-status").getText()
+                    + " / CLIENT " + label(clientStage, "p2p-status").getText());
+            throw new AssertionError(statuses, failure);
+        }
     }
 
     private void startMatch() throws Exception {

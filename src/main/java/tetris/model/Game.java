@@ -13,7 +13,7 @@ import java.util.HashSet;
 
 import static java.util.Objects.requireNonNull;
 
-public class Game {
+public class Game implements ControlledGame {
     private static final long INITIAL_SCORE = 0L;
     private static final long INITIAL_DROP_INTERVAL = 1_000L;
     private static final int LINES_PER_LEVEL = 5;

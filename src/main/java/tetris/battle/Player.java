@@ -1,5 +1,6 @@
 package tetris.battle;
 
+import tetris.model.GameKind;
 import tetris.model.GameSnapshot;
 import tetris.model.GameStatus;
 import java.util.List;
@@ -7,9 +8,13 @@ import java.util.List;
 /**
  * 대전에서 심판(MatchManager)이 다루는 플레이어 한명. 로컬/원격 둘 다 같은 방식으로 다룬다.
  * 모든 메서드는 JavaFX 스레드에서만 불린다. 원격 쪽은 받은 데이터를 Platform.runLater로 넘긴 뒤 처리한다.
- * 공격 줄 형식 : 위에서 아래 순서이고, 각 줄의 길이는 보드폭, 채워진 칸은 Board.GARBAGE_CELL
+ * 테트리스 공격은 방해 줄, 뿌요 공격은 보드 폭으로 묶은 방해 블록이다. 채워진 칸은 Board.GARBAGE_CELL이다.
  */
 public interface Player {
+    default GameKind gameKind() {
+        return GameKind.TETRIS;
+    }
+
     /** 화면에 그릴 상태 사진을 만든다. 
      * 화면 표시용이며 심판은 판정에 사용하지 않는다. 
      * 원격 플레이어는 받아 둔 최신 화면 정보를 돌려준다. 
