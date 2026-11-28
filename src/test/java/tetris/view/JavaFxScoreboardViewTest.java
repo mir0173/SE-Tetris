@@ -1173,8 +1173,7 @@ class JavaFxScoreboardViewTest {
      * 화면 바로 아래에 있는 Label 중 해당 문구를 가진 것이 있는지 확인한다.
      */
     private boolean hasLabelWithText(JavaFxScoreboardView view, String text) {
-        return view.getScene()
-                .getRoot()
+        return getContent(view)
                 .getChildrenUnmodifiable()
                 .stream()
                 .filter(Label.class::isInstance)
@@ -1204,9 +1203,13 @@ class JavaFxScoreboardViewTest {
         return null;
     }
 
+    // 제목·탭·순위 표·메뉴가 들어 있는 본문 VBox (화면 아래 키 안내 줄은 이 바깥에 있다)
+    private VBox getContent(JavaFxScoreboardView view) {
+        return (VBox) view.getScene().lookup("#scoreboard-content");
+    }
+
     private Label findTitleLabel(JavaFxScoreboardView view) {
-        return view.getScene()
-                .getRoot()
+        return getContent(view)
                 .getChildrenUnmodifiable()
                 .stream()
                 .filter(Label.class::isInstance)

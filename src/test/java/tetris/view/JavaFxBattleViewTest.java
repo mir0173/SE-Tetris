@@ -527,6 +527,56 @@ class JavaFxBattleViewTest {
         });
     }
 
+    @Test
+    void enterAfterResultRunsKeyboardSelectedButton() throws Exception {
+        runOnFxThread(() -> {
+            // given: 결과가 나온 뒤 키보드로 '메뉴로' 버튼을 고른 상태
+            Fixture fixture = new Fixture(GameSettings.defaults());
+            fixture.view.renderResult(firstPlayerWin());
+            button(fixture, "battle-back").requestFocus();
+
+            // when
+            pressKey(fixture, KeyCode.ENTER);
+
+            // then: 고른 버튼만 실행된다
+            assertEquals(1, fixture.menuCount.get());
+            assertEquals(0, fixture.rematchCount.get());
+            assertEquals(0, fixture.exitCount.get());
+        });
+    }
+
+    @Test
+    void enterRightAfterResultRunsRematch() throws Exception {
+        runOnFxThread(() -> {
+            // given: 결과가 나오면 '다시 하기'가 처음 선택된다
+            Fixture fixture = new Fixture(GameSettings.defaults());
+            fixture.view.renderResult(firstPlayerWin());
+
+            // when
+            pressKey(fixture, KeyCode.ENTER);
+
+            // then
+            assertEquals(1, fixture.rematchCount.get());
+            assertEquals(0, fixture.menuCount.get());
+        });
+    }
+
+    @Test
+    void enterDuringMatchDoesNotRunHiddenButtons() throws Exception {
+        runOnFxThread(() -> {
+            // given: 경기 중 (버튼은 숨겨져 있음)
+            Fixture fixture = new Fixture(GameSettings.defaults());
+
+            // when
+            pressKey(fixture, KeyCode.ENTER);
+
+            // then
+            assertEquals(0, fixture.rematchCount.get());
+            assertEquals(0, fixture.menuCount.get());
+            assertEquals(0, fixture.exitCount.get());
+        });
+    }
+
     // ---------- 도우미 ----------
 
     // 화면 하나와 콜백·명령 기록을 함께 만든다

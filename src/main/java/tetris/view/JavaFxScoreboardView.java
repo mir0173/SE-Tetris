@@ -17,6 +17,7 @@ import javafx.scene.layout.BorderWidths;
 import javafx.scene.layout.CornerRadii;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -34,18 +35,19 @@ import tetris.scoreboard.ScoreboardGroup;
 // AI-assisted code start
 public class JavaFxScoreboardView {
     private static final double SCOREBOARD_WIDTH = 500;
-    private static final double SCOREBOARD_HEIGHT = 600;
-    private static final double ROOT_SPACING = 20;
+    private static final double SCOREBOARD_HEIGHT = 640; // AI-assisted (redesign) 키 안내 줄 자리만큼 키움
+    private static final double ROOT_SPACING = 12; // AI-assisted (redesign) 키 안내 줄 자리 확보
     private static final double ROOT_PADDING = 25;
     private static final double TAB_SPACING = 20;
     private static final double COLUMN_GAP = 12;
-    private static final double ROW_GAP = 8;
+    private static final double ROW_GAP = 4; // AI-assisted (redesign)
     private static final double MENU_SPACING = 10;
     private static final double UNSELECTED_TAB_OPACITY = 0.5;
     private static final double UNDERLINE_WIDTH = 2;
     private static final double PLACEHOLDER_OPACITY = 0.5;
     private static final double SCORE_FONT_SIZE = 18;
     private static final double TITLE_FONT_SIZE = 30;
+    private static final double TAB_FONT_SIZE = Font.getDefault().getSize(); // AI-assisted (redesign) 탭 글자는 기본 크기
     private static final double MENU_BUTTON_WIDTH = 180;
     private static final double MENU_MARKER_SPACING = 16;
     private static final double RANK_COLUMN_WIDTH = 36;
@@ -72,6 +74,7 @@ public class JavaFxScoreboardView {
     private static final String DIFFICULTY_ROW_ID = "difficultyRow";
     private static final String SCORE_GRID_ID = "scoreGrid";
     private static final String MENU_BOX_ID = "menuBox";
+    private static final String CONTENT_ID = "scoreboard-content"; // AI-assisted (redesign)
     private static final int MAX_ROWS = 10;
     private static final int RANK_COLUMN = 0;
     private static final int NAME_COLUMN = 1;
@@ -139,10 +142,23 @@ public class JavaFxScoreboardView {
         root.setAlignment(Pos.CENTER);
         root.setPadding(new Insets(ROOT_PADDING));
         Label title = new Label(TITLE_TEXT);
-        title.setFont(Font.font(Font.getDefault().getFamily(), FontWeight.BOLD, TITLE_FONT_SIZE));
+        title.setFont(Theme.monoFont(FontWeight.BOLD, TITLE_FONT_SIZE)); // AI-assisted (redesign)
         root.getChildren().addAll(title, modeRow, difficultyRow, scoreGrid, menuBox);
+        root.setId(CONTENT_ID); // AI-assisted (redesign)
 
-        scene = new Scene(root, SCOREBOARD_WIDTH, SCOREBOARD_HEIGHT);
+        // AI-assisted code start (redesign)
+        KeyHintBar keyHints = new KeyHintBar()
+            .add("줄 이동", "UP", "DOWN")
+            .add("모드·난이도", "LEFT", "RIGHT")
+            .add("선택", "ENTER")
+            .add("메뉴로", "ESCAPE")
+            .add("종료", "Q");
+        BorderPane frame = new BorderPane(root);
+        frame.setBottom(keyHints);
+
+        scene = new Scene(frame, SCOREBOARD_WIDTH, SCOREBOARD_HEIGHT);
+        Theme.apply(scene);
+        // AI-assisted code end
         scene.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKey);
     }
 
@@ -168,8 +184,7 @@ public class JavaFxScoreboardView {
             };
             Label modeLabel = new Label(modeText);
             if (mode == selectedMode) {
-                modeLabel.setFont(Font.font(Font.getDefault().getFamily(), FontWeight.BOLD,
-                    Font.getDefault().getSize()));
+                modeLabel.setFont(Theme.uiFont(FontWeight.BOLD, TAB_FONT_SIZE));
                 modeLabel.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID,
                     CornerRadii.EMPTY, new BorderWidths(0, 0, UNDERLINE_WIDTH, 0))));
             } else {
@@ -187,8 +202,7 @@ public class JavaFxScoreboardView {
         for (Difficulty difficulty : Difficulty.values()) {
             Label difficultyLabel = new Label(difficulty.name());
             if (difficulty == currentCategory.difficulty()) {
-                difficultyLabel.setFont(Font.font(Font.getDefault().getFamily(), FontWeight.BOLD,
-                    Font.getDefault().getSize()));
+                difficultyLabel.setFont(Theme.uiFont(FontWeight.BOLD, TAB_FONT_SIZE));
                 difficultyLabel.setBorder(new Border(new BorderStroke(Color.BLACK, BorderStrokeStyle.SOLID,
                     CornerRadii.EMPTY, new BorderWidths(0, 0, UNDERLINE_WIDTH, 0))));
             } else {
@@ -197,6 +211,9 @@ public class JavaFxScoreboardView {
             difficultyRow.getChildren().add(difficultyLabel);
         }
         difficultyRow.getChildren().add(new Label(RIGHT_ARROW_TEXT));
+        // AI-assisted (redesign) 다시 만든 탭 글자에도 테마 글꼴을 입힌다
+        Theme.useThemeFonts(modeRow);
+        Theme.useThemeFonts(difficultyRow);
     }
 
     /**
@@ -247,7 +264,7 @@ public class JavaFxScoreboardView {
      */
     private Label createCell(String text, Pos alignment) {
         Label cell = new Label(text);
-        cell.setFont(Font.font(SCORE_FONT_SIZE));
+        cell.setFont(Theme.uiFont(SCORE_FONT_SIZE)); // AI-assisted (redesign)
         cell.setMaxWidth(Double.MAX_VALUE);
         cell.setAlignment(alignment);
         return cell;

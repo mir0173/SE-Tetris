@@ -17,8 +17,9 @@ import javafx.scene.control.Button;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.util.Duration;
 
 import tetris.model.GameCommand;
@@ -36,9 +37,11 @@ import tetris.settings.WindowSize;
 public class JavaFxSettingsView {
 
     private static final long CLICK_COOLDOWN_NANOS = 150_000_000L;
+    private static final String CONTENT_ID = "settings-content"; // AI-assisted (redesign)
     private static final double SETTINGS_WIDTH = 500;
-    private static final double SETTINGS_HEIGHT = 600;
-    private static final double ROOT_SPACING = 10;
+    private static final double SETTINGS_HEIGHT = 680; // AI-assisted (redesign) 키 안내 줄 자리만큼 키움
+    private static final double ROOT_SPACING = 4; // AI-assisted (redesign)
+    private static final double TITLE_FONT_SIZE = 22; // AI-assisted (redesign)
     private static final double ROOT_PADDING = 25;
     private static final double ROW_FONT_SIZE = 18;
     private static final double SHAKE_DISTANCE = 8;
@@ -152,16 +155,19 @@ public class JavaFxSettingsView {
         this.onBack = onBack;
 
         VBox root = new VBox(ROOT_SPACING);
+        root.setId(CONTENT_ID); // AI-assisted (redesign)
         root.setAlignment(Pos.CENTER);
         root.setPadding(new Insets(ROOT_PADDING));
         root.setFocusTraversable(true);
-        root.getChildren().add(new Label("설정"));
+        Label title = new Label("설정");
+        title.setFont(Theme.uiFont(FontWeight.BOLD, TITLE_FONT_SIZE)); // AI-assisted (redesign)
+        root.getChildren().add(title);
 
         for (int i = 0; i < BACK_ROW; i++) {
             int rowIndex = i;
 
             Label rowLabel = new Label();
-            rowLabel.setFont(Font.font(ROW_FONT_SIZE));
+            rowLabel.setFont(Theme.uiFont(ROW_FONT_SIZE)); // AI-assisted (redesign)
             rowLabel.setMaxWidth(Double.MAX_VALUE);
             rowLabel.setAlignment(Pos.CENTER);
             rowLabel.setCursor(Cursor.HAND);
@@ -195,7 +201,18 @@ public class JavaFxSettingsView {
 
         refreshRows();
 
-        scene = new Scene(root, SETTINGS_WIDTH, SETTINGS_HEIGHT);
+        // AI-assisted code start (redesign)
+        KeyHintBar keyHints = new KeyHintBar()
+            .add("이동", "UP", "DOWN")
+            .add("값 변경", "LEFT", "RIGHT")
+            .add("선택·키 바꾸기", "ENTER")
+            .add("메뉴로", "ESCAPE");
+        BorderPane frame = new BorderPane(root);
+        frame.setBottom(keyHints);
+
+        scene = new Scene(frame, SETTINGS_WIDTH, SETTINGS_HEIGHT);
+        Theme.apply(scene);
+        // AI-assisted code end
         scene.addEventHandler(KeyEvent.KEY_PRESSED, this::handleKey);
         scene.addEventHandler(KeyEvent.KEY_RELEASED, this::handleKeyReleased);
     }

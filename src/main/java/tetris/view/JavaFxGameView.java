@@ -331,6 +331,7 @@ public class JavaFxGameView implements GameView {
 
         if (attachToStage) {
             Scene scene = new Scene(root, VIEW_WIDTH * scale, VIEW_HEIGHT * scale);
+            Theme.apply(scene); // AI-assisted (redesign)
             stage.setTitle("SE Tetris");
             stage.setScene(scene);
             stage.sizeToScene();

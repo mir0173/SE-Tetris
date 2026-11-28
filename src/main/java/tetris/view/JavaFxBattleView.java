@@ -14,11 +14,12 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.canvas.Canvas;
+import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import tetris.battle.MatchResult;
 import tetris.model.GameCommand;
@@ -35,7 +36,6 @@ public final class JavaFxBattleView {
     private static final double SPACING = 12;
     private static final double PADDING = 12;
     private static final double PLAYER_GAP = 40; // 1P 정보 칸과 2P 보드 사이 간격
-    private static final String PLAYER_NAME_FONT_FAMILY = "System";
     private static final double PLAYER_NAME_FONT_SIZE = 28;
     private static final double PLAYER_NAME_SPACING = 0;
 
@@ -48,6 +48,8 @@ public final class JavaFxBattleView {
     private final Button back = new Button("메뉴로");
     private final Button rematch = new Button("다시 하기");
     private final Button exit = new Button("게임 종료");
+    private final KeyHintBar keyHints = new KeyHintBar(); // 화면 아래 키 안내
+    private final Map<GameCommand, String> sharedKeys;
     private final Scene scene;
 
     private boolean finished; // 결과가 나왔는지
@@ -61,6 +63,7 @@ public final class JavaFxBattleView {
 
         BattleKeyBindings keys = settings.getBattleKeyBindings();
         keyRouter = new BattleKeyRouter(keys);
+        sharedKeys = keys.getSharedKeys();
         firstPanel = new PlayerPanel(settings, keys.getFirstPlayerKeys(), keys.getSharedKeys(),
                 "battle-first-panel");
         secondPanel = new PlayerPanel(settings, keys.getSecondPlayerKeys(), keys.getSharedKeys(),
@@ -99,8 +102,13 @@ public final class JavaFxBattleView {
         root.setAlignment(Pos.TOP_CENTER);
         root.setPadding(new Insets(PADDING * scale));
 
+        showMatchKeyHints();
+        BorderPane frame = new BorderPane(root);
+        frame.setBottom(keyHints);
+
         // 창 크기는 정하지 않는다. stage.sizeToScene()이 내용 크기에 맞춘다
-        scene = new Scene(root);
+        scene = new Scene(frame);
+        Theme.apply(scene);
         scene.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPressed);
         scene.addEventFilter(KeyEvent.KEY_RELEASED, this::handleKeyReleased);
     }
@@ -137,6 +145,7 @@ public final class JavaFxBattleView {
         back.setVisible(true);
         exit.setVisible(true);
         rematch.requestFocus();
+        showResultKeyHints();
     }
 
     /** 시간제한 모드의 남은 시간을 "남은 시간 m:ss"로 보인다. */
@@ -144,14 +153,33 @@ public final class JavaFxBattleView {
         timeLeft.setText(String.format(Locale.ROOT, "남은 시간 %d:%02d", seconds / 60, seconds % 60));
     }
 
+    // 경기 중 안내: 두 사람이 같이 쓰는 키(일시정지, 경기 중단). 각자 조작 키는 모드 선택 화면의 표에 있다
+    private void showMatchKeyHints() {
+        keyHints.clear()
+                .add("일시정지", sharedKeys.get(GameCommand.PAUSE))
+                .add("경기 중단", sharedKeys.get(GameCommand.QUIT_GAME));
+    }
+
+    // 결과 뒤 안내: 버튼 고르기와 실행
+    private void showResultKeyHints() {
+        keyHints.clear()
+                .add("버튼 이동", "LEFT", "RIGHT")
+                .add("선택", "ENTER")
+                .add("메뉴로", sharedKeys.get(GameCommand.QUIT_GAME));
+    }
+
     private void handleKeyPressed(KeyEvent event) {
         Optional<BattleKeyRouter.Route> route = keyRouter.findRoute(event.getCode().name());
 
         if (finished) {
-            // 결과 뒤: 게임 키는 무시하고 종료 키만 메뉴로. 나머지(Enter 등)는 버튼이 받도록 그대로 둔다
+            // 결과 뒤: 게임 키는 무시하고 종료 키만 메뉴로. Enter는 키보드로 고른 버튼을 실행한다.
+            // 나머지(방향키 등)는 버튼 사이 포커스 이동에 쓰이도록 그대로 둔다
             if (route.isPresent() && route.get().command() == GameCommand.QUIT_GAME) {
                 event.consume();
                 onReturnToMenu.run();
+            } else if (event.getCode() == KeyCode.ENTER && scene.getFocusOwner() instanceof Button focused) {
+                event.consume();
+                focused.fire();
             }
             return;
         }
@@ -200,7 +228,7 @@ public final class JavaFxBattleView {
     private VBox createPlayerColumn(String text, String id, PlayerPanel playerPanel, double scale) {
         Label name = new Label(text);
         name.setId(id);
-        name.setFont(Font.font(PLAYER_NAME_FONT_FAMILY, FontWeight.BOLD, PLAYER_NAME_FONT_SIZE * scale));
+        name.setFont(Theme.monoFont(FontWeight.BOLD, PLAYER_NAME_FONT_SIZE * scale));
         name.setAlignment(Pos.CENTER);
 
         Canvas board = (Canvas) playerPanel.getContent().lookup("#game-board");

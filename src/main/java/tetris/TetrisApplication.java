@@ -58,6 +58,7 @@ import tetris.network.P2pBattleController;
 import tetris.network.MatchStart;
 import tetris.network.LobbyState;
 import tetris.view.JavaFxP2pGameView;
+import tetris.view.Theme;
 
 /**
  * JavaFX 애플리케이션 진입점
@@ -65,6 +66,9 @@ import tetris.view.JavaFxP2pGameView;
 public class TetrisApplication extends Application {
 
     private static final Logger LOGGER = Logger.getLogger(TetrisApplication.class.getName());
+    // AI-assisted (redesign) 창 아이콘 (작은 크기는 단순하게 그린 별도 그림)
+    static final List<String> APP_ICON_PATHS = List.of("/icons/se-tetris-16.png", "/icons/se-tetris-32.png",
+            "/icons/se-tetris-64.png", "/icons/se-tetris-128.png", "/icons/se-tetris.png");
     private SettingsRepository settingsRepository;
     private ScoreRepository scoreRepository;
     private GameSettings currentSettings = GameSettings.defaults();
@@ -76,7 +80,11 @@ public class TetrisApplication extends Application {
 
     @Override
     public void start(Stage stage) {
-        stage.getIcons().add(new Image(TetrisApplication.class.getResourceAsStream("/icons/se-tetris.png")));
+        // AI-assisted (redesign) 크기별 아이콘을 모두 넣어 두면 작업 표시줄·창 제목 줄이 맞는 크기를 고른다
+        for (String iconPath : APP_ICON_PATHS) {
+            stage.getIcons().add(new Image(TetrisApplication.class.getResourceAsStream(iconPath)));
+        }
+        Theme.loadFonts(); // AI-assisted (redesign) 첫 화면 전에 테마 글꼴 등록
         Path dataDirectory = Path.of(System.getProperty("user.home"), ".se-tetris");
 
         settingsRepository = new FileSettingsRepository(dataDirectory.resolve("settings.json"));
