@@ -1,121 +1,93 @@
 package tetris.view;
 
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.List;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.geometry.VPos;
-import javafx.geometry.Bounds;
-import javafx.scene.Scene;
 import javafx.scene.Node;
 import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Label;
+import javafx.scene.effect.GaussianBlur;
 import javafx.scene.input.KeyCode;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
-import javafx.scene.text.Text;
 import javafx.scene.text.FontWeight;
-import javafx.scene.text.TextAlignment;
-import javafx.scene.text.TextBoundsType;
 import javafx.stage.Stage;
-
 import tetris.model.Board;
 import tetris.model.GameCommand;
 import tetris.model.GameSnapshot;
 import tetris.model.GameStatus;
-import tetris.model.PuyoDisplay;
-import tetris.model.PuyoDisplay.PairColors;
 import tetris.model.Item;
 import tetris.model.ItemType;
-import tetris.model.Position;
 import tetris.model.PieceType;
+import tetris.model.Position;
+import tetris.model.PuyoDisplay;
+import tetris.model.PuyoDisplay.PairColors;
 import tetris.settings.GameSettings;
 
+/**
+ * 게임 화면. 보드 + 정보 칸(NEXT, HOLD, SCORE, SPEED, 넘어온 줄)을 그린다.
+ * 1인 게임은 창 전체(Scene)를 만들고, 대전 화면은 {@link #createEmbedded}로 부품만 받아 쓴다.
+ */
 public class JavaFxGameView implements GameView {
 
-    private static final double VIEW_WIDTH = 500;
-    private static final double VIEW_HEIGHT = 600;
-    private static final double PREVIEW_SIZE = 100;
-    private static final double SIDEBAR_WIDTH = 160;
-    private static final double CONTENT_SPACING = 20;
-    private static final double SIDEBAR_SPACING = 12;
-    private static final double ROOT_PADDING = 20;
-    private static final double BLOCK_FONT_SIZE = 20;
-    private static final double SCORE_FONT_SIZE = 20;
-    private static final double PAUSE_FONT_SIZE = 16;
-    private static final double PAUSE_PADDING = 20;
+    // AI-assisted code start (redesign) 블루프린트 테마 배치 값. 테스트가 배율 적용을 확인하도록 패키지 공개
+    static final double VIEW_WIDTH = 540;
+    static final double VIEW_HEIGHT = 600;
+    static final double CELL_SIZE = 25;
+    static final double PREVIEW_WIDTH = 96;
+    static final double PREVIEW_HEIGHT = 64;
+    static final double GARBAGE_PREVIEW_SIZE = 80;
+    static final double SCORE_FONT_SIZE = 20;
+
+    private static final int BOARD_HEIGHT_CELLS = 20; // 보드 높이는 테트리스 20줄 기준으로 고정 (뿌요는 칸이 커짐)
+    private static final double SIDEBAR_WIDTH = 112;
+    private static final double CONTENT_SPACING = 14;
+    private static final double SIDEBAR_SPACING = 8;
+    private static final double ROOT_PADDING = 16;
+    private static final double PANEL_TITLE_FONT_SIZE = 10;
+    private static final double VALUE_FONT_SIZE = 13;
+    private static final double NOTE_FONT_SIZE = 11;
+    private static final double PAUSE_FONT_SIZE = 15;
+    private static final double PAUSE_BLUR_RADIUS = 4;
+    private static final double PREVIEW_CELL_RATIO = 0.6;
     private static final int SPAWN_ROTATION = 0;
-    private static final int GARBAGE_PREVIEW_ROWS = 10; // AI-assisted (T17) 넘어온 줄은 최대 10줄까지 대기한다
-
-    private static final Color EMPTY_COLOR = Color.BLACK;
-    private static final Color CLEARING_BACKGROUND_COLOR = Color.WHITE;
-    private static final Color CLEARING_SYMBOL_COLOR = Color.BLACK;
-    private static final Color GHOST_COLOR = Color.gray(0.7, 0.3);
-    private static final Color GARBAGE_COLOR = Color.GRAY;
-    private static final String BORDER_SYMBOL = "X";
-    private static final String BLOCK_SYMBOL = "O";
-
-    private static final Map<PieceType, Color> NORMAL_COLORS = Map.ofEntries(
-            Map.entry(PieceType.I, Color.web("#22D3EE")),
-            Map.entry(PieceType.O, Color.web("#FACC15")),
-            Map.entry(PieceType.T, Color.web("#A855F7")),
-            Map.entry(PieceType.S, Color.web("#22C55E")),
-            Map.entry(PieceType.Z, Color.web("#EF4444")),
-            Map.entry(PieceType.J, Color.web("#3B82F6")),
-            Map.entry(PieceType.L, Color.web("#F97316")),
-            Map.entry(PieceType.SLOW, Color.web("#F472B6")),
-            Map.entry(PieceType.HEAVY_WEIGHT, Color.web("#9CA3AF")),
-            Map.entry(PieceType.SPECIAL_I, Color.web("#FFFFFF")),
-            Map.entry(PieceType.SPECIAL_BLOCK, Color.web("#A3E635")));
-
-    private static final Map<PieceType, Color> COLOR_BLIND_COLORS = Map.ofEntries(
-            Map.entry(PieceType.I, Color.web("#56B4E9")),
-            Map.entry(PieceType.O, Color.web("#F0E442")),
-            Map.entry(PieceType.T, Color.web("#CC79A7")),
-            Map.entry(PieceType.S, Color.web("#009E73")),
-            Map.entry(PieceType.Z, Color.web("#D55E00")),
-            Map.entry(PieceType.J, Color.web("#0072B2")),
-            Map.entry(PieceType.L, Color.web("#E69F00")),
-            Map.entry(PieceType.SLOW, Color.web("#F5C8E1")), // 색약 친화 팔레트 7색을 다 썼으므로
-            Map.entry(PieceType.HEAVY_WEIGHT, Color.web("#8C8C8C")), // 밝기 찿이로 구분되도록 색 선택
-            Map.entry(PieceType.SPECIAL_I, Color.web("#FFFFFF")), // 기호가 구분을 도와줌
-            Map.entry(PieceType.SPECIAL_BLOCK, Color.web("#B8A6FF")));
-
-    private static final List<Color> PUYO_COLORS = List.of(
-            Color.web("#EF4444"), Color.web("#22C55E"), Color.web("#3B82F6"), Color.web("#FACC15"));
-    private static final List<Color> PUYO_ACCESSIBLE_COLORS = List.of(
-            Color.web("#D55E00"), Color.web("#009E73"), Color.web("#56B4E9"), Color.web("#F0E442"));
-    private static final List<String> PUYO_ACCESSIBLE_SYMBOLS = List.of("A", "B", "C", "D");
+    private static final int GARBAGE_PREVIEW_ROWS = 10; // 넘어온 줄은 최대 10줄까지 대기한다
+    private static final String PANEL_STYLE_CLASS = "game-panel";
+    private static final String PANEL_TITLE_STYLE_CLASS = "game-panel-title";
+    private static final String VALUE_STYLE_CLASS = "game-value";
+    private static final String NOTE_STYLE_CLASS = "game-note";
+    // AI-assisted code end
 
     private final double scale;
-    private final Font blockFont;
-    private final double cellWidth;
-    private final double cellHeight;
-    private final double textBaselineOffset;
-
     private final Stage stage;
     private final Map<GameCommand, String> keyBindings;
-    private final boolean colorBlindMode;
+    private final BlockRenderer renderer; // AI-assisted (redesign)
 
     private final Canvas boardCanvas = new Canvas();
     private final Canvas nextCanvas;
     private final Canvas holdCanvas;
     private final Canvas garbageCanvas; // AI-assisted (T17)
 
-    private final Label holdLabel;
     private final Label chainLabel = new Label();
-    private final Label scoreLabel = new Label("점수 : 0");
-    private final Label intervalLabel = new Label("낙하 간격 : 1000ms");
+    private final Label scoreLabel = new Label("000000");
+    private final Label intervalLabel = new Label("1000ms");
     private final Label pauseLabel = new Label();
     private final Label garbageCountLabel = new Label("넘어온 줄: 0"); // AI-assisted (T17)
+    private final Region pauseShade = new Region(); // AI-assisted (redesign) 일시정지 때 보드를 덮는 반투명 종이
+    private final KeyHintBar keyHints = new KeyHintBar(); // AI-assisted (redesign) 1인 게임 화면 아래 키 안내
 
+    private VBox holdPanel;
+    private VBox chainPanel;
     private Consumer<GameCommand> commandHandler;
     private boolean pauseKeyHeld;
     private boolean puyoKeysApplied;
@@ -129,26 +101,11 @@ public class JavaFxGameView implements GameView {
     private JavaFxGameView(Stage stage, GameSettings settings, boolean attachToStage) {
         this.stage = stage;
         this.keyBindings = Map.copyOf(settings.getKeyBindings());
-        this.colorBlindMode = settings.isColorBlindMode();
         this.scale = settings.getWindowSize().getScale();
-        this.holdLabel = createInformationLabel("홀드");
-        this.blockFont = Font.font("Monospaced", FontWeight.BOLD, BLOCK_FONT_SIZE * scale);
-        this.nextCanvas = new Canvas(PREVIEW_SIZE * scale, PREVIEW_SIZE * scale);
-        this.holdCanvas = new Canvas(PREVIEW_SIZE * scale, PREVIEW_SIZE * scale);
-        this.garbageCanvas = new Canvas(PREVIEW_SIZE * scale, PREVIEW_SIZE * scale); // AI-assisted
-
-        Text measure = new Text(BLOCK_SYMBOL);
-        measure.setFont(blockFont);
-        Text visibleMeasure = new Text(BORDER_SYMBOL + BLOCK_SYMBOL);
-        visibleMeasure.setFont(blockFont);
-        visibleMeasure.setBoundsType(TextBoundsType.VISUAL);
-
-        Bounds logicalBounds = measure.getLayoutBounds();
-        Bounds visualBounds = visibleMeasure.getLayoutBounds();
-        double transferredPadding = Math.max(0, logicalBounds.getHeight() - visualBounds.getHeight()) / 2;
-        this.cellWidth = logicalBounds.getWidth() + transferredPadding;
-        this.cellHeight = logicalBounds.getHeight() - transferredPadding;
-        this.textBaselineOffset = (cellHeight - visualBounds.getHeight()) / 2 - visualBounds.getMinY();
+        this.renderer = new BlockRenderer(settings.isColorBlindMode());
+        this.nextCanvas = new Canvas(PREVIEW_WIDTH * scale, PREVIEW_HEIGHT * scale);
+        this.holdCanvas = new Canvas(PREVIEW_WIDTH * scale, PREVIEW_HEIGHT * scale);
+        this.garbageCanvas = new Canvas(GARBAGE_PREVIEW_SIZE * scale, GARBAGE_PREVIEW_SIZE * scale); // AI-assisted
         initializeView(attachToStage);
     }
 
@@ -194,50 +151,49 @@ public class JavaFxGameView implements GameView {
             renderPuyoSidebar(puyo);
         }
 
-        scoreLabel.setText("점수: " + snapshot.getScore());
-        intervalLabel.setText("낙하 간격: " + snapshot.getDropInterval() + "ms");
-        pauseLabel.setVisible(snapshot.getStatus() == GameStatus.PAUSED);
+        // AI-assisted code start (redesign)
+        scoreLabel.setText(String.format("%06d", snapshot.getScore()));
+        intervalLabel.setText(snapshot.getDropInterval() + "ms");
+        boolean paused = snapshot.getStatus() == GameStatus.PAUSED;
+        pauseLabel.setVisible(paused);
+        boardCanvas.setEffect(paused ? new GaussianBlur(PAUSE_BLUR_RADIUS * scale) : null);
+        // AI-assisted code end
     }
 
     private void renderPuyoSidebar(PuyoDisplay puyo) {
-        holdLabel.setVisible(false);
-        holdCanvas.setVisible(false);
+        holdPanel.setVisible(false);
         garbageCanvas.setVisible(false);
         chainLabel.setText("연쇄: " + puyo.chain());
-        chainLabel.setVisible(true);
+        chainPanel.setVisible(true);
         garbageCountLabel.setText("방해 블록: " + puyo.pendingGarbage());
         if (!puyoKeysApplied) {
             String holdHelp = keyBindings.get(GameCommand.HOLD) + ": 홀드";
             keyHelpLabel.setText(keyHelpLabel.getText().replace(holdHelp + "\n", ""));
+            showKeyHints(false); // AI-assisted (redesign) 뿌요에는 홀드가 없다
             puyoKeysApplied = true;
         }
 
+        // AI-assisted code start (redesign)
         GraphicsContext graphics = nextCanvas.getGraphicsContext2D();
-        graphics.setFill(EMPTY_COLOR);
-        graphics.fillRect(0, 0, nextCanvas.getWidth(), nextCanvas.getHeight());
+        graphics.clearRect(0, 0, nextCanvas.getWidth(), nextCanvas.getHeight());
         int count = puyo.nextPairs().size();
+        double cell = Math.min(nextCanvas.getHeight() / 2, nextCanvas.getWidth() / Math.max(1, count) * 0.8);
         for (int index = 0; index < count; index++) {
             PairColors pair = puyo.nextPairs().get(index);
-            double x = (index + 0.5) * nextCanvas.getWidth() / count - cellWidth / 2;
+            double x = (index + 0.5) * nextCanvas.getWidth() / count - cell / 2;
             double y = nextCanvas.getHeight() / 2;
-            drawPuyoCell(graphics, pair.child(), false, x, y - cellHeight);
-            drawPuyoCell(graphics, pair.pivot(), false, x, y);
+            drawPuyoCell(graphics, pair.child(), false, x, y - cell, cell);
+            drawPuyoCell(graphics, pair.pivot(), false, x, y, cell);
         }
+        // AI-assisted code end
     }
 
-    private void drawPuyoCell(GraphicsContext graphics, int value, boolean clearing, double x, double y) {
+    private void drawPuyoCell(GraphicsContext graphics, int value, boolean clearing, double x, double y, double cell) {
         if (value == Board.EMPTY_CELL) {
             return;
         }
-        boolean garbage = value == Board.GARBAGE_CELL;
-        String symbol = garbage ? "#" : colorBlindMode ? PUYO_ACCESSIBLE_SYMBOLS.get(value - 1) : BLOCK_SYMBOL;
-        Color color = garbage ? GARBAGE_COLOR : (colorBlindMode ? PUYO_ACCESSIBLE_COLORS : PUYO_COLORS).get(value - 1);
-        if (clearing) {
-            graphics.setFill(CLEARING_BACKGROUND_COLOR);
-            graphics.fillRect(x, y, cellWidth, cellHeight);
-            color = CLEARING_SYMBOL_COLOR;
-        }
-        drawSymbol(graphics, symbol, color, x, y);
+        int colorIndex = value == Board.GARBAGE_CELL ? -1 : value - 1;
+        renderer.drawPuyo(graphics, x, y, cell, colorIndex, clearing); // AI-assisted (redesign)
     }
 
     @Override
@@ -262,50 +218,58 @@ public class JavaFxGameView implements GameView {
         scoreLabel.setId("score-label");
         intervalLabel.setId("interval-label");
         pauseLabel.setId("pause-label");
-        scoreLabel.setFont(Font.font(SCORE_FONT_SIZE * scale));
-        intervalLabel.setFont(Font.font(Font.getDefault().getSize() * scale));
 
-        // AI-assisted code start
+        // AI-assisted code start (redesign) 정보 칸을 제목 + 값으로 된 패널로 만든다
+        styleText(scoreLabel, VALUE_STYLE_CLASS, Theme.monoFont(FontWeight.BOLD, SCORE_FONT_SIZE * scale));
+        styleText(intervalLabel, VALUE_STYLE_CLASS, Theme.monoFont(FontWeight.BOLD, VALUE_FONT_SIZE * scale));
+        styleText(chainLabel, VALUE_STYLE_CLASS, Theme.uiFont(FontWeight.BOLD, VALUE_FONT_SIZE * scale));
+        styleText(garbageCountLabel, NOTE_STYLE_CLASS, Theme.uiFont(NOTE_FONT_SIZE * scale));
+
         garbageCanvas.setId("garbage-preview");
         garbageCountLabel.setId("garbage-count-label");
-        garbageCountLabel.setFont(Font.font(Font.getDefault().getSize() * scale));
+        VBox nextPanel = createPanel("NEXT", nextCanvas);
+        holdPanel = createPanel("HOLD", holdCanvas);
+        chainPanel = createPanel("CHAIN", chainLabel);
+        chainPanel.setId("puyo-chain"); // 뿌요에서만 보이는 연쇄 칸
+        VBox scorePanel = createPanel("SCORE", scoreLabel);
+        VBox speedPanel = createPanel("SPEED", intervalLabel);
+        VBox garbagePanel = createPanel("ATTACK", garbageCanvas, garbageCountLabel);
+
         boolean showGarbage = !attachToStage; // 공격 줄은 대전 화면(embedded)에서만 받는다
+        garbagePanel.setVisible(showGarbage);
         garbageCountLabel.setVisible(showGarbage);
         garbageCountLabel.setManaged(showGarbage);
         garbageCanvas.setVisible(showGarbage);
         garbageCanvas.managedProperty().bind(garbageCanvas.visibleProperty());
-        // AI-assisted code end
-
-        pauseLabel.setText("일시정지\n" + keyBindings.get(GameCommand.PAUSE) + ": 재개\n"
-                + keyBindings.get(GameCommand.QUIT_GAME) + ": 메뉴");
-        pauseLabel.setAlignment(Pos.CENTER);
-        pauseLabel.setTextFill(Color.WHITE);
-        pauseLabel.setFont(Font.font(PAUSE_FONT_SIZE * scale));
-        pauseLabel.setStyle(
-                "-fx-background-color: rgba(0, 0, 0, 0.85);" + "-fx-padding: " + (PAUSE_PADDING * scale) + ";");
-        pauseLabel.setVisible(false);
-        pauseLabel.setMouseTransparent(true);
-
-        chainLabel.setId("puyo-chain");
-        chainLabel.setVisible(false);
-        for (Node collapsible : List.of(holdLabel, holdCanvas, chainLabel)) {
+        chainPanel.setVisible(false);
+        for (Node collapsible : List.of(holdPanel, chainPanel, garbagePanel)) {
             collapsible.managedProperty().bind(collapsible.visibleProperty());
         }
 
-        StackPane boardArea = new StackPane(boardCanvas, pauseLabel);
+        pauseLabel.setText("PAUSED\n" + KeyNames.display(keyBindings.get(GameCommand.PAUSE)) + " 재개 · "
+                + KeyNames.display(keyBindings.get(GameCommand.QUIT_GAME)) + " 메뉴로");
+        pauseLabel.getStyleClass().add("pause-card");
+        pauseLabel.setFont(Theme.uiFont(FontWeight.BOLD, PAUSE_FONT_SIZE * scale));
+        pauseLabel.setAlignment(Pos.CENTER);
+        pauseLabel.setVisible(false);
+        pauseLabel.setMouseTransparent(true);
+        pauseShade.getStyleClass().add("pause-shade");
+        pauseShade.visibleProperty().bind(pauseLabel.visibleProperty());
+        pauseShade.setMouseTransparent(true);
+
+        StackPane boardArea = new StackPane(boardCanvas, pauseShade, pauseLabel);
+        boardArea.getStyleClass().add("board-frame");
+        boardArea.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+
         VBox sidebar = new VBox(
                 SIDEBAR_SPACING * scale,
-                scoreLabel,
-                intervalLabel,
-                createInformationLabel("다음 블록"),
-                nextCanvas,
-                holdLabel,
-                holdCanvas,
-                chainLabel,
-                garbageCountLabel, // AI-assisted (T17)
-                garbageCanvas, // AI-assisted (T17)
+                nextPanel,
+                holdPanel,
+                chainPanel,
+                scorePanel,
+                speedPanel,
+                garbagePanel,
                 createKeyHelp());
-
         sidebar.setPrefWidth(SIDEBAR_WIDTH * scale);
         sidebar.setMinWidth(SIDEBAR_WIDTH * scale);
 
@@ -313,15 +277,9 @@ public class JavaFxGameView implements GameView {
         root.setAlignment(Pos.CENTER);
         root.setPadding(new Insets(ROOT_PADDING * scale));
         root.setFocusTraversable(true);
+        // AI-assisted code end
 
         content = root;
-        root.setOnKeyPressed(event -> handleKey(event.getCode()));
-        root.setOnKeyReleased(event -> {
-            if (mapKey(event.getCode()) == GameCommand.PAUSE) {
-                pauseKeyHeld = false;
-            }
-        });
-
         root.focusedProperty().addListener(
                 (observable, wasFocused, focused) -> {
                     if (!focused) {
@@ -329,8 +287,30 @@ public class JavaFxGameView implements GameView {
                     }
                 });
 
+        // AI-assisted code start (redesign)
+        // 키 처리기는 화면 맨 바깥 노드에 단다. 1인 게임은 본문을 배경·키 안내와 함께 감싸므로,
+        // 본문에 포커스가 있을 때 올라오는 키와 창 전체로 오는 키를 한 곳에서 한 번만 처리한다
+        Parent keyTarget = root;
         if (attachToStage) {
-            Scene scene = new Scene(root, VIEW_WIDTH * scale, VIEW_HEIGHT * scale);
+            // 1인 게임: 제도 책상 배경 + 게임 + 아래 키 안내
+            setKeyHelpVisible(false);
+            showKeyHints(true);
+            BorderPane frame = new BorderPane(root);
+            frame.setBottom(keyHints);
+            StackPane window = new StackPane(
+                    new DraftingDeskBackground(DraftingDeskBackground.Layout.EDGES, false), frame);
+            keyTarget = window;
+        }
+        keyTarget.setOnKeyPressed(event -> handleKey(event.getCode()));
+        keyTarget.setOnKeyReleased(event -> {
+            if (mapKey(event.getCode()) == GameCommand.PAUSE) {
+                pauseKeyHeld = false;
+            }
+        });
+        // AI-assisted code end
+
+        if (attachToStage) {
+            Scene scene = new Scene(keyTarget, VIEW_WIDTH * scale, VIEW_HEIGHT * scale); // AI-assisted (redesign)
             Theme.apply(scene); // AI-assisted (redesign)
             stage.setTitle("SE Tetris");
             stage.setScene(scene);
@@ -338,88 +318,91 @@ public class JavaFxGameView implements GameView {
         }
     }
 
+    // AI-assisted code start (redesign)
+    /** 1인 게임 화면 아래 키 안내. 뿌요는 홀드가 없으므로 withHold를 false로 부른다 */
+    private void showKeyHints(boolean withHold) {
+        keyHints.clear()
+                .add("이동", keyBindings.get(GameCommand.MOVE_LEFT), keyBindings.get(GameCommand.MOVE_RIGHT))
+                .add("회전", keyBindings.get(GameCommand.ROTATE_CLOCKWISE))
+                .add("하드 드롭", keyBindings.get(GameCommand.HARD_DROP));
+        if (withHold) {
+            keyHints.add("홀드", keyBindings.get(GameCommand.HOLD));
+        }
+        keyHints.add("일시정지", keyBindings.get(GameCommand.PAUSE))
+                .add("메뉴", keyBindings.get(GameCommand.QUIT_GAME));
+    }
+
+    /** 제목(NEXT, SCORE 등)과 내용을 묶은 흰 패널 */
+    private VBox createPanel(String title, Node... children) {
+        Label titleLabel = new Label(title);
+        styleText(titleLabel, PANEL_TITLE_STYLE_CLASS, Theme.monoFont(FontWeight.BOLD, PANEL_TITLE_FONT_SIZE * scale));
+        VBox panel = new VBox(3 * scale, titleLabel);
+        panel.getChildren().addAll(children);
+        panel.getStyleClass().add(PANEL_STYLE_CLASS);
+        panel.setPadding(new Insets(6 * scale, 8 * scale, 7 * scale, 8 * scale));
+        return panel;
+    }
+
+    private static void styleText(Label label, String styleClass, Font font) {
+        label.getStyleClass().add(styleClass);
+        label.setFont(font);
+    }
+    // AI-assisted code end
+
     private Label createKeyHelp() {
-        Label help = createInformationLabel(
+        Label help = new Label(
                 keyBindings.get(GameCommand.HOLD) + ": 홀드\n" + keyBindings.get(GameCommand.PAUSE) + ": 일시정지 / 재개\n"
                         + keyBindings.get(GameCommand.QUIT_GAME) + ": 메뉴");
+        styleText(help, NOTE_STYLE_CLASS, Theme.uiFont(NOTE_FONT_SIZE * scale)); // AI-assisted (redesign)
         help.setWrapText(true);
         help.setId("game-key-help");
         keyHelpLabel = help;
         return help;
     }
 
-    private Label createInformationLabel(String text) {
-        Label label = new Label(text);
-        label.setFont(Font.font(Font.getDefault().getSize() * scale));
-        return label;
-    }
-
+    // AI-assisted code start (redesign) 보드: 밝은 종이 + 격자 위에 타일 블록. 보드 높이는 늘 20줄 높이와 같다
     private void drawBoard(int[][] cells, List<Integer> clearingRows, Map<Position, Integer> ghostPieceCells,
             PuyoDisplay puyo) {
         int rows = cells.length;
         int cols = rows == 0 ? 0 : cells[0].length;
+        double cell = rows == 0 ? CELL_SIZE * scale : BOARD_HEIGHT_CELLS * CELL_SIZE * scale / rows;
 
-        boardCanvas.setWidth((cols + 2) * cellWidth);
-        boardCanvas.setHeight((rows + 2) * cellHeight);
+        boardCanvas.setWidth(cols * cell);
+        boardCanvas.setHeight(rows * cell);
 
         GraphicsContext graphics = boardCanvas.getGraphicsContext2D();
-        graphics.setFill(EMPTY_COLOR);
-        graphics.fillRect(0, 0, boardCanvas.getWidth(), boardCanvas.getHeight());
-
-        for (int col = 0; col < cols + 2; col++) {
-            drawSymbol(graphics, BORDER_SYMBOL, Color.WHITE, col * cellWidth, 0);
-            drawSymbol(graphics, BORDER_SYMBOL, Color.WHITE, col * cellWidth, (rows + 1) * cellHeight);
-        }
+        renderer.drawBoardBackground(graphics, boardCanvas.getWidth(), boardCanvas.getHeight(), cell);
 
         for (int row = 0; row < rows; row++) {
-            drawSymbol(graphics, BORDER_SYMBOL, Color.WHITE, 0, (row + 1) * cellHeight);
-            drawSymbol(graphics, BORDER_SYMBOL, Color.WHITE, (cols + 1) * cellWidth, (row + 1) * cellHeight);
-
             for (int col = 0; col < cols; col++) {
-
-                double x = (col + 1) * cellWidth;
-                double y = (row + 1) * cellHeight;
+                double x = col * cell;
+                double y = row * cell;
+                int value = cells[row][col];
 
                 if (puyo != null) {
-                    drawPuyoCell(graphics, cells[row][col], puyo.clearing().contains(new Position(row, col)), x, y);
+                    drawPuyoCell(graphics, value, puyo.clearing().contains(new Position(row, col)), x, y, cell);
                     continue;
                 }
-
-                // 쓰래기 칸: 모양이 따로 없으므로 findType 전에 처리
-                if (cells[row][col] == Board.GARBAGE_CELL) {
-                    if (clearingRows.contains(row)) {
-                        graphics.setFill(CLEARING_BACKGROUND_COLOR);
-                        graphics.fillRect(x, y, cellWidth, cellHeight);
-                        drawSymbol(graphics, BLOCK_SYMBOL, CLEARING_SYMBOL_COLOR, x, y);
-                    } else {
-                        drawSymbol(graphics, BLOCK_SYMBOL, GARBAGE_COLOR, x, y);
-                    }
-                    continue;
-                }
-
-                String symbol = findSymbol(cells[row][col]);
-                PieceType type = findType(Board.extractCellId(cells[row][col]));
-
-                Position pos = new Position(row, col);
 
                 if (clearingRows.contains(row)) {
-                    drawClearingCell(graphics, x, y, symbol, type);
-                } else if (cells[row][col] == Board.EMPTY_CELL
-                        && ghostPieceCells.containsKey(pos)) {
-                    drawSymbol(graphics, findSymbol(ghostPieceCells.get(pos)), GHOST_COLOR, x, y);
+                    renderer.drawClearing(graphics, x, y, cell);
+                } else if (value == Board.GARBAGE_CELL) {
+                    renderer.drawGarbage(graphics, x, y, cell);
+                } else if (value == Board.EMPTY_CELL) {
+                    if (ghostPieceCells.containsKey(new Position(row, col))) {
+                        renderer.drawGhost(graphics, x, y, cell);
+                    }
                 } else {
-                    drawCell(graphics, x, y, symbol, type);
+                    PieceType type = findType(Board.extractCellId(value));
+                    renderer.drawBlock(graphics, x, y, cell, type, findItemSymbol(value));
                 }
-
             }
         }
     }
 
     private void drawPreview(Canvas canvas, PieceType type, Item item) {
         GraphicsContext graphics = canvas.getGraphicsContext2D();
-
-        graphics.setFill(EMPTY_COLOR);
-        graphics.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+        graphics.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
         if (type == null) {
             return;
@@ -432,20 +415,22 @@ public class JavaFxGameView implements GameView {
         int minColumn = positions.stream().mapToInt(Position::column).min().orElse(0);
         int maxColumn = positions.stream().mapToInt(Position::column).max().orElse(0);
 
-        double pieceWidth = (maxColumn - minColumn + 1) * cellWidth;
-        double pieceHeight = (maxRow - minRow + 1) * cellHeight;
-        double offsetX = (canvas.getWidth() - pieceWidth) / 2;
-        double offsetY = (canvas.getHeight() - pieceHeight) / 2;
+        int pieceColumns = maxColumn - minColumn + 1;
+        int pieceRows = maxRow - minRow + 1;
+        double cell = Math.min(CELL_SIZE * PREVIEW_CELL_RATIO * scale,
+                Math.min(canvas.getWidth() / pieceColumns, canvas.getHeight() / pieceRows));
+        double offsetX = (canvas.getWidth() - pieceColumns * cell) / 2;
+        double offsetY = (canvas.getHeight() - pieceRows * cell) / 2;
 
         for (int i = 0; i < positions.size(); i++) {
-            double x = offsetX + (positions.get(i).column() - minColumn) * cellWidth;
-            double y = offsetY + (positions.get(i).row() - minRow) * cellHeight;
+            double x = offsetX + (positions.get(i).column() - minColumn) * cell;
+            double y = offsetY + (positions.get(i).row() - minRow) * cell;
             int cellValue = Board.calculateCellValue(type, item, i);
-            String symbol = findSymbol(cellValue);
-            drawCell(graphics, x, y, symbol, type);
+            renderer.drawBlock(graphics, x, y, cell, type, findItemSymbol(cellValue));
         }
     }
-    
+    // AI-assisted code end
+
     // AI-assisted code start
     /**
      * 받은 공격 줄을 아래쪽부터 그린다. 목록의 마지막 줄이 맨 아래로, 보드에 쌓일 모양과 같다.
@@ -453,7 +438,7 @@ public class JavaFxGameView implements GameView {
      */
     private void drawGarbagePreview(List<int[]> rows) {
         GraphicsContext graphics = garbageCanvas.getGraphicsContext2D();
-        graphics.setFill(EMPTY_COLOR);
+        graphics.setFill(BlockRenderer.BOARD_BACKGROUND);
         graphics.fillRect(0, 0, garbageCanvas.getWidth(), garbageCanvas.getHeight());
 
         if (rows.isEmpty()) {
@@ -465,7 +450,7 @@ public class JavaFxGameView implements GameView {
         double miniCellWidth = garbageCanvas.getWidth() / rows.get(0).length;
         double miniCellHeight = garbageCanvas.getHeight() / GARBAGE_PREVIEW_ROWS;
 
-        graphics.setFill(GARBAGE_COLOR);
+        graphics.setFill(BlockRenderer.GARBAGE_HATCH);
         for (int index = 0; index < shownCount; index++) {
             int[] row = rows.get(firstShownIndex + index);
             int previewRow = GARBAGE_PREVIEW_ROWS - shownCount + index;
@@ -480,33 +465,6 @@ public class JavaFxGameView implements GameView {
         }
     }
     // AI-assisted code end
-
-    private void drawCell(GraphicsContext graphics, double x, double y, String symbol, PieceType type) {
-        if (type == null) {
-            return;
-        }
-        drawSymbol(graphics, symbol, getPieceColor(type), x, y);
-    }
-
-    private void drawClearingCell(GraphicsContext graphics, double x, double y, String symbol, PieceType type) {
-        graphics.setFill(CLEARING_BACKGROUND_COLOR);
-        graphics.fillRect(x, y, cellWidth, cellHeight);
-        if (type != null) {
-            drawSymbol(graphics, symbol, CLEARING_SYMBOL_COLOR, x, y);
-        }
-    }
-
-    private void drawSymbol(GraphicsContext graphics, String symbol, Color color, double x, double y) {
-        graphics.setFill(color);
-        graphics.setFont(blockFont);
-        graphics.setTextAlign(TextAlignment.CENTER);
-        graphics.setTextBaseline(VPos.BASELINE);
-        graphics.fillText(symbol, x + cellWidth / 2, y + textBaselineOffset);
-    }
-
-    private Color getPieceColor(PieceType type) {
-        return colorBlindMode ? COLOR_BLIND_COLORS.get(type) : NORMAL_COLORS.get(type);
-    }
 
     private PieceType findType(int cellId) {
         if (cellId == Board.EMPTY_CELL) {
@@ -549,15 +507,12 @@ public class JavaFxGameView implements GameView {
         return GameCommand.NONE;
     }
 
-    private String findSymbol(int cellValue) {
+    /** 칸에 아이템이 있으면 아이템 글자, 없으면 null */
+    private String findItemSymbol(int cellValue) {
         int itemCode = Board.extractItemCode(cellValue);
         if (itemCode != Board.NO_ITEM_CODE) {
-            String symbol = ItemType.findSymbolByCode(itemCode);
-            if (symbol != null) {
-                return symbol;
-            }
+            return ItemType.findSymbolByCode(itemCode);
         }
-
-        return BLOCK_SYMBOL;
+        return null;
     }
 }

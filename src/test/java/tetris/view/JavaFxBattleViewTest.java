@@ -133,9 +133,9 @@ class JavaFxBattleViewTest {
             // when
             String pauseText = ((Label) panel(fixture, "battle-first-panel").lookup("#pause-label")).getText();
 
-            // then: 일시정지 안내에 공용 키(P, ESCAPE)가 나온다
-            assertTrue(pauseText.contains("P: 재개"), pauseText);
-            assertTrue(pauseText.contains("ESCAPE"), pauseText);
+            // then: 일시정지 안내에 공용 키(P, ESC)가 나온다
+            assertTrue(pauseText.contains("P 재개"), pauseText);
+            assertTrue(pauseText.contains("ESC"), pauseText);
         });
     }
 
@@ -150,8 +150,8 @@ class JavaFxBattleViewTest {
             fixture.view.getSecondPlayerView().render(snapshot(250L, GameStatus.PLAYING, new int[BOARD_ROWS][BOARD_COLUMNS]));
 
             // then
-            assertEquals("점수: 100", scoreText(fixture, "battle-first-panel"));
-            assertEquals("점수: 250", scoreText(fixture, "battle-second-panel"));
+            assertEquals("000100", scoreText(fixture, "battle-first-panel"));
+            assertEquals("000250", scoreText(fixture, "battle-second-panel"));
         });
     }
 
@@ -172,7 +172,7 @@ class JavaFxBattleViewTest {
             double scale = windowSize.getScale();
             for (String panelId : List.of("battle-first-panel", "battle-second-panel")) {
                 Canvas board = (Canvas) panel(fixture, panelId).lookup("#game-board");
-                assertEquals(20 * scale, board.getGraphicsContext2D().getFont().getSize(), 0.01);
+                assertEquals(BOARD_COLUMNS * JavaFxGameView.CELL_SIZE * scale, board.getWidth(), 0.01);
             }
         });
     }
@@ -192,7 +192,7 @@ class JavaFxBattleViewTest {
             fixture.view.getSecondPlayerView().render(snapshot(0L, GameStatus.PLAYING, cells));
 
             // then: 색맹용 I 블록 색
-            Color accessibleColor = Color.web("#56B4E9");
+            Color accessibleColor = BlockRenderer.COLOR_BLIND_COLORS.get(PieceType.I);
             for (String panelId : List.of("battle-first-panel", "battle-second-panel")) {
                 Canvas board = (Canvas) panel(fixture, panelId).lookup("#game-board");
                 assertTrue(containsColor(board, accessibleColor), panelId);

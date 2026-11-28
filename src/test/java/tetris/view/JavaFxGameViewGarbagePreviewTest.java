@@ -42,9 +42,9 @@ import tetris.settings.WindowSize;
  *
  * 화면 약속
  * - 대전용 화면(createEmbedded)에만 보인다. 1인 게임에는 받을 줄이 없으므로 숨기고 자리도 차지하지 않는다.
- * - #garbage-preview: 가로 10칸 x 세로 10줄(대기 줄 최대 10줄) 칸. 크기는 다음 블록 칸과 같다(100 x 100 x 배율).
+ * - #garbage-preview: 가로 10칸 x 세로 10줄(대기 줄 최대 10줄)의 정사각형 칸. 크기는 화면 배율을 따른다.
  * - 받은 줄은 아래쪽부터 붙여 그린다. 목록의 마지막 줄이 맨 아래 → 보드에 실제로 쌓일 모양과 같다.
- * - 채워진 칸은 회색(Color.GRAY) 사각형, 빈 칸(구멍)과 남는 자리는 검은색.
+ * - 채워진 칸은 넘어온 줄 색(BlockRenderer.GARBAGE_HATCH) 사각형, 빈 칸(구멍)과 남는 자리는 보드 바탕색.
  * - 10줄보다 많이 받으면 아래쪽 10줄만 그린다.
  * - #garbage-count-label: "넘어온 줄: N" (N은 받은 줄 전체 수)
  */
@@ -54,10 +54,10 @@ class JavaFxGameViewGarbagePreviewTest {
     private static final int BOARD_ROWS = 20;
     private static final int BOARD_COLUMNS = 10;
     private static final int PREVIEW_ROWS = 10;
-    private static final double PREVIEW_SIZE = 100;
+    private static final double PREVIEW_SIZE = JavaFxGameView.GARBAGE_PREVIEW_SIZE;
     private static final double COLOR_TOLERANCE = 0.02;
-    private static final Color FILLED_COLOR = Color.GRAY;
-    private static final Color EMPTY_COLOR = Color.BLACK;
+    private static final Color FILLED_COLOR = BlockRenderer.GARBAGE_HATCH;
+    private static final Color EMPTY_COLOR = BlockRenderer.BOARD_BACKGROUND;
 
     @BeforeAll
     static void initializeJavaFx() throws Exception {
@@ -148,7 +148,7 @@ class JavaFxGameViewGarbagePreviewTest {
 
     @ParameterizedTest
     @EnumSource(WindowSize.class)
-    void sizeGarbagePreviewLikeNextPreview(WindowSize windowSize) throws Exception {
+    void sizeGarbagePreviewWithWindowScale(WindowSize windowSize) throws Exception {
         runOnFxThread(() -> {
             // given
             GameSettings settings = new GameSettings(
@@ -299,7 +299,7 @@ class JavaFxGameViewGarbagePreviewTest {
             // when
             view.render(snapshotWithPendingRows(List.of(rowWithHoleAt(0))));
 
-            // then: 색맹 모드에서도 회색 칸과 검은 구멍으로 구분된다
+            // then: 색맹 모드에서도 넘어온 줄 색 칸과 바탕색 구멍으로 구분된다
             Canvas preview = findPreview(view);
             assertColor(EMPTY_COLOR, colorAtCell(preview, 9, 0));
             assertColor(FILLED_COLOR, colorAtCell(preview, 9, 1));
