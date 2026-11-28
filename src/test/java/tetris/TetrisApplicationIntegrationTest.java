@@ -111,7 +111,8 @@ class TetrisApplicationIntegrationTest {
             stage = new Stage();
             new TetrisApplication().start(stage);
             clickButton("일반 모드 시작");
-            assertEquals(600, stage.getScene().getWidth(), 1.0);
+            // 큰 화면(기본 540 x 600의 1.2배)이 다음 실행에도 적용된다
+            assertEquals(648, stage.getScene().getWidth(), 1.0);
             assertEquals(720, stage.getScene().getHeight(), 1.0);
             pressKey(KeyCode.ESCAPE);
             clickButton("설정");
@@ -238,10 +239,10 @@ class TetrisApplicationIntegrationTest {
             assertTrue(second.lookup("#puyo-chain").isVisible());
 
             pressKey(KeyCode.S);
-            assertFalse(((Label) first.lookup("#score-label")).getText().endsWith(": 0"));
-            assertEquals("점수: 0", ((Label) second.lookup("#score-label")).getText());
+            assertTrue(scoreOf(first) > 0);
+            assertEquals(0, scoreOf(second));
             pressKey(KeyCode.PERIOD);
-            assertFalse(((Label) second.lookup("#score-label")).getText().endsWith(": 0"));
+            assertTrue(scoreOf(second) > 0);
             pressKey(KeyCode.ESCAPE);
             assertEquals("Tetris", stage.getTitle());
             return null;
@@ -270,6 +271,10 @@ class TetrisApplicationIntegrationTest {
                 KeyEvent.KEY_PRESSED, "", "", keyCode, false, false, false, false));
         Event.fireEvent(stage.getScene().getRoot(), new KeyEvent(
                 KeyEvent.KEY_RELEASED, "", "", keyCode, false, false, false, false));
+    }
+
+    private static long scoreOf(Parent panel) {
+        return Long.parseLong(((Label) panel.lookup("#score-label")).getText().strip());
     }
 
     private long displayedScore() {

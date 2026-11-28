@@ -49,7 +49,7 @@ class JavaFxGameViewTest {
     private static final int BOARD_ROWS = 20;
     private static final int BOARD_COLUMNS = 10;
     private static final int BORDER_MARGIN_PIXELS = 2;
-    private static final double WHITE_THRESHOLD = 0.99;
+    private static final double COLOR_TOLERANCE = 0.02; // 줄 삭제 강조색과 같은 색으로 볼 오차
 
     @BeforeAll
     static void initializeJavaFx() throws Exception {
@@ -175,10 +175,8 @@ class JavaFxGameViewTest {
                 Label intervalLabel = (Label) stage.getScene()
                         .lookup("#interval-label");
 
-                assertEquals("점수: 100", scoreLabel.getText());
-                assertEquals(
-                        "낙하 간격: 1000ms",
-                        intervalLabel.getText());
+                assertEquals("000100", scoreLabel.getText());
+                assertEquals("1000ms", intervalLabel.getText());
 
                 view.render(new GameSnapshot(
                         new int[20][10],
@@ -193,10 +191,8 @@ class JavaFxGameViewTest {
                         Map.of(),
                         List.of()));
 
-                assertEquals("점수: 250", scoreLabel.getText());
-                assertEquals(
-                        "낙하 간격: 900ms",
-                        intervalLabel.getText());
+                assertEquals("000250", scoreLabel.getText());
+                assertEquals("900ms", intervalLabel.getText());
             } finally {
                 stage.close();
             }
@@ -229,7 +225,7 @@ class JavaFxGameViewTest {
 
                 assertTrue(containsColor(
                         preview,
-                        Color.web("#FACC15")));
+                        BlockRenderer.NORMAL_COLORS.get(PieceType.O)));
 
                 view.render(new GameSnapshot(
                         new int[20][10],
@@ -246,10 +242,10 @@ class JavaFxGameViewTest {
 
                 assertTrue(containsColor(
                         preview,
-                        Color.web("#22D3EE")));
+                        BlockRenderer.NORMAL_COLORS.get(PieceType.I)));
                 assertFalse(containsColor(
                         preview,
-                        Color.web("#FACC15")));
+                        BlockRenderer.NORMAL_COLORS.get(PieceType.O)));
 
                 view.render(new GameSnapshot(
                         new int[20][10],
@@ -266,7 +262,7 @@ class JavaFxGameViewTest {
 
                 assertFalse(containsColor(
                         preview,
-                        Color.web("#22D3EE")));
+                        BlockRenderer.NORMAL_COLORS.get(PieceType.I)));
             } finally {
                 stage.close();
             }
@@ -299,7 +295,7 @@ class JavaFxGameViewTest {
 
                 assertTrue(containsColor(
                         preview,
-                        Color.web("#A855F7")));
+                        BlockRenderer.NORMAL_COLORS.get(PieceType.T)));
 
                 view.render(new GameSnapshot(
                         new int[20][10],
@@ -316,7 +312,7 @@ class JavaFxGameViewTest {
 
                 assertFalse(containsColor(
                         preview,
-                        Color.web("#A855F7")));
+                        BlockRenderer.NORMAL_COLORS.get(PieceType.T)));
             } finally {
                 stage.close();
             }
@@ -406,7 +402,7 @@ class JavaFxGameViewTest {
                 Canvas hold = (Canvas) stage.getScene()
                         .lookup("#hold-preview");
 
-                Color accessibleColor = Color.web("#56B4E9");
+                Color accessibleColor = BlockRenderer.COLOR_BLIND_COLORS.get(PieceType.I);
 
                 assertTrue(containsColor(board, accessibleColor));
                 assertTrue(containsColor(next, accessibleColor));
@@ -473,15 +469,16 @@ class JavaFxGameViewTest {
 
     @ParameterizedTest
     @CsvSource({
-            "SMALL, 400, 480, 0.8",
-            "MEDIUM, 500, 600, 1.0",
-            "LARGE, 600, 720, 1.2"
+            "SMALL, 0.8",
+            "MEDIUM, 1.0",
+            "LARGE, 1.2"
     })
     void applyWindowSizeToOpenStage(
             WindowSize windowSize,
-            double width,
-            double height,
             double scale) throws Exception {
+        // 화면 크기 3단계: 창, 보드 칸, 미리보기, 점수 글자가 모두 같은 배율로 커진다
+        double width = JavaFxGameView.VIEW_WIDTH * scale;
+        double height = JavaFxGameView.VIEW_HEIGHT * scale;
 
         runOnFxThread(() -> {
             Stage stage = new Stage();
@@ -523,18 +520,14 @@ class JavaFxGameViewTest {
                 Canvas next = (Canvas) scene.lookup("#next-preview");
                 Canvas hold = (Canvas) scene.lookup("#hold-preview");
                 Label score = (Label) scene.lookup("#score-label");
-                HBox root = (HBox) scene.getRoot();
 
-                assertEquals(
-                        20 * scale,
-                        board.getGraphicsContext2D().getFont().getSize(),
-                        0.01);
-                assertEquals(100 * scale, next.getWidth(), 0.01);
-                assertEquals(100 * scale, next.getHeight(), 0.01);
-                assertEquals(100 * scale, hold.getWidth(), 0.01);
-                assertEquals(100 * scale, hold.getHeight(), 0.01);
-                assertEquals(20 * scale, score.getFont().getSize(), 0.01);
-                assertEquals(20 * scale, root.getPadding().getTop(), 0.01);
+                assertEquals(BOARD_COLUMNS * JavaFxGameView.CELL_SIZE * scale, board.getWidth(), 0.01);
+                assertEquals(BOARD_ROWS * JavaFxGameView.CELL_SIZE * scale, board.getHeight(), 0.01);
+                assertEquals(JavaFxGameView.PREVIEW_WIDTH * scale, next.getWidth(), 0.01);
+                assertEquals(JavaFxGameView.PREVIEW_HEIGHT * scale, next.getHeight(), 0.01);
+                assertEquals(JavaFxGameView.PREVIEW_WIDTH * scale, hold.getWidth(), 0.01);
+                assertEquals(JavaFxGameView.PREVIEW_HEIGHT * scale, hold.getHeight(), 0.01);
+                assertEquals(JavaFxGameView.SCORE_FONT_SIZE * scale, score.getFont().getSize(), 0.01);
             } finally {
                 stage.close();
             }
@@ -576,7 +569,8 @@ class JavaFxGameViewTest {
                 assertInsideScene(scene.lookup("#game-board"), scene);
                 assertInsideScene(scene.lookup("#pause-label"), scene);
 
-                HBox root = (HBox) scene.getRoot();
+                // 게임 본문(보드 + 정보 칸)은 view.getContent()의 HBox, 정보 칸은 그 두 번째 자식
+                HBox root = (HBox) view.getContent();
                 VBox sidebar = (VBox) root.getChildren().get(1);
 
                 for (Node node : sidebar.getChildren()) {
@@ -591,7 +585,7 @@ class JavaFxGameViewTest {
     // ---------- 줄 삭제 연출 ----------
 
     @Test
-    void drawClearingRowsInWhite() throws Exception {
+    void drawClearingRowsHighlighted() throws Exception {
         runOnFxThread(() -> {
             // given
             Stage stage = new Stage();
@@ -603,9 +597,9 @@ class JavaFxGameViewTest {
                 // when
                 view.render(snapshotWithFullRowsFrom(18, List.of(18, 19)));
 
-                // then: 지워질 줄에는 흰색이 나타난다
-                assertTrue(countWhitePixelsInRow(board, 18) > 0);
-                assertTrue(countWhitePixelsInRow(board, 19) > 0);
+                // then: 지워질 줄에는 강조색이 나타난다
+                assertTrue(countClearingPixelsInRow(board, 18) > 0);
+                assertTrue(countClearingPixelsInRow(board, 19) > 0);
             } finally {
                 stage.close();
             }
@@ -613,7 +607,7 @@ class JavaFxGameViewTest {
     }
 
     @Test
-    void keepOtherRowsWithoutWhite() throws Exception {
+    void keepOtherRowsWithoutHighlight() throws Exception {
         runOnFxThread(() -> {
             // given
             Stage stage = new Stage();
@@ -625,9 +619,9 @@ class JavaFxGameViewTest {
                 // when
                 view.render(snapshotWithFullRowsFrom(18, List.of(18, 19)));
 
-                // then: 지워질 줄이 아닌 줄(일부만 채워진 17행, 빈 0행)에는 흰색이 없다
-                assertEquals(0, countWhitePixelsInRow(board, 17));
-                assertEquals(0, countWhitePixelsInRow(board, 0));
+                // then: 지워질 줄이 아닌 줄(일부만 채워진 17행, 빈 0행)에는 강조색이 없다
+                assertEquals(0, countClearingPixelsInRow(board, 17));
+                assertEquals(0, countClearingPixelsInRow(board, 0));
             } finally {
                 stage.close();
             }
@@ -649,9 +643,9 @@ class JavaFxGameViewTest {
 
                 // then
                 for (int row = 16; row <= 19; row++) {
-                    assertTrue(countWhitePixelsInRow(board, row) > 0, "row " + row);
+                    assertTrue(countClearingPixelsInRow(board, row) > 0, "row " + row);
                 }
-                assertEquals(0, countWhitePixelsInRow(board, 15));
+                assertEquals(0, countClearingPixelsInRow(board, 15));
             } finally {
                 stage.close();
             }
@@ -672,9 +666,9 @@ class JavaFxGameViewTest {
                 view.render(snapshotWithFullRowsFrom(18, List.of()));
 
                 // then: 꽉 찬 줄이어도 삭제 대기가 아니면 원래 색으로만 그려진다
-                assertEquals(0, countWhitePixelsInRow(board, 18));
-                assertEquals(0, countWhitePixelsInRow(board, 19));
-                assertTrue(containsColor(board, Color.web("#22D3EE")));
+                assertEquals(0, countClearingPixelsInRow(board, 18));
+                assertEquals(0, countClearingPixelsInRow(board, 19));
+                assertTrue(containsColor(board, BlockRenderer.NORMAL_COLORS.get(PieceType.I)));
             } finally {
                 stage.close();
             }
@@ -695,10 +689,10 @@ class JavaFxGameViewTest {
                 // when: 지워질 줄 정보가 없는 스냅샷을 다시 그리면
                 view.render(snapshotWithFullRowsFrom(18, List.of()));
 
-                // then: 흰색이 사라지고 원래 색으로 그려진다
-                assertEquals(0, countWhitePixelsInRow(board, 18));
-                assertEquals(0, countWhitePixelsInRow(board, 19));
-                assertTrue(containsColor(board, Color.web("#22D3EE")));
+                // then: 강조색이 사라지고 원래 색으로 그려진다
+                assertEquals(0, countClearingPixelsInRow(board, 18));
+                assertEquals(0, countClearingPixelsInRow(board, 19));
+                assertTrue(containsColor(board, BlockRenderer.NORMAL_COLORS.get(PieceType.I)));
             } finally {
                 stage.close();
             }
@@ -706,7 +700,7 @@ class JavaFxGameViewTest {
     }
 
     @Test
-    void drawClearingRowsInWhiteInColorBlindMode() throws Exception {
+    void drawClearingRowsHighlightedInColorBlindMode() throws Exception {
         runOnFxThread(() -> {
             // given
             Stage stage = new Stage();
@@ -724,9 +718,9 @@ class JavaFxGameViewTest {
                 view.render(snapshotWithFullRowsFrom(18, List.of(18, 19)));
 
                 // then
-                assertTrue(countWhitePixelsInRow(board, 18) > 0);
-                assertTrue(countWhitePixelsInRow(board, 19) > 0);
-                assertEquals(0, countWhitePixelsInRow(board, 17));
+                assertTrue(countClearingPixelsInRow(board, 18) > 0);
+                assertTrue(countClearingPixelsInRow(board, 19) > 0);
+                assertEquals(0, countClearingPixelsInRow(board, 17));
             } finally {
                 stage.close();
             }
@@ -735,7 +729,7 @@ class JavaFxGameViewTest {
 
     @ParameterizedTest
     @EnumSource(WindowSize.class)
-    void drawClearingRowsInWhiteOnEveryWindowSize(WindowSize windowSize) throws Exception {
+    void drawClearingRowsHighlightedOnEveryWindowSize(WindowSize windowSize) throws Exception {
         runOnFxThread(() -> {
             // given
             Stage stage = new Stage();
@@ -753,8 +747,8 @@ class JavaFxGameViewTest {
                 view.render(snapshotWithFullRowsFrom(19, List.of(19)));
 
                 // then
-                assertTrue(countWhitePixelsInRow(board, 19) > 0);
-                assertEquals(0, countWhitePixelsInRow(board, 18));
+                assertTrue(countClearingPixelsInRow(board, 19) > 0);
+                assertEquals(0, countClearingPixelsInRow(board, 18));
             } finally {
                 stage.close();
             }
@@ -762,7 +756,7 @@ class JavaFxGameViewTest {
     }
 
     @Test
-    void drawEmptyCellsWhiteWhenClearingRowIsNotFull() throws Exception {
+    void drawEmptyCellsHighlightedWhenClearingRowIsNotFull() throws Exception {
         runOnFxThread(() -> {
             // given: 19행은 왼쪽 5칸만 채워진 줄이다 (L 아이템으로 지워지는 줄처럼)
             Stage stage = new Stage();
@@ -774,9 +768,9 @@ class JavaFxGameViewTest {
                 // when
                 view.render(snapshotWithHalfFilledRow(19, List.of(19)));
 
-                // then: 빈 칸 자리까지 흰색이라 줄 전체가 하나의 띠로 보인다
-                assertTrue(countWhitePixelsInCells(board, 19, 0, 5) > 0);
-                assertTrue(countWhitePixelsInCells(board, 19, 5, BOARD_COLUMNS) > 0);
+                // then: 빈 칸 자리까지 강조색이라 줄 전체가 하나의 띠로 보인다
+                assertTrue(countClearingPixelsInCells(board, 19, 0, 5) > 0);
+                assertTrue(countClearingPixelsInCells(board, 19, 5, BOARD_COLUMNS) > 0);
             } finally {
                 stage.close();
             }
@@ -784,7 +778,7 @@ class JavaFxGameViewTest {
     }
 
     @Test
-    void keepEmptyCellsDarkWhenRowIsNotClearing() throws Exception {
+    void keepEmptyCellsUnhighlightedWhenRowIsNotClearing() throws Exception {
         runOnFxThread(() -> {
             // given
             Stage stage = new Stage();
@@ -797,7 +791,7 @@ class JavaFxGameViewTest {
                 view.render(snapshotWithHalfFilledRow(19, List.of()));
 
                 // then
-                assertEquals(0, countWhitePixelsInCells(board, 19, 5, BOARD_COLUMNS));
+                assertEquals(0, countClearingPixelsInCells(board, 19, 5, BOARD_COLUMNS));
             } finally {
                 stage.close();
             }
@@ -805,7 +799,7 @@ class JavaFxGameViewTest {
     }
 
     @Test
-    void drawEmptyRowWhiteWhenEmptyRowIsClearing() throws Exception {
+    void drawEmptyRowHighlightedWhenEmptyRowIsClearing() throws Exception {
         runOnFxThread(() -> {
             // given
             Stage stage = new Stage();
@@ -818,8 +812,8 @@ class JavaFxGameViewTest {
                 view.render(snapshotWithHalfFilledRow(19, List.of(10)));
 
                 // then
-                assertTrue(countWhitePixelsInCells(board, 10, 0, BOARD_COLUMNS) > 0);
-                assertEquals(0, countWhitePixelsInCells(board, 11, 0, BOARD_COLUMNS));
+                assertTrue(countClearingPixelsInCells(board, 10, 0, BOARD_COLUMNS) > 0);
+                assertEquals(0, countClearingPixelsInCells(board, 11, 0, BOARD_COLUMNS));
             } finally {
                 stage.close();
             }
@@ -920,24 +914,25 @@ class JavaFxGameViewTest {
                 Map.of(), List.of());
     }
 
-    // firstColumn 이상 endColumn 미만 칸 영역(테두리 제외)에서 지정한 행의 순수한 흰색 픽셀 수를 센다
-    private static int countWhitePixelsInCells(Canvas canvas, int row, int firstColumn, int endColumn) {
+    // firstColumn 이상 endColumn 미만 칸 영역에서 지정한 행의 줄 삭제 강조색(BlockRenderer.CLEARING_FILL) 픽셀 수를 센다
+    private static int countClearingPixelsInCells(Canvas canvas, int row, int firstColumn, int endColumn) {
         WritableImage image = canvas.snapshot(null, null);
-        double cellWidth = canvas.getWidth() / (BOARD_COLUMNS + 2);
-        double cellHeight = canvas.getHeight() / (BOARD_ROWS + 2);
-        int startX = (int) Math.ceil(cellWidth * (firstColumn + 1)) + BORDER_MARGIN_PIXELS;
-        int endX = (int) Math.floor(cellWidth * (endColumn + 1)) - BORDER_MARGIN_PIXELS;
-        int startY = (int) Math.ceil(cellHeight * (row + 1));
-        int endY = (int) Math.floor(cellHeight * (row + 2));
+        double cellWidth = canvas.getWidth() / BOARD_COLUMNS;
+        double cellHeight = canvas.getHeight() / BOARD_ROWS;
+        int startX = (int) Math.ceil(cellWidth * firstColumn) + BORDER_MARGIN_PIXELS;
+        int endX = (int) Math.floor(cellWidth * endColumn) - BORDER_MARGIN_PIXELS;
+        int startY = (int) Math.ceil(cellHeight * row);
+        int endY = (int) Math.floor(cellHeight * (row + 1));
+        Color highlight = BlockRenderer.CLEARING_FILL;
         int count = 0;
 
         for (int y = startY; y < endY; y++) {
             for (int x = startX; x < endX; x++) {
                 Color color = image.getPixelReader().getColor(x, y);
 
-                if (color.getRed() > WHITE_THRESHOLD
-                        && color.getGreen() > WHITE_THRESHOLD
-                        && color.getBlue() > WHITE_THRESHOLD) {
+                if (Math.abs(color.getRed() - highlight.getRed()) < COLOR_TOLERANCE
+                        && Math.abs(color.getGreen() - highlight.getGreen()) < COLOR_TOLERANCE
+                        && Math.abs(color.getBlue() - highlight.getBlue()) < COLOR_TOLERANCE) {
                     count++;
                 }
             }
@@ -946,9 +941,9 @@ class JavaFxGameViewTest {
         return count;
     }
 
-    // 지정한 행의 순수한 흰색 픽셀 수를 센다
-    private static int countWhitePixelsInRow(Canvas canvas, int row) {
-        return countWhitePixelsInCells(canvas, row, 0, BOARD_COLUMNS);
+    // 지정한 행의 줄 삭제 강조색 픽셀 수를 센다
+    private static int countClearingPixelsInRow(Canvas canvas, int row) {
+        return countClearingPixelsInCells(canvas, row, 0, BOARD_COLUMNS);
     }
 
     // row 한 줄만 왼쪽 5칸이 I 블록으로 채워진 20x10 보드의 스냅샷
