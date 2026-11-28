@@ -100,6 +100,7 @@ public final class JavaFxP2pLobbyView {
                 new HBox(SPACING, cancelButton, backButton));
         root.setPadding(new Insets(PADDING));
         scene = new Scene(root, WIDTH, HEIGHT);
+        Theme.apply(scene); // AI-assisted (redesign)
         gameBox.valueProperty().addListener((observable, previous, current) -> updateSettings());
         modeBox.valueProperty().addListener((observable, previous, current) -> updateSettings());
         difficultyBox.valueProperty().addListener((observable, previous, current) -> updateSettings());

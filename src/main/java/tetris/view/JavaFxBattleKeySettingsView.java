@@ -17,8 +17,9 @@ import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.util.Duration;
 
 import tetris.model.GameCommand;
@@ -33,7 +34,7 @@ import tetris.settings.GameSettings;
 public class JavaFxBattleKeySettingsView {
 
     private static final double VIEW_WIDTH = 500;
-    private static final double VIEW_HEIGHT = 640;
+    private static final double VIEW_HEIGHT = 660; // AI-assisted (redesign) 키 안내 줄 자리만큼 키움
     private static final double ROOT_SPACING = 4;
     private static final double ROOT_PADDING = 20;
     private static final double TITLE_FONT_SIZE = 20;
@@ -128,7 +129,7 @@ public class JavaFxBattleKeySettingsView {
         backRow = resetRow + 1;
 
         Label title = new Label(TITLE_TEXT);
-        title.setFont(Font.font(TITLE_FONT_SIZE));
+        title.setFont(Theme.uiFont(FontWeight.BOLD, TITLE_FONT_SIZE)); // AI-assisted (redesign)
 
         VBox root = new VBox(ROOT_SPACING);
         root.setAlignment(Pos.CENTER);
@@ -147,7 +148,17 @@ public class JavaFxBattleKeySettingsView {
 
         refreshRows();
 
-        scene = new Scene(root, VIEW_WIDTH, VIEW_HEIGHT);
+        // AI-assisted code start (redesign)
+        KeyHintBar keyHints = new KeyHintBar()
+                .add("이동", "UP", "DOWN")
+                .add("키 바꾸기", "ENTER")
+                .add("취소·뒤로", "ESCAPE");
+        BorderPane frame = new BorderPane(root);
+        frame.setBottom(keyHints);
+
+        scene = new Scene(frame, VIEW_WIDTH, VIEW_HEIGHT);
+        Theme.apply(scene);
+        // AI-assisted code end
         scene.addEventHandler(KeyEvent.KEY_PRESSED, this::handleKey);
         scene.addEventHandler(KeyEvent.KEY_RELEASED, this::handleKeyReleased);
     }
@@ -159,7 +170,7 @@ public class JavaFxBattleKeySettingsView {
     private Label createRowLabel(int row) {
         Label rowLabel = new Label();
         rowLabel.setId(createRowId(row));
-        rowLabel.setFont(Font.font(ROW_FONT_SIZE));
+        rowLabel.setFont(Theme.uiFont(ROW_FONT_SIZE)); // AI-assisted (redesign)
         rowLabel.setMaxWidth(Double.MAX_VALUE);
         rowLabel.setAlignment(Pos.CENTER);
         rowLabel.setCursor(Cursor.HAND);

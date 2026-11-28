@@ -8,13 +8,16 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.FontWeight;
 
 public class JavaFxStartMenuView {
 
     private static final double MENU_WIDTH = 500;
     private static final double MENU_HEIGHT = 600;
     private static final double BUTTON_WIDTH = 200;
+    private static final double TITLE_FONT_SIZE = 34; // AI-assisted (redesign)
 
     private final Scene scene;
     private final List<Button> menuButtons;
@@ -34,6 +37,7 @@ public class JavaFxStartMenuView {
     public JavaFxStartMenuView(Runnable onStartGame, Runnable onStartItemGame, Runnable onStartPuyo,
             Runnable onStartLocalBattle, Runnable onStartP2p, Runnable onSettings, Runnable onScoreboard, Runnable onExit) {
         Label title = new Label("Tetris");
+        title.setFont(Theme.monoFont(FontWeight.BOLD, TITLE_FONT_SIZE)); // AI-assisted (redesign)
 
         Button startButton = createButton("일반 모드 시작", onStartGame);
         Button itemModeButton = createButton("아이템 모드 시작", onStartItemGame);
@@ -54,7 +58,16 @@ public class JavaFxStartMenuView {
         root.getChildren().add(title);
         root.getChildren().addAll(menuButtons);
 
-        scene = new Scene(root, MENU_WIDTH, MENU_HEIGHT);
+        // AI-assisted code start
+        KeyHintBar keyHints = new KeyHintBar()
+                .add("이동", "UP", "DOWN")
+                .add("선택", "ENTER");
+        BorderPane frame = new BorderPane(root);
+        frame.setBottom(keyHints);
+
+        scene = new Scene(frame, MENU_WIDTH, MENU_HEIGHT);
+        Theme.apply(scene);
+        // AI-assisted code end
         scene.addEventFilter(KeyEvent.KEY_PRESSED, this::handleMenuKey);
     }
 

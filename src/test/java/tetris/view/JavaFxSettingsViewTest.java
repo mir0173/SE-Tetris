@@ -942,8 +942,9 @@ class JavaFxSettingsViewTest {
         return getRowLabel(view, row).getText().startsWith(SELECTED_MARKER);
     }
 
+    // 설정 줄이 들어 있는 본문 VBox (화면 아래 키 안내 줄은 이 바깥에 있다)
     private VBox getRoot(JavaFxSettingsView view) {
-        return (VBox) view.getScene().getRoot();
+        return (VBox) view.getScene().lookup("#settings-content");
     }
 
     private void pressKey(JavaFxSettingsView view, KeyCode key) {

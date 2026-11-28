@@ -13,6 +13,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -115,7 +116,19 @@ public final class JavaFxBattleSetupView {
         VBox root = new VBox(SPACING, new Label("로컬 대전"), gridPane,
                 keyGuideTitle, keyGuide, buttonBox);
         root.setPadding(new Insets(PADDING));
-        scene = new Scene(root, WIDTH, HEIGHT);
+
+        // AI-assisted code start (redesign)
+        KeyHintBar keyHints = new KeyHintBar()
+                .add("항목 이동", "TAB")
+                .add("값 바꾸기", "UP", "DOWN")
+                .add("게임 시작", "ENTER")
+                .add("뒤로", "ESCAPE");
+        BorderPane frame = new BorderPane(root);
+        frame.setBottom(keyHints);
+
+        scene = new Scene(frame, WIDTH, HEIGHT);
+        Theme.apply(scene);
+        // AI-assisted code end
         scene.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPressed);
     }
 

@@ -1,0 +1,143 @@
+/*
+ * SE-Tetris 블루프린트(설계 도면) 테마
+ * AI-assisted code start
+ *
+ * 색 이름
+ *   종이(바탕)   #e9f0f7   모눈선  rgba(31,95,214,0.12)
+ *   먹(글자·선)  #14243d   흐린 먹 #5f7491
+ *   파란 펜      #1f5fd6   빨간 펜 #e0442c
+ *
+ * JavaFX CSS 규칙: 이 파일(Scene 스타일시트)은 코드에서 정한 값보다 우선한다.
+ * - 글자 색은 Modena가 쓰는 "찾아보기 색"(-fx-text-background-color 등)을 바꾸는 방식으로만 정하고,
+ *   .label 같은 넓은 선택자에는 색을 직접 넣지 않는다 (코드에서 흰 글자로 정한 곳을 덮지 않도록).
+ * - 글꼴 이름도 .root에 넣지 않는다. .root에 넣으면 코드에서 정한 글자 크기까지 기본값으로 바뀐다.
+ *   Label 글꼴은 Theme.apply()가 크기·굵기를 그대로 두고 이름만 바꾸고,
+ *   아래 버튼·입력 칸처럼 코드에서 글꼴을 정하지 않는 부품만 여기서 정한다.
+ */
+
+.root {
+    -fx-base: #ffffff;
+    -fx-background: #e9f0f7;
+    -fx-text-background-color: #14243d;
+    -fx-text-base-color: #14243d;
+    -fx-text-inner-color: #14243d;
+    -fx-accent: #1f5fd6;
+    -fx-focus-color: #1f5fd6;
+    -fx-faint-focus-color: transparent;
+    -fx-selection-bar: #14243d;
+    -fx-selection-bar-non-focused: #5f7491;
+    -fx-background-color:
+        #e9f0f7,
+        linear-gradient(from 0px 0px to 0px 16px, repeat, rgba(31, 95, 214, 0.12) 0%, rgba(31, 95, 214, 0.12) 6.25%, transparent 6.25%, transparent 100%),
+        linear-gradient(from 0px 0px to 16px 0px, repeat, rgba(31, 95, 214, 0.12) 0%, rgba(31, 95, 214, 0.12) 6.25%, transparent 6.25%, transparent 100%);
+}
+
+/* ---------- 코드에서 글꼴을 정하지 않는 부품의 글꼴 ---------- */
+.button,
+.combo-box-base,
+.list-cell,
+.spinner,
+.text-input,
+.key-hint-text {
+    -fx-font-family: "IBM Plex Sans KR";
+}
+
+/* ---------- 버튼: 먹선 테두리 + 흰 면, 포커스(키보드 선택)는 먹으로 칠함 ---------- */
+.button {
+    -fx-background-color: #14243d, #ffffff;
+    -fx-background-insets: 0, 1.5;
+    -fx-background-radius: 0;
+    -fx-text-fill: #14243d;
+    -fx-font-weight: bold;
+    -fx-padding: 6 14 6 14;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: #14243d, #e8f0ff;
+}
+
+.button:focused {
+    -fx-background-color: #14243d;
+    -fx-background-insets: 0;
+    -fx-text-fill: #ffffff;
+}
+
+.button:armed {
+    -fx-background-color: #1f5fd6;
+    -fx-background-insets: 0;
+    -fx-text-fill: #ffffff;
+}
+
+/* ---------- 입력 칸 (콤보 박스, 숫자 칸, 글자 칸) ---------- */
+.combo-box-base,
+.spinner,
+.text-field {
+    -fx-background-color: #14243d, #ffffff;
+    -fx-background-insets: 0, 1.5;
+    -fx-background-radius: 0;
+}
+
+.combo-box-base:focused,
+.spinner:focused,
+.text-field:focused {
+    -fx-background-color: #1f5fd6, #ffffff;
+    -fx-background-insets: 0, 2;
+}
+
+.spinner .text-field {
+    -fx-background-color: transparent;
+}
+
+.spinner .increment-arrow-button,
+.spinner .decrement-arrow-button,
+.combo-box-base .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.spinner .increment-arrow-button .increment-arrow,
+.spinner .decrement-arrow-button .decrement-arrow,
+.combo-box-base .arrow-button .arrow {
+    -fx-background-color: #14243d;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: #14243d, #ffffff;
+    -fx-background-insets: 0, 1.5;
+}
+
+.combo-box-popup .list-view .list-cell:filled:hover {
+    -fx-background-color: #e8f0ff;
+}
+
+.combo-box-popup .list-view .list-cell:filled:selected {
+    -fx-background-color: #14243d;
+    -fx-text-fill: #ffffff;
+}
+
+/* ---------- 화면 아래 키 안내 줄 ---------- */
+.key-hint-bar {
+    -fx-background-color: #14243d, #ffffff;
+    -fx-background-insets: 0, 1.5 0 0 0;
+    -fx-padding: 8 12 8 12;
+}
+
+.keycap {
+    -fx-font-family: "IBM Plex Mono";
+    -fx-font-weight: bold;
+    -fx-font-size: 11px;
+    -fx-text-fill: #14243d;
+    -fx-min-width: 22px;
+    -fx-alignment: center;
+    -fx-padding: 0 6 1 5;
+    /* 오른쪽 아래로 2px 어긋난 먹 그림자(도면 스타일의 딱딱한 그림자) */
+    -fx-background-color: #14243d, #14243d, #ffffff;
+    -fx-background-insets: 2 0 0 2, 0 2 2 0, 1.5 3.5 3.5 1.5;
+}
+
+.key-hint-text {
+    -fx-font-size: 12px;
+    -fx-text-fill: #5f7491;
+}
+
+/* AI-assisted code end */

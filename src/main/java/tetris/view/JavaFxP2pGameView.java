@@ -67,6 +67,7 @@ public final class JavaFxP2pGameView {
         root.setPadding(new Insets(PADDING));
         scene = new Scene(root, 980 * settings.getWindowSize().getScale(),
                 680 * settings.getWindowSize().getScale());
+        Theme.apply(scene); // AI-assisted (redesign)
     }
 
     public GameView getLocalView() { return localView; }
